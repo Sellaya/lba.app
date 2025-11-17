@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "Appointment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Appointment",
+      "type": "object",
+      "description": "Represents a makeup appointment booking.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the appointment."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client. (Relationship: Client 1:N Appointment)"
+        },
+        "serviceId": {
+          "type": "string",
+          "description": "Reference to the MakeupService. (Relationship: MakeupService 1:N Appointment)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the appointment.",
+          "format": "date-time"
+        },
+        "location": {
+          "type": "string",
+          "description": "Location of the appointment (Toronto/Outside Toronto)."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Duration of the appointment in minutes."
+        },
+        "totalCost": {
+          "type": "number",
+          "description": "Total cost of the appointment."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or requests for the appointment."
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "serviceId",
+        "date",
+        "location",
+        "duration",
+        "totalCost"
+      ]
+    },
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Represents a client booking an appointment.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the client."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the client."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the client."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the client.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the client."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "phone"
+      ]
+    },
+    "MakeupService": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MakeupService",
+      "type": "object",
+      "description": "Represents a makeup service offered.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the makeup service."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the makeup service (e.g., Bridal, Party)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the makeup service."
+        },
+        "basePrice": {
+          "type": "number",
+          "description": "Base price of the makeup service."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "basePrice"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/clients/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Stores client data specific to each user. Path-based ownership ensures only the user can access their clients. Includes params for userId and clientId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user (authenticated user ID)."
+            },
+            {
+              "name": "clientId",
+              "description": "The unique identifier of the client."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/clients/{clientId}/appointments/{appointmentId}",
+        "definition": {
+          "entityName": "Appointment",
+          "schema": {
+            "$ref": "#/backend/entities/Appointment"
+          },
+          "description": "Stores appointment data for each client. Inherits ownership from the client. Includes params for userId, clientId, and appointmentId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user (authenticated user ID)."
+            },
+            {
+              "name": "clientId",
+              "description": "The unique identifier of the client."
+            },
+            {
+              "name": "appointmentId",
+              "description": "The unique identifier of the appointment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/makeup_services/{makeupServiceId}",
+        "definition": {
+          "entityName": "MakeupService",
+          "schema": {
+            "$ref": "#/backend/entities/MakeupService"
+          },
+          "description": "Stores global makeup service data.  Params include makeupServiceId.",
+          "params": [
+            {
+              "name": "makeupServiceId",
+              "description": "The unique identifier of the makeup service."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "Given the application requirements for GlamBook Pro, a structure that prioritizes path-based ownership for clients and their appointments is ideal. This structure inherently provides Authorization Independence and supports the required Query-based Access Patterns (QAPs). The structure enforces Authorization Independence by ensuring that each appointment is stored under the specific user, this prevents reliance on `get()` calls in security rules.\n\nWe avoid storing clients in the root collection `/clients` because it violates Structural Segregation (different security postures). The design uses path-based ownership with a simple hierarchy: `/users/{userId}/clients/{clientId}`. Using this approach, we guarantee that all documents within the `clients` subcollection share the same access control requirements.\n\nAppointments are stored as a subcollection of clients, mirroring the `Client 1:N Appointment` relationship. The full path would be `/users/{userId}/clients/{clientId}/appointments/{appointmentId}`. This ensures that appointments are always associated with a specific client, simplifying security rules and data access.\n\nMakeup Services are stored in a root level collection, `/makeup_services/{makeupServiceId}`. These are global and do not depend on user ownership."
+  }
+}

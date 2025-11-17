@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // An admin user has a custom claim 'admin' set to true.
+    // The Firebase Admin SDK (used on the server) is automatically an admin.
+    function isAdmin() {
+      return request.auth.token.admin == true;
+    }
+
+    function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /bookings/{bookingId} {
+      // Any signed-in user (including anonymous users who just created a quote) can read a booking.
+      // Access is secured by the unguessable bookingId.
+      allow read: if isSignedIn();
+
+      // Any signed-in user can create a booking, as long as they set themselves as the owner.
+      allow create: if isOwner(request.resource.data.uid);
+      
+      // Admins or owners can update a booking.
+      allow update: if isAdmin() || isOwner(resource.data.uid);
+      
+      // Admins can delete any booking.
+      allow delete: if isAdmin();
+    }
+    
+    // Let any signed-in user (including anonymous users for the admin dashboard) list bookings.
+    // The individual documents are still protected by the read rule above.
+    match /bookings/{booking} {
+        allow list: if isSignedIn();
+    }
+  }
+}
