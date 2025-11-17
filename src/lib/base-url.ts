@@ -1,5 +1,3 @@
-'use server';
-
 const DEFAULT_DEV_URL = 'http://localhost:3000';
 const DEFAULT_PROD_URL = 'https://app.looksbyanum.com';
 
