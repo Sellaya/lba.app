@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,29 +10,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const tokenParam = searchParams.get('token');
-    if (!tokenParam) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid Link',
-        description: 'No reset token provided. Please request a new password reset.',
-      });
-      router.push('/admin/forgot-password');
-    } else {
-      setToken(tokenParam);
-    }
-  }, [searchParams, router, toast]);
+  const token = searchParams.get('token');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,6 +186,20 @@ export default function ResetPasswordPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-muted/40">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
 
