@@ -2,13 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { ADMIN_EMAIL } from '@/lib/auth';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { getBaseUrl } from '@/lib/base-url';
 import crypto from 'crypto';
-
-function getBaseUrl() {
-  return process.env.NODE_ENV === 'development' 
-    ? (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
-    : (process.env.NEXT_PUBLIC_BASE_URL || `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.web.app`);
-}
 
 export async function POST(request: Request) {
   try {

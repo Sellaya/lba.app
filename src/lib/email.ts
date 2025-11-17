@@ -16,13 +16,7 @@ import BookCallConfirmationEmailTemplate from '@/app/emails/book-call-confirmati
 import FinalPaymentConfirmationEmailTemplate from '@/app/emails/final-payment-confirmation-email';
 import ArtistBookingEmailTemplate from '@/app/emails/artist-booking-email';
 import PasswordResetEmailTemplate from '@/app/emails/password-reset-email';
-
-
-const getBaseUrl = () => {
-    return process.env.NODE_ENV === 'development' 
-        ? (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')
-        : (process.env.NEXT_PUBLIC_BASE_URL || `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.web.app`);
-}
+import { getBaseUrl } from './base-url';
 
 const getResend = () => {
     const apiKey = process.env.RESEND_API_KEY;
