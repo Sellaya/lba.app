@@ -1,6 +1,7 @@
 'use client';
 
 import jsPDF from 'jspdf';
+import { formatPrice } from './price-format';
 import html2canvas from 'html2canvas';
 
 /**
@@ -146,9 +147,9 @@ export async function generateContractPDFFromData(
   const depositAmount = selectedQuote.total * 0.5;
   
   addText(`3. Payment`, 14, true);
-  addText(`The total fee for the services is $${selectedQuote.total.toFixed(2)} (including GST).`, 12, false);
-  addText(`A non-refundable deposit of $${depositAmount.toFixed(2)} (50%) is required to secure the booking.`, 12, false);
-  addText(`The remaining balance of $${(selectedQuote.total - depositAmount).toFixed(2)} is due on or before the day of the first scheduled service.`, 12, false);
+  addText(`The total fee for the services is $${formatPrice(selectedQuote.total)} (including GST).`, 12, false);
+  addText(`A non-refundable deposit of $${formatPrice(depositAmount)} (50%) is required to secure the booking.`, 12, false);
+  addText(`The remaining balance of $${formatPrice(selectedQuote.total - depositAmount)} is due on or before the day of the first scheduled service.`, 12, false);
 
   // Add other sections...
   addText(`4. Client Responsibilities`, 14, true);

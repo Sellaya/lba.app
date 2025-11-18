@@ -1,5 +1,6 @@
 import * as React from 'react';
 import type { FinalQuote } from '@/lib/types';
+import { formatPrice } from '@/lib/price-format';
 
 interface FollowUpEmailProps {
   quote: FinalQuote;
@@ -170,17 +171,34 @@ const FollowUpEmailTemplate: React.FC<Readonly<FollowUpEmailProps>> = ({ quote, 
             const hasPayment = quote.paymentDetails && 
               (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
             
-            if (hasPayment && quote.selectedQuote) {
+            // Determine the selected quote - use existing, or infer from payment amount if missing
+            let displaySelectedQuote = quote.selectedQuote;
+            if (!displaySelectedQuote && hasPayment && quote.quotes) {
+              // Infer selected quote from payment amount
+              const paymentAmount = quote.paymentDetails?.depositAmount || 0;
+              if (paymentAmount > 0) {
+                const leadDeposit = quote.quotes.lead?.total * 0.5 || 0;
+                const teamDeposit = quote.quotes.team?.total * 0.5 || 0;
+                // Find which tier matches the payment amount (with small tolerance for rounding)
+                if (Math.abs(paymentAmount - leadDeposit) < 1) {
+                  displaySelectedQuote = 'lead';
+                } else if (Math.abs(paymentAmount - teamDeposit) < 1) {
+                  displaySelectedQuote = 'team';
+                }
+              }
+            }
+            
+            if (hasPayment && displaySelectedQuote) {
               // Show only the selected package
-              const selectedQuoteData = quote.quotes[quote.selectedQuote];
+              const selectedQuoteData = quote.quotes[displaySelectedQuote];
               return (
                 <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(0, 0%, 85%)', marginTop: '20px' }}>
                   <h4 style={{...bookingSummaryTitle, fontSize: '16px', marginBottom: '8px', textAlign: 'center'}}>
-                    {quote.selectedQuote === 'lead' ? 'Lead Artist - Anum' : 'Team Package'}
+                    {displaySelectedQuote === 'lead' ? 'Lead Artist - Anum' : 'Team Package'}
                   </h4>
-                  <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${selectedQuoteData.total.toFixed(2)}</strong></p>
-                  <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${(selectedQuoteData.total * 0.5).toFixed(2)}</strong></p>
-                  <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${(selectedQuoteData.total * 0.5).toFixed(2)}</strong></p>
+                  <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${formatPrice(selectedQuoteData.total)}</strong></p>
+                  <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${formatPrice(selectedQuoteData.total * 0.5)}</strong></p>
+                  <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${formatPrice(selectedQuoteData.total * 0.5)}</strong></p>
                 </div>
               );
             } else {
@@ -190,15 +208,15 @@ const FollowUpEmailTemplate: React.FC<Readonly<FollowUpEmailProps>> = ({ quote, 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
                     <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(0, 0%, 85%)' }}>
                       <h4 style={{...bookingSummaryTitle, fontSize: '16px', marginBottom: '8px', textAlign: 'center'}}>Option 1: Lead Artist</h4>
-                      <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${quote.quotes.lead.total.toFixed(2)}</strong></p>
-                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${(quote.quotes.lead.total * 0.5).toFixed(2)}</strong></p>
-                      <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${(quote.quotes.lead.total * 0.5).toFixed(2)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${formatPrice(quote.quotes.lead.total)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${formatPrice(quote.quotes.lead.total * 0.5)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${formatPrice(quote.quotes.lead.total * 0.5)}</strong></p>
                     </div>
                     <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(0, 0%, 85%)' }}>
                       <h4 style={{...bookingSummaryTitle, fontSize: '16px', marginBottom: '8px', textAlign: 'center'}}>Option 2: Team</h4>
-                      <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${quote.quotes.team.total.toFixed(2)}</strong></p>
-                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${(quote.quotes.team.total * 0.5).toFixed(2)}</strong></p>
-                      <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${(quote.quotes.team.total * 0.5).toFixed(2)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${formatPrice(quote.quotes.team.total)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${formatPrice(quote.quotes.team.total * 0.5)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${formatPrice(quote.quotes.team.total * 0.5)}</strong></p>
                     </div>
                   </div>
                   <p style={{...paragraph, fontSize: '13px', textAlign: 'center', marginTop: '16px', marginBottom: 0, color: '#777'}}>
@@ -243,7 +261,7 @@ const FollowUpEmailTemplate: React.FC<Readonly<FollowUpEmailProps>> = ({ quote, 
       </p>
       
       <div style={footer}>
-        <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+        <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a></p>
       </div>
     </div>
   </div>

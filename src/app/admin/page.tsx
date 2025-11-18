@@ -39,6 +39,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { formatPrice } from '@/lib/price-format';
 
 function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' | 'interac'): { text: string; variant: 'secondary' | 'destructive' | 'default' } {
     switch (status) {
@@ -1143,7 +1144,7 @@ function BookingsTable({
                     </TableCell>
                      <TableCell className="text-right text-xs sm:text-sm font-medium">
                       ${booking.finalQuote.selectedQuote 
-                          ? booking.finalQuote.quotes[booking.finalQuote.selectedQuote].total.toFixed(2)
+                          ? formatPrice(booking.finalQuote.quotes[booking.finalQuote.selectedQuote].total)
                           : 'N/A'
                       }
                     </TableCell>

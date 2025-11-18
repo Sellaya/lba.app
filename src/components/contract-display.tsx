@@ -1,5 +1,6 @@
 import type { FinalQuote, PriceTier } from '@/lib/types';
 import { format } from 'date-fns';
+import { formatPrice } from '@/lib/price-format';
 
 export function ContractDisplay({ 
   quote, 
@@ -60,9 +61,9 @@ export function ContractDisplay({
       </ul>
 
       <h4>3. Payment</h4>
-      <p>The total fee for the services is <strong>${selectedQuote.total.toFixed(2)}</strong> (including GST).</p>
-      <p>A non-refundable deposit of <strong>${depositAmount.toFixed(2)} (50%)</strong> is required to secure the booking. This deposit is non-refundable and non-transferable.</p>
-      <p>The remaining balance of <strong>${(selectedQuote.total - depositAmount).toFixed(2)}</strong> is due on or before the day of the first scheduled service.</p>
+      <p>The total fee for the services is <strong>${formatPrice(selectedQuote.total)}</strong> (including GST).</p>
+      <p>A non-refundable deposit of <strong>${formatPrice(depositAmount)} (50%)</strong> is required to secure the booking. This deposit is non-refundable and non-transferable.</p>
+      <p>The remaining balance of <strong>${formatPrice(selectedQuote.total - depositAmount)}</strong> is due on or before the day of the first scheduled service.</p>
 
       <h4>4. Client Responsibilities</h4>
       <ul>

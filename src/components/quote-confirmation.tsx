@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { useMemo, useState, useRef } from 'react';
 import { CheckCircle2, User, Users, Loader2, MapPin, ShieldCheck, FileText, Banknote, CreditCard, ArrowRight, ArrowLeft, AlertTriangle, Phone, CalendarIcon, X, Plus, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { MakeupBrushVector, MirrorVector, HairVector, SparkleVector, CheckmarkVector } from '@/components/beauty-vectors';
 import type { FinalQuote, PriceTier, Quote, PaymentMethod, PaymentDetails, Address } from "@/lib/types";
 import type { BookingDocument } from '@/firebase/firestore/bookings';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { STUDIO_ADDRESS } from '@/lib/services';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
+import { formatPrice } from '@/lib/price-format';
 import { Separator } from '@/components/ui/separator';
 import { ContractDisplay } from '@/components/contract-display';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,6 +30,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { BrandingFooter } from '@/components/branding-footer';
+import Link from 'next/link';
+import { Home } from 'lucide-react';
 
 type ConfirmationStep = 'select-tier' | 'address' | 'sign-contract' | 'payment' | 'confirmed';
 
@@ -51,8 +55,8 @@ function QuoteTierCard({ title, icon, quote, tier, selectedTier, onSelect }: {
   const isSelected = selectedTier === tier;
   return (
     <Label htmlFor={`tier-${tier}`} className={cn(
-      "block border rounded-lg cursor-pointer transition-all",
-      isSelected ? "border-black ring-2 ring-black shadow-lg" : "border-border hover:border-gray-400"
+      "block border rounded-lg cursor-pointer transition-smooth",
+      isSelected ? "border-black ring-2 ring-black shadow-lg scale-[1.02]" : "border-border hover:border-gray-400 hover:scale-[1.01]"
     )}>
         <RadioGroupItem value={tier} id={`tier-${tier}`} className="sr-only" />
         <Card className="shadow-none border-none bg-transparent">
@@ -67,7 +71,7 @@ function QuoteTierCard({ title, icon, quote, tier, selectedTier, onSelect }: {
                     {quote.lineItems.map((item, index) => (
                     <li key={index} className="flex justify-between">
                         <span className={item.description.startsWith('  -') || item.description.startsWith('Party:') ? 'pl-4 text-muted-foreground' : ''}>{item.description}</span>
-                        <span className="font-medium">${item.price.toFixed(2)}</span>
+                        <span className="font-medium">${formatPrice(item.price)}</span>
                     </li>
                     ))}
                 </ul>
@@ -75,11 +79,11 @@ function QuoteTierCard({ title, icon, quote, tier, selectedTier, onSelect }: {
                 <ul className="space-y-1 text-sm font-medium">
                     <li className="flex justify-between">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span>${quote.subtotal.toFixed(2)}</span>
+                        <span>${formatPrice(quote.subtotal)}</span>
                     </li>
                     <li className="flex justify-between">
                         <span className="text-muted-foreground">GST (13%)</span>
-                        <span>${quote.tax.toFixed(2)}</span>
+                        <span>${formatPrice(quote.tax)}</span>
                     </li>
                 </ul>
                 <Separator className="my-2" />
@@ -88,14 +92,14 @@ function QuoteTierCard({ title, icon, quote, tier, selectedTier, onSelect }: {
                         <span className="text-base font-bold">Total</span>
                         <span className="text-xs text-muted-foreground mt-0.5">include 13% GST</span>
                     </div>
-                    <span className="text-xl font-bold text-black">${quote.total.toFixed(2)}</span>
+                    <span className="text-xl font-bold text-black">${formatPrice(quote.total)}</span>
                 </div>
             </CardContent>
             <CardFooter className="bg-secondary/30 p-4 rounded-b-lg space-y-2">
                 <div className="w-full pt-2 border-t border-border/50">
                     <p className="text-xs text-muted-foreground text-center">
-                        50% advance (${(quote.total * 0.5).toFixed(2)}) required now<br />
-                        50% (${(quote.total * 0.5).toFixed(2)}) due on booking day
+                        50% advance (${formatPrice(quote.total * 0.5)}) required now<br />
+                        50% (${formatPrice(quote.total * 0.5)}) due on booking day
                     </p>
                 </div>
             </CardFooter>
@@ -560,6 +564,28 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
 
     try {
         if (paymentMethod === 'stripe') {
+            // Save selectedQuote before redirecting to Stripe checkout
+            // This ensures the quote is saved even if user doesn't complete payment
+            if (!quote.selectedQuote || quote.selectedQuote !== selectedTier) {
+                const quoteUpdate: FinalQuote = {
+                    ...quote,
+                    selectedQuote: selectedTier,
+                    // Ensure contract date is saved if not already saved
+                    contractSignedDate: quote.contractSignedDate || new Date().toISOString(),
+                };
+
+                const saveRes = await fetch(`/api/bookings/${quote.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ finalQuote: quoteUpdate }),
+                });
+
+                if (saveRes.ok) {
+                    setQuote(quoteUpdate);
+                }
+                // Continue even if save fails - tier is in Stripe metadata as fallback
+            }
+
             const res = await fetch('/api/stripe/create-checkout-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -722,6 +748,20 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
   ];
 
   const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
+  
+  // Track step direction for animations
+  const [stepDirection, setStepDirection] = useState<'left' | 'right'>('right');
+  const prevStepRef = useRef(currentStep);
+  React.useEffect(() => {
+    const prevIndex = STEPS.findIndex(s => s.id === prevStepRef.current);
+    const currentIndex = STEPS.findIndex(s => s.id === currentStep);
+    if (currentIndex > prevIndex) {
+      setStepDirection('right');
+    } else if (currentIndex < prevIndex) {
+      setStepDirection('left');
+    }
+    prevStepRef.current = currentStep;
+  }, [currentStep, STEPS]);
 
   const getFooterButtons = () => {
       if (currentStep === 'confirmed') return null;
@@ -754,7 +794,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               disabled = !contractSigned || !hasSignature;
               break;
           case 'payment':
-              text = paymentMethod === 'stripe' ? `Pay $${depositAmount.toFixed(2)} with Card` : 'Submit for Approval';
+              text = paymentMethod === 'stripe' ? `Pay $${formatPrice(depositAmount)} with Card` : 'Submit for Approval';
               action = handleFinalizeBooking;
               disabled = isSaving || !paymentMethod || (paymentMethod === 'interac' && !screenshotFile);
               icon = paymentMethod === 'stripe' ? <CreditCard className="ml-2 h-5 w-5" /> : <ShieldCheck className="ml-2 h-5 w-5" />;
@@ -762,30 +802,34 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
       }
       
       return (
-          <div className="flex gap-4 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full">
               {canGoBack && (
                   <Button 
                       type="button" 
                       variant="outline" 
                       size="lg" 
-                      className="flex-1 font-bold text-lg" 
+                      className="w-full sm:flex-1 font-bold text-base sm:text-lg h-11 sm:h-12 transition-smooth hover:scale-[1.02] active:scale-[0.98]" 
                       disabled={isSaving || isUploadingImages} 
                       onClick={handleBack}
                   >
-                      <ArrowLeft className="mr-2 h-5 w-5" />
+                      <ArrowLeft className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                       Back
                   </Button>
               )}
               <Button 
                   type="button" 
                   size="lg" 
-                  className={canGoBack ? "flex-1 font-bold text-lg" : "w-full font-bold text-lg"} 
+                  className={cn(
+                    "w-full font-bold text-base sm:text-lg h-11 sm:h-12",
+                    canGoBack && "sm:flex-1",
+                    "transition-smooth hover:scale-[1.02] active:scale-[0.98]"
+                  )} 
                   disabled={disabled || isSaving || isUploadingImages} 
                   onClick={action}
               >
-                  {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                  {text}
-                  {!isSaving && icon}
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : null}
+                  <span className="whitespace-nowrap overflow-hidden text-ellipsis">{text}</span>
+                  {!isSaving && <span className="ml-2">{icon}</span>}
               </Button>
           </div>
       );
@@ -934,6 +978,34 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
             </div>
           )}
 
+          {/* Return to Home Button - Show when Interac screenshot is submitted and pending approval */}
+          {(() => {
+            const isAdvancePaymentPending = quote.paymentDetails?.status === 'deposit-pending' && 
+              quote.paymentDetails?.method === 'interac' && 
+              (currentStep as ConfirmationStep) !== 'select-tier';
+            const isFinalPaymentPending = quote.paymentDetails?.finalPayment?.status === 'deposit-pending' && 
+              quote.paymentDetails?.finalPayment?.method === 'interac';
+            
+            if (isAdvancePaymentPending || isFinalPaymentPending) {
+              return (
+                <div className="flex justify-center mt-4 sm:mt-6 mb-4 sm:mb-6">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="lg"
+                    className="w-full sm:w-auto min-w-[200px] font-semibold h-11 sm:h-12 text-base sm:text-lg"
+                  >
+                    <Link href="/">
+                      <Home className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                      Return to Home
+                    </Link>
+                  </Button>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           <div className={cn(currentStep !== 'select-tier' && 'hidden')}>
               <RadioGroup 
                   value={selectedTier} 
@@ -979,10 +1051,10 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                         Book a Call with Anum
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px]">
+                    <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[500px]">
                       <DialogHeader>
-                        <DialogTitle>Book a Call with Anum</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-lg sm:text-xl">Book a Call with Anum</DialogTitle>
+                        <DialogDescription className="text-sm sm:text-base">
                           Fill in your preferred date and time, and we'll contact you to discuss your quote.
                         </DialogDescription>
                       </DialogHeader>
@@ -1460,7 +1532,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               <div className="text-center">
                   <h3 className="font-headline text-2xl">Secure Your Booking</h3>
                   <p className="text-muted-foreground">A 50% non-refundable deposit is required to finalize your booking.</p>
-                  <p className="text-4xl font-bold text-black mt-2">${depositAmount.toFixed(2)}</p>
+                  <p className="text-4xl font-bold text-black mt-2">${formatPrice(depositAmount)}</p>
               </div>
 
               <RadioGroup value={paymentMethod} onValueChange={(val) => setPaymentMethod(val as PaymentMethod)} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -1495,7 +1567,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       )}
                       <h4 className="font-semibold">e-Transfer Instructions</h4>
                       <ol className="list-decimal list-inside text-sm space-y-2 text-muted-foreground">
-                          <li>Send <strong>${depositAmount.toFixed(2)}</strong> to <strong>info@looksbyanum.com</strong></li>
+                          <li>Send <strong>${formatPrice(depositAmount)}</strong> to <strong>info@looksbyanum.com</strong></li>
                           <li>Write your booking ID (<strong>{quote.id}</strong>) in the message for your booking reference</li>
                           <li>Once sent, take a clear screenshot of the confirmation page showing all transaction details.</li>
                           <li>Upload the screenshot below and submit.</li>
@@ -1568,7 +1640,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                     <h3 className="font-headline text-2xl text-center mb-4">Pay Remaining Balance</h3>
                     <div className="text-center mb-6">
                       <p className="text-muted-foreground">Pay the remaining 50% to complete your booking.</p>
-                      <p className="text-4xl font-bold text-black mt-2">${finalPaymentAmount.toFixed(2)}</p>
+                      <p className="text-4xl font-bold text-black mt-2">${formatPrice(finalPaymentAmount)}</p>
                     </div>
 
                 <RadioGroup value={finalPaymentMethod} onValueChange={(val) => setFinalPaymentMethod(val as PaymentMethod)} className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
@@ -1603,7 +1675,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                     )}
                     <h4 className="font-semibold">e-Transfer Instructions</h4>
                     <ol className="list-decimal list-inside text-sm space-y-2 text-muted-foreground">
-                      <li>Send <strong>${finalPaymentAmount.toFixed(2)}</strong> to <strong>info@looksbyanum.com</strong></li>
+                      <li>Send <strong>${formatPrice(finalPaymentAmount)}</strong> to <strong>info@looksbyanum.com</strong></li>
                       <li>Write your booking ID (<strong>{quote.id}</strong>) in the message for your booking reference</li>
                       <li>Once sent, take a clear screenshot of the confirmation page showing all transaction details.</li>
                       <li>Upload the screenshot below and submit.</li>
@@ -1768,7 +1840,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                         <span className="text-base font-medium">Total Amount:</span>
                         <span className="text-xs text-muted-foreground mt-0.5">include 13% GST</span>
                       </div>
-                      <span className="font-bold text-lg">${selectedQuoteData.total.toFixed(2)}</span>
+                      <span className="font-bold text-lg">${formatPrice(selectedQuoteData.total)}</span>
                     </div>
                     
                     {/* Advance Payment Section */}
@@ -1777,7 +1849,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       <div className="space-y-2 pl-4">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">Amount:</span>
-                          <span className="font-semibold text-green-600">${advanceAmount.toFixed(2)}</span>
+                          <span className="font-semibold text-green-600">${formatPrice(advanceAmount)}</span>
                         </div>
                         {quote.paymentDetails.method && (
                           <div className="flex justify-between items-center">
@@ -1812,7 +1884,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">Amount:</span>
                             <span className={`font-semibold ${(quote.paymentDetails.finalPayment.status === 'payment-approved' || quote.paymentDetails.finalPayment.status === 'deposit-paid') ? 'text-green-600' : ''}`}>
-                              ${quote.paymentDetails.finalPayment.amount?.toFixed(2) || remainingAmount.toFixed(2)}
+                              ${quote.paymentDetails.finalPayment.amount ? formatPrice(quote.paymentDetails.finalPayment.amount) : formatPrice(remainingAmount)}
                             </span>
                           </div>
                           {quote.paymentDetails.finalPayment.method && (
@@ -1849,7 +1921,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       <div className="space-y-3 pt-3 border-t">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">50% Remaining Balance:</span>
-                          <span className="font-semibold">${remainingAmount.toFixed(2)}</span>
+                          <span className="font-semibold">${formatPrice(remainingAmount)}</span>
                         </div>
                         {!showFinalPayment && finalPaymentPending && (
                           <div className="pt-3">
@@ -1859,7 +1931,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                               className="w-full"
                             >
                               <Banknote className="mr-2 h-5 w-5" />
-                              Pay Remaining Balance (${remainingAmount.toFixed(2)})
+                              Pay Remaining Balance (${formatPrice(remainingAmount)})
                             </Button>
                             <p className="text-xs text-muted-foreground text-center mt-2">
                               The remaining 50% balance is due on or before the day of your service.
@@ -1878,7 +1950,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
         </CardContent>
 
         {(!bookingConfirmed || quote.paymentDetails?.status === 'screenshot-rejected') && (
-          <CardFooter className="flex-col gap-4 bg-secondary/50 p-6 rounded-b-lg">
+          <CardFooter className="bg-secondary/50 p-3 sm:p-4 md:p-6 rounded-b-lg">
               {getFooterButtons()}
           </CardFooter>
         )}

@@ -146,7 +146,7 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
         </p>
         
         <div style={footer}>
-          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a></p>
         </div>
       </div>
     </div>

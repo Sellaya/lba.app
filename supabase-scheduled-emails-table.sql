@@ -22,3 +22,4 @@ COMMENT ON TABLE scheduled_emails IS 'Tracks scheduled follow-up emails to be se
 
 
 
+

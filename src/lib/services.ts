@@ -21,7 +21,7 @@ export const SERVICES: Service[] = [
       hairExtension: { lead: 30, team: 30 },
       jewellerySetting: { lead: 50, team: 50 },
       sareeDraping: { lead: 50, team: 50 },
-      hijabSetting: { lead: 50, team: 50 },
+      hijabSetting: { lead: 30, team: 30 },
     },
   },
   {
@@ -41,7 +41,7 @@ export const SERVICES: Service[] = [
       hairExtension: { lead: 30, team: 30 },
       jewellerySetting: { lead: 50, team: 50 },
       sareeDraping: { lead: 50, team: 50 },
-      hijabSetting: { lead: 50, team: 50 },
+      hijabSetting: { lead: 30, team: 30 },
     },
   },
   {
@@ -60,8 +60,8 @@ export const SERVICES: Service[] = [
     addonOverrides: {
       hairExtension: { lead: 20, team: 20 },
       jewellerySetting: { lead: 20, team: 20 },
-      sareeDraping: { lead: 20, team: 20 },
-      hijabSetting: { lead: 20, team: 20 },
+      sareeDraping: { lead: 30, team: 30 },
+      hijabSetting: { lead: 15, team: 15 },
     },
   },
   {
@@ -80,8 +80,8 @@ export const SERVICES: Service[] = [
     addonOverrides: {
       hairExtension: { lead: 20, team: 20 },
       jewellerySetting: { lead: 20, team: 20 },
-      sareeDraping: { lead: 20, team: 20 },
-      hijabSetting: { lead: 20, team: 20 },
+      sareeDraping: { lead: 30, team: 30 },
+      hijabSetting: { lead: 15, team: 15 },
     },
   },
 ];
@@ -112,7 +112,7 @@ export const MOBILE_LOCATION_OPTIONS: Record<string, { id: string; label: string
   toronto: {
     id: 'toronto',
     label: 'Toronto / GTA',
-    surcharge: { lead: 60, team: 25 },
+    surcharge: { lead: 50, team: 25 },
   },
   'immediate-neighbors': {
     id: 'immediate-neighbors',
@@ -137,8 +137,8 @@ export type MOBILE_LOCATION_IDS = keyof typeof MOBILE_LOCATION_OPTIONS;
 export const ADDON_PRICES = {
     hairExtension: { lead: 30, team: 30 },
     jewellerySetting: { lead: 50, team: 50 },
-    sareeDraping: { lead: 30, team: 25 },
-    hijabSetting: { lead: 30, team: 25 },
+    sareeDraping: { lead: 50, team: 50 },
+    hijabSetting: { lead: 30, team: 30 },
     bridalTrial: { lead: 250, team: 200 },
 };
 
@@ -148,7 +148,7 @@ export const BRIDAL_PARTY_PRICES = {
     hairOnly: { lead: 100, team: 100 },
     dupattaSetting: { lead: 20, team: 20 },
     hairExtensionInstallation: { lead: 20, team: 20 },
-    partySareeDraping: { lead: 30, team: 25 },
-    partyHijabSetting: { lead: 30, team: 25 },
-    airbrush: { lead: 60, team: 50 },
+    partySareeDraping: { lead: 30, team: 30 },
+    partyHijabSetting: { lead: 15, team: 15 },
+    airbrush: { lead: 60, team: 60 },
 };

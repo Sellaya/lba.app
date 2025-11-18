@@ -41,6 +41,12 @@ const getFromEmail = (preferredEmail: string): string => {
     return `Looks by Anum <${preferredEmail}>`;
 }
 
+// Helper function to get the from email for admin notifications
+// Uses format "LBA-ORDER #orderID" as the sender name
+const getAdminFromEmail = (preferredEmail: string, orderId: string): string => {
+    return `LBA-ORDER #${orderId} <${preferredEmail}>`;
+}
+
 // Helper function to handle authorization errors from Resend
 const handleResendAuthError = (error: any, fromEmail: string, preferredEmail: string, emailType: string = 'email'): never => {
     // Log full error details for debugging
@@ -117,9 +123,10 @@ export async function sendQuoteEmail(quote: FinalQuote) {
 
   // Only send the email to the admin if the booking is confirmed
   if (quote.status === 'confirmed') {
-    const adminSubject = `[ADMIN] Booking Confirmed - ${quote.contact.name} (ID: ${quote.id})`;
+    const adminSubject = `Booking Confirmed - ${quote.contact.name} (ID: ${quote.id})`;
+    const adminFromEmail = getAdminFromEmail('orders@looksbyanum.com', quote.id);
     const adminEmailPromise = resend.emails.send({
-        from: fromEmail,
+        from: adminFromEmail,
         to: [adminEmail],
         subject: adminSubject,
         react: QuoteEmailTemplate({ quote, baseUrl }),
@@ -201,7 +208,7 @@ export async function sendAdminScreenshotNotification(quote: FinalQuote) {
   }
 
   const adminEmail = "orders@looksbyanum.com";
-  const fromEmail = getFromEmail('orders@looksbyanum.com');
+  const adminFromEmail = getAdminFromEmail('orders@looksbyanum.com', quote.id);
 
   // Determine if this is for final payment or advance payment
   const isFinalPayment = quote.paymentDetails?.finalPayment?.status === 'deposit-pending' && quote.paymentDetails?.finalPayment?.screenshotUrl;
@@ -209,9 +216,9 @@ export async function sendAdminScreenshotNotification(quote: FinalQuote) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: fromEmail,
+      from: adminFromEmail,
       to: [adminEmail],
-      subject: `[ACTION REQUIRED] ${paymentType} E-Transfer Submitted for Booking #${quote.id}`,
+      subject: `${paymentType} E-Transfer Submitted for Booking #${quote.id}`,
       react: AdminNotificationEmailTemplate({ quote, baseUrl }),
     });
 
@@ -518,6 +525,7 @@ export async function sendBookCallEmails(data: {
   }
 
   const adminEmail = 'orders@looksbyanum.com';
+  const adminFromEmail = getAdminFromEmail('orders@looksbyanum.com', data.bookingId);
   const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
@@ -526,9 +534,9 @@ export async function sendBookCallEmails(data: {
 
     // Send to admin
     const { error: adminError } = await resend.emails.send({
-      from: fromEmail,
+      from: adminFromEmail,
       to: [adminEmail],
-      subject: `📞 New Call Booking Request from ${data.customerName} (ID: ${data.bookingId})`,
+      subject: `New Call Booking Request from ${data.customerName} (ID: ${data.bookingId})`,
       react: BookCallAdminEmailTemplate({ ...data, quoteLink }),
     });
 

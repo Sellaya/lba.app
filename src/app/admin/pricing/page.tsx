@@ -19,6 +19,15 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AdminSettings } from '@/components/admin-settings';
 import Image from 'next/image';
+import { formatPrice } from '@/lib/price-format';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Menu } from 'lucide-react';
 
 interface PricingItem {
   id: string;
@@ -57,6 +66,7 @@ export default function PricingManagementPage() {
   const [priceHistory, setPriceHistory] = useState<ItemHistory>({});
   const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -373,9 +383,42 @@ export default function PricingManagementPage() {
   const categoryDisplayOrder = ['service', 'addon', 'mobile_location', 'bridal_party'];
   const serviceItemOrder = ['bridal', 'semi-bridal', 'party', 'photoshoot'];
 
+  // Navigation menu component
+  const NavigationMenu = ({ onNavigate }: { onNavigate?: () => void }) => {
+    return (
+      <nav className="flex-1 space-y-1 p-4">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          const handleClick = (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            router.push(item.href);
+            if (onNavigate) onNavigate();
+          };
+          return (
+            <button
+              key={item.href}
+              onClick={handleClick}
+              type="button"
+              className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-black text-white'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+    );
+  };
+
   return (
     <div className="flex min-h-screen w-full bg-muted/40">
-      {/* Sidebar */}
+      {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-background">
         <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
           <div className="relative w-10 h-10 flex-shrink-0">
@@ -389,42 +432,46 @@ export default function PricingManagementPage() {
           </div>
           <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <button
-                key={item.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  router.push(item.href);
-                }}
-                type="button"
-                className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-black text-white'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+        <NavigationMenu />
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
-          <h2 className="text-xl font-semibold text-foreground">Pricing Management</h2>
+      <div className="flex flex-1 flex-col w-full md:w-auto">
+        <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-4 md:px-6">
+          {/* Mobile Menu Button */}
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-0">
+              <SheetHeader className="p-6 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 flex-shrink-0">
+                    <Image
+                      src="/LBA.png"
+                      alt="Looks by Anum Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                  <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
+                    Looks by Anum
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
+            </SheetContent>
+          </Sheet>
+          
+          <h2 className="text-lg sm:text-xl font-semibold text-foreground">Pricing Management</h2>
           <div className="ml-auto flex items-center gap-2">
             <AdminSettings />
           </div>
         </header>
-        <main className="flex-1 p-4 sm:px-6 sm:py-4">
+        <main className="flex-1 p-3 sm:p-4 md:px-6 md:py-4">
           {isLoading ? (
             <div className="flex items-center justify-center min-h-[400px]">
               <Loader2 className="w-8 h-8 animate-spin text-black" />
@@ -432,45 +479,49 @@ export default function PricingManagementPage() {
           ) : (
             <div className="max-w-7xl mx-auto space-y-4">
               {/* Header Actions */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Manage all service pricing for Lead Artist and Team</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Manage all service pricing for Lead Artist and Team</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {isEmpty && (
-                    <Button onClick={handleInitialize} disabled={isSaving} variant="outline">
+                    <Button onClick={handleInitialize} disabled={isSaving} variant="outline" size="sm" className="h-9 sm:h-10 text-xs sm:text-sm">
                       {isSaving ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Initializing...
+                          <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
+                          <span className="hidden sm:inline">Initializing...</span>
+                          <span className="sm:hidden">Init...</span>
                         </>
                       ) : (
                         <>
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Initialize Database
+                          <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                          <span className="hidden sm:inline">Initialize Database</span>
+                          <span className="sm:hidden">Init DB</span>
                         </>
                       )}
                     </Button>
                   )}
-                  <Button onClick={fetchPricing} disabled={isLoading || isSaving} variant="outline">
-                    <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                    Refresh
+                  <Button onClick={fetchPricing} disabled={isLoading || isSaving} variant="outline" size="sm" className="h-9 sm:h-10 text-xs sm:text-sm">
+                    <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Refresh</span>
                   </Button>
                   {hasChanges && (
                     <>
-                      <Button onClick={handleReset} disabled={isSaving} variant="outline">
+                      <Button onClick={handleReset} disabled={isSaving} variant="outline" size="sm" className="h-9 sm:h-10 text-xs sm:text-sm">
                         Reset
                       </Button>
-                      <Button onClick={handleSave} disabled={isSaving}>
+                      <Button onClick={handleSave} disabled={isSaving} size="sm" className="h-9 sm:h-10 text-xs sm:text-sm">
                         {isSaving ? (
                           <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Saving...
+                            <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
+                            <span className="hidden sm:inline">Saving...</span>
+                            <span className="sm:hidden">Save...</span>
                           </>
                         ) : (
                           <>
-                            <Save className="w-4 h-4 mr-2" />
-                            Save Changes
+                            <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                            <span className="hidden sm:inline">Save Changes</span>
+                            <span className="sm:hidden">Save</span>
                           </>
                         )}
                       </Button>
@@ -574,13 +625,13 @@ export default function PricingManagementPage() {
                                     onOpenChange={() => toggleHistory(category, item.item_id)}
                                   >
                                     <div className="border rounded-md">
-                                      <div className="flex items-center gap-3 p-2.5">
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-2.5">
                                         <div className="flex-1 min-w-0">
-                                          <Label htmlFor={`${category}-${item.item_id}-${tier}`} className="text-sm font-medium">
+                                          <Label htmlFor={`${category}-${item.item_id}-${tier}`} className="text-xs sm:text-sm font-medium">
                                             {item.item_name}
                                           </Label>
                                           {item.metadata?.description && (
-                                            <p className="text-xs text-muted-foreground mt-0.5">{item.metadata.description}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.metadata.description}</p>
                                           )}
                                           {isModifier && (
                                             <Badge variant="outline" className="mt-1 text-xs h-4 px-1.5">
@@ -588,7 +639,7 @@ export default function PricingManagementPage() {
                                             </Badge>
                                           )}
                                         </div>
-                                        <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1.5 sm:flex-shrink-0">
                                           <span className="text-xs text-muted-foreground">$</span>
                                           <Input
                                             id={`${category}-${item.item_id}-${tier}`}
@@ -614,32 +665,34 @@ export default function PricingManagementPage() {
                                               }
                                             }}
                                             placeholder="0.00"
-                                            className="w-28 h-8 text-sm"
+                                            className="w-full sm:w-28 h-9 sm:h-8 text-sm"
                                           />
                                         </div>
-                                        {hasItemChanges && (
-                                          <Button
-                                            size="sm"
-                                            onClick={() => handleSaveItem(category, item.item_id)}
-                                            disabled={isSavingItem}
-                                            className="h-7 text-xs px-2"
-                                          >
-                                            {isSavingItem ? (
-                                              <Loader2 className="w-3 h-3 animate-spin" />
-                                            ) : (
-                                              <Save className="w-3 h-3" />
-                                            )}
-                                          </Button>
-                                        )}
-                                        <CollapsibleTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0"
-                                          >
-                                            <History className="w-3.5 h-3.5" />
-                                          </Button>
-                                        </CollapsibleTrigger>
+                                        <div className="flex items-center gap-1.5 sm:flex-shrink-0">
+                                          {hasItemChanges && (
+                                            <Button
+                                              size="sm"
+                                              onClick={() => handleSaveItem(category, item.item_id)}
+                                              disabled={isSavingItem}
+                                              className="h-9 sm:h-7 text-xs px-2 sm:px-2 min-w-[36px] sm:min-w-0"
+                                            >
+                                              {isSavingItem ? (
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                              ) : (
+                                                <Save className="w-3 h-3" />
+                                              )}
+                                            </Button>
+                                          )}
+                                          <CollapsibleTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-9 w-9 sm:h-7 sm:w-7 p-0"
+                                            >
+                                              <History className="w-3.5 h-3.5" />
+                                            </Button>
+                                          </CollapsibleTrigger>
+                                        </div>
                                       </div>
                                       <CollapsibleContent>
                                         <div className="px-2.5 pb-2.5 border-t bg-muted/30">
@@ -653,12 +706,12 @@ export default function PricingManagementPage() {
                                                       {format(new Date(h.created_at), 'MMM d, yyyy h:mm a')}
                                                     </span>
                                                   </div>
-                                                  <div className="flex items-center gap-3">
+                                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                                                     {h.price_lead > 0 && (
-                                                      <span className="text-muted-foreground">Lead: <span className="font-medium text-foreground">${h.price_lead.toFixed(2)}</span></span>
+                                                      <span className="text-muted-foreground text-xs">Lead: <span className="font-medium text-foreground">${formatPrice(h.price_lead)}</span></span>
                                                     )}
                                                     {h.price_team > 0 && (
-                                                      <span className="text-muted-foreground">Team: <span className="font-medium text-foreground">${h.price_team.toFixed(2)}</span></span>
+                                                      <span className="text-muted-foreground text-xs">Team: <span className="font-medium text-foreground">${formatPrice(h.price_team)}</span></span>
                                                     )}
                                                   </div>
                                                 </div>

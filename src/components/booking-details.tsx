@@ -18,6 +18,7 @@ import { trackPaymentComplete } from '@/lib/facebook-pixel';
 import { Label } from '@/components/ui/label';
 import { ContractDisplay } from '@/components/contract-display';
 import { generateContractPDFFromElement, generateContractPDFFromData } from '@/lib/pdf-generator';
+import { formatPrice } from '@/lib/price-format';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -979,7 +980,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <div className="h-2 w-2 rounded-full bg-black flex-shrink-0"></div>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">Total Amount</p>
-                          <p className="text-2xl font-bold">${selectedQuoteData.total.toFixed(2)}</p>
+                          <p className="text-2xl font-bold">${formatPrice(selectedQuoteData.total)}</p>
                           <p className="text-xs text-muted-foreground mt-1">includes 13% GST</p>
                         </div>
                       </div>
@@ -988,9 +989,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">Advance (50%)</p>
                           <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                            ${((quote.paymentDetails.depositAmount && quote.paymentDetails.depositAmount > 0) 
+                            ${formatPrice((quote.paymentDetails.depositAmount && quote.paymentDetails.depositAmount > 0) 
                               ? quote.paymentDetails.depositAmount 
-                              : selectedQuoteData.total * 0.5).toFixed(2)}
+                              : selectedQuoteData.total * 0.5)}
                           </p>
                         </div>
                       </div>
@@ -998,7 +999,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <div className="h-2 w-2 rounded-full bg-black flex-shrink-0"></div>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">Remaining (50%)</p>
-                          <p className="text-2xl font-bold">${(selectedQuoteData.total * 0.5).toFixed(2)}</p>
+                          <p className="text-2xl font-bold">${formatPrice(selectedQuoteData.total * 0.5)}</p>
                         </div>
                       </div>
                     </div>
@@ -1045,11 +1046,11 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Amount</p>
                           <p className="text-lg font-bold">
-                            ${(quote.paymentDetails.depositAmount && quote.paymentDetails.depositAmount > 0 
+                            ${formatPrice((quote.paymentDetails.depositAmount && quote.paymentDetails.depositAmount > 0 
                               ? quote.paymentDetails.depositAmount 
                               : selectedQuoteData 
                                 ? selectedQuoteData.total * 0.5 
-                                : 0).toFixed(2)}
+                                : 0))}
                           </p>
                         </div>
                       </div>
@@ -1104,11 +1105,11 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <div>
                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Amount</p>
                             <p className="text-lg font-bold">
-                              ${((quote.paymentDetails.finalPayment.amount && quote.paymentDetails.finalPayment.amount > 0)
+                              ${formatPrice((quote.paymentDetails.finalPayment.amount && quote.paymentDetails.finalPayment.amount > 0) 
                                 ? quote.paymentDetails.finalPayment.amount
                                 : selectedQuoteData
                                   ? selectedQuoteData.total * 0.5
-                                  : 0).toFixed(2)}
+                                  : 0)}
                             </p>
                           </div>
                         </div>
@@ -1133,7 +1134,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <Badge variant="outline" className="bg-muted">Not Started</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mt-3">
-                        Remaining balance: <span className="font-semibold text-foreground">${(selectedQuoteData.total * 0.5).toFixed(2)}</span>
+                        Remaining balance: <span className="font-semibold text-foreground">${formatPrice(selectedQuoteData.total * 0.5)}</span>
                       </p>
                     </div>
                   )}
@@ -1291,11 +1292,11 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     <div>
                       <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Amount</Label>
                       <p className="text-lg font-bold">
-                        ${((quote.paymentDetails?.depositAmount && quote.paymentDetails.depositAmount > 0) 
+                        ${formatPrice((quote.paymentDetails?.depositAmount && quote.paymentDetails.depositAmount > 0) 
                           ? quote.paymentDetails.depositAmount 
                           : selectedQuoteData 
                             ? selectedQuoteData.total * 0.5 
-                            : 0).toFixed(2)}
+                            : 0)}
                       </p>
                     </div>
                     
@@ -1379,14 +1380,14 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               Approve Payment
                             </Button>
                           </AlertDialogTrigger>
-                                              <AlertDialogContent>
+                                              <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
                                                   <AlertDialogHeader>
-                                                      <AlertDialogTitle>Approve Payment</AlertDialogTitle>
-                                                      <AlertDialogDescription>
+                                                      <AlertDialogTitle className="text-lg sm:text-xl">Approve Payment</AlertDialogTitle>
+                                                      <AlertDialogDescription className="text-sm sm:text-base">
                                                           Are you sure you want to approve this payment? This will confirm the booking and send a confirmation email to the customer.
                                                       </AlertDialogDescription>
                                                   </AlertDialogHeader>
-                                                  <AlertDialogFooter>
+                                                  <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                                                       <AlertDialogCancel>No</AlertDialogCancel>
                                                       <AlertDialogAction
                                                           onClick={async () => {
@@ -1463,14 +1464,14 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               Reject Screenshot
                             </Button>
                           </AlertDialogTrigger>
-                                      <AlertDialogContent>
+                                      <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
                                           <AlertDialogHeader>
-                                              <AlertDialogTitle>Reject Screenshot</AlertDialogTitle>
-                                              <AlertDialogDescription>
+                                              <AlertDialogTitle className="text-lg sm:text-xl">Reject Screenshot</AlertDialogTitle>
+                                              <AlertDialogDescription className="text-sm sm:text-base">
                                                   Are you sure you want to reject this screenshot? The customer will receive an email with instructions to re-upload.
                                               </AlertDialogDescription>
                                           </AlertDialogHeader>
-                                          <AlertDialogFooter>
+                                          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                                               <AlertDialogCancel>No</AlertDialogCancel>
                                               <AlertDialogAction
                                                   onClick={async () => {
@@ -1572,7 +1573,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         </div>
                         <div>
                           <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Amount</Label>
-                          <p className="text-lg font-bold">${quote.paymentDetails.finalPayment.amount?.toFixed(2) || '0.00'}</p>
+                          <p className="text-lg font-bold">${quote.paymentDetails.finalPayment.amount ? formatPrice(quote.paymentDetails.finalPayment.amount) : formatPrice(0)}</p>
                         </div>
                         
                         {quote.paymentDetails.finalPayment.method === 'interac' && (
@@ -1648,14 +1649,14 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                                   Approve Final Payment
                                 </Button>
                               </AlertDialogTrigger>
-                                                      <AlertDialogContent>
+                                                      <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
                                                           <AlertDialogHeader>
-                                                              <AlertDialogTitle>Approve Final Payment</AlertDialogTitle>
-                                                              <AlertDialogDescription>
+                                                              <AlertDialogTitle className="text-lg sm:text-xl">Approve Final Payment</AlertDialogTitle>
+                                                              <AlertDialogDescription className="text-sm sm:text-base">
                                                                   Are you sure you want to approve this final payment? This will mark the booking as fully paid.
                                                               </AlertDialogDescription>
                                                           </AlertDialogHeader>
-                                                          <AlertDialogFooter>
+                                                          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                                                               <AlertDialogCancel>No</AlertDialogCancel>
                                                               <AlertDialogAction
                                                                   onClick={async () => {
@@ -1826,7 +1827,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     {selectedQuoteData.lineItems?.map((item, index) => (
                       <li key={index} className="flex justify-between">
                         <span className={item.description?.startsWith('  -') ? 'pl-4 text-muted-foreground' : ''}>{item.description || 'Item'}</span>
-                        <span>${(item.price || 0).toFixed(2)}</span>
+                        <span>${formatPrice(item.price || 0)}</span>
                       </li>
                     )) || <li className="text-muted-foreground text-sm">No items</li>}
                   </ul>
@@ -1834,16 +1835,16 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                   <div className="space-y-2">
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm text-muted-foreground">Subtotal:</span>
-                      <span className="font-medium">${(selectedQuoteData.subtotal || 0).toFixed(2)}</span>
+                      <span className="font-medium">${formatPrice(selectedQuoteData.subtotal || 0)}</span>
                     </div>
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm text-muted-foreground">GST (13%):</span>
-                      <span className="font-medium">${(selectedQuoteData.tax || 0).toFixed(2)}</span>
+                      <span className="font-medium">${formatPrice(selectedQuoteData.tax || 0)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between items-baseline">
                       <span className="font-bold text-base">Total Amount:</span>
-                      <span className="font-bold text-primary text-lg">${(selectedQuoteData.total || 0).toFixed(2)}</span>
+                      <span className="font-bold text-primary text-lg">${formatPrice(selectedQuoteData.total || 0)}</span>
                     </div>
                   </div>
                 </div>
@@ -1855,7 +1856,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     {/* Total Amount */}
                     <div className="flex justify-between items-center py-2 border-b pb-3">
                       <span className="text-base font-medium">Total Amount (including 13% GST):</span>
-                      <span className="font-bold text-lg">${selectedQuoteData.total.toFixed(2)}</span>
+                      <span className="font-bold text-lg">${formatPrice(selectedQuoteData.total)}</span>
                     </div>
                     
                     {/* Advance Payment Section */}
@@ -1864,7 +1865,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       <div className="space-y-2 pl-4">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">Amount:</span>
-                          <span className="font-semibold text-green-600">${(selectedQuoteData.total * 0.5).toFixed(2)}</span>
+                          <span className="font-semibold text-green-600">${formatPrice(selectedQuoteData.total * 0.5)}</span>
                         </div>
                         {quote.paymentDetails?.method && (
                           <div className="flex justify-between items-center">
@@ -1897,7 +1898,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     {/* Remaining Balance */}
                     <div className="flex justify-between items-center py-2 border-t pt-3">
                       <span className="text-sm text-muted-foreground">50% Remaining Balance:</span>
-                      <span className="font-semibold">${(selectedQuoteData.total * 0.5).toFixed(2)}</span>
+                      <span className="font-semibold">${formatPrice(selectedQuoteData.total * 0.5)}</span>
                     </div>
 
                     {/* Final Payment Section */}
@@ -1908,7 +1909,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">Amount:</span>
                             <span className={`font-semibold ${(quote.paymentDetails.finalPayment.status === 'payment-approved' || quote.paymentDetails.finalPayment.status === 'deposit-paid') ? 'text-green-600' : ''}`}>
-                              ${quote.paymentDetails.finalPayment.amount?.toFixed(2) || (selectedQuoteData.total * 0.5).toFixed(2)}
+                              ${quote.paymentDetails.finalPayment.amount ? formatPrice(quote.paymentDetails.finalPayment.amount) : formatPrice(selectedQuoteData.total * 0.5)}
                             </span>
                           </div>
                           {quote.paymentDetails.finalPayment.method && (
@@ -1971,14 +1972,14 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       {quote.quotes[tier]?.lineItems?.map((item, index) => (
                         <li key={index} className="flex justify-between">
                           <span className={item.description?.startsWith('  -') ? 'pl-4 text-muted-foreground' : ''}>{item.description || 'Item'}</span>
-                          <span>${(item.price || 0).toFixed(2)}</span>
+                          <span>${formatPrice(item.price || 0)}</span>
                         </li>
                       )) || <li className="text-muted-foreground text-sm">No items</li>}
                     </ul>
                     <Separator className="my-2" />
                     <div className="flex justify-between items-baseline">
                       <span className="font-bold">Total</span>
-                      <span className="font-bold text-primary">${(quote.quotes[tier]?.total || 0).toFixed(2)}</span>
+                      <span className="font-bold text-primary">${formatPrice(quote.quotes[tier]?.total || 0)}</span>
                     </div>
                   </CardContent>
                 </Card>

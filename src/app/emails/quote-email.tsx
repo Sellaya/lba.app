@@ -2,6 +2,7 @@ import * as React from 'react';
 import type { FinalQuote, Quote } from '@/lib/types';
 import { GST_RATE } from '@/lib/services';
 import ContractEmailTemplate from '@/app/emails/contract-email';
+import { formatPrice } from '@/lib/price-format';
 
 interface QuoteEmailTemplateProps {
   quote: FinalQuote;
@@ -190,20 +191,20 @@ const PriceBreakdown = ({ quote, title }: { quote: Quote; title: string }) => (
             <td style={{...priceItemCell, paddingLeft: lineItem.description.startsWith('  -') || lineItem.description.startsWith('Party:') ? '20px' : '0' }}>
               {lineItem.description.replace(/  - /g, '')}
             </td>
-            <td style={priceValueCell}>: ${lineItem.price.toFixed(2)}</td>
+            <td style={priceValueCell}>: ${formatPrice(lineItem.price)}</td>
           </tr>
         ))}
         <tr style={totalRow}>
           <td style={totalCell}>Subtotal</td>
-          <td style={{...priceValueCell, ...totalCell}}>: ${quote.subtotal.toFixed(2)}</td>
+          <td style={{...priceValueCell, ...totalCell}}>: ${formatPrice(quote.subtotal)}</td>
         </tr>
         <tr>
           <td style={priceItemCell}>GST ({(GST_RATE * 100).toFixed(0)}%)</td>
-          <td style={priceValueCell}>: ${quote.tax.toFixed(2)}</td>
+          <td style={priceValueCell}>: ${formatPrice(quote.tax)}</td>
         </tr>
         <tr style={grandTotalRow}>
           <td style={grandTotalLabelCell}>Grand Total</td>
-          <td style={grandTotalPriceCell}>: ${quote.total.toFixed(2)}</td>
+          <td style={grandTotalPriceCell}>: ${formatPrice(quote.total)}</td>
         </tr>
       </tbody>
     </table>
@@ -223,11 +224,35 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
 
   // For confirmed bookings or when payment is made, show only the selected package
   // IMPORTANT: After payment (Stripe or Interac), always show only the selected package, not both
-  // If payment is made but selectedQuote is not set, we still need to show only one package
+  // If payment is made but selectedQuote is not set, infer it from payment amount
   // Check if payment method exists (indicates payment was made)
   const hasPaymentMethod = quote.paymentDetails?.method === 'stripe' || quote.paymentDetails?.method === 'interac';
   
-  if ((isConfirmed || hasPayment || hasPaymentMethod) && quote.selectedQuote) {
+  // Determine the selected quote - use existing, or infer from payment amount if missing
+  let displaySelectedQuote = quote.selectedQuote;
+  if (!displaySelectedQuote && (isConfirmed || hasPayment || hasPaymentMethod) && quote.quotes) {
+    // Infer selected quote from payment amount
+    const paymentAmount = quote.paymentDetails?.depositAmount || 
+                         (quote.paymentDetails?.finalPayment?.amount) ||
+                         0;
+    if (paymentAmount > 0) {
+      const leadDeposit = quote.quotes.lead?.total * 0.5 || 0;
+      const teamDeposit = quote.quotes.team?.total * 0.5 || 0;
+      // Find which tier matches the payment amount (with small tolerance for rounding)
+      if (Math.abs(paymentAmount - leadDeposit) < 1) {
+        displaySelectedQuote = 'lead';
+      } else if (Math.abs(paymentAmount - teamDeposit) < 1) {
+        displaySelectedQuote = 'team';
+      }
+    }
+    // If still not found, default to 'lead' for confirmed bookings
+    if (!displaySelectedQuote && isConfirmed) {
+      displaySelectedQuote = 'lead';
+    }
+  }
+  
+  // Show confirmed booking view if payment is made and we have a selected quote (or can infer it)
+  if ((isConfirmed || hasPayment || hasPaymentMethod) && displaySelectedQuote) {
     return (
       <div style={main}>
         <div style={container}>
@@ -300,29 +325,29 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
           
           <div style={{ ...section, borderBottom: 'none', paddingTop: 0 }}>
             <h2 style={sectionTitle}>Final Price</h2>
-            <PriceBreakdown quote={quote.quotes[quote.selectedQuote]} title={quote.selectedQuote === 'lead' ? "Anum - Lead Artist" : "Team Artist"}/>
+            <PriceBreakdown quote={quote.quotes[displaySelectedQuote]} title={displaySelectedQuote === 'lead' ? "Anum - Lead Artist" : "Team Artist"}/>
             <div style={{...priceBox, marginTop: '24px', backgroundColor: 'hsl(345, 60%, 98%)'}}>
               <h3 style={{...priceTitle, fontSize: '20px', marginBottom: '16px'}}>Payment Schedule</h3>
               <table style={priceTable}>
                 <tbody>
                   <tr>
                     <td style={priceItemCell}>Total Amount (including 13% GST):</td>
-                    <td style={priceValueCell}>: ${quote.quotes[quote.selectedQuote].total.toFixed(2)}</td>
+                    <td style={priceValueCell}>: ${formatPrice(quote.quotes[displaySelectedQuote].total)}</td>
                   </tr>
                   <tr style={totalRow}>
                     <td style={{...totalCell, fontWeight: 600, color: 'hsl(0, 0%, 0%)'}}>50% Advance Payment (Required Now):</td>
-                    <td style={{...priceValueCell, ...totalCell, color: 'hsl(0, 0%, 0%)', fontWeight: 700}}>: ${(quote.quotes[quote.selectedQuote].total * 0.5).toFixed(2)}</td>
+                    <td style={{...priceValueCell, ...totalCell, color: 'hsl(0, 0%, 0%)', fontWeight: 700}}>: ${formatPrice(quote.quotes[displaySelectedQuote].total * 0.5)}</td>
                   </tr>
                   <tr>
                     <td style={priceItemCell}>50% Remaining Balance (Due on Booking Day):</td>
-                    <td style={priceValueCell}>: ${(quote.quotes[quote.selectedQuote].total * 0.5).toFixed(2)}</td>
+                    <td style={priceValueCell}>: ${formatPrice(quote.quotes[displaySelectedQuote].total * 0.5)}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          {quote.contractSignedDate && quote.selectedQuote && (
+          {quote.contractSignedDate && displaySelectedQuote && (
             <div style={{...section, marginTop: '40px', padding: '30px', backgroundColor: '#f9f9f9', border: '1px solid #ddd', borderRadius: '8px'}}>
               <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' as const}}>Your Signed Contract</h2>
               <p style={{...paragraph, marginBottom: '20px'}}>
@@ -331,7 +356,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
               <div style={{marginTop: '20px', padding: '20px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px'}}>
                 <ContractEmailTemplate 
                   quote={quote} 
-                  selectedTier={quote.selectedQuote} 
+                  selectedTier={displaySelectedQuote} 
                   signedDate={quote.contractSignedDate}
                 />
               </div>
@@ -343,7 +368,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
           </p>
           
           <div style={footer}>
-            <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+            <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a></p>
           </div>
         </div>
       </div>
@@ -386,14 +411,14 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
             <div style={{ marginBottom: '20px' }}>
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                 <span style={{ fontSize: '36px', fontWeight: 700, color: 'hsl(0, 0%, 0%)', fontFamily: 'monospace' }}>
-                  ${quote.quotes.lead.total.toFixed(2)}
+                  ${formatPrice(quote.quotes.lead.total)}
                 </span>
                 <p style={{ fontSize: '13px', color: '#777', margin: '4px 0 0 0' }}>Total (including 13% GST)</p>
               </div>
               <div style={{ padding: '12px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', marginTop: '16px' }}>
                 <p style={{ fontSize: '14px', margin: '4px 0', textAlign: 'center' }}>
-                  <strong style={{ color: 'hsl(0, 0%, 0%)' }}>50% Advance:</strong> ${(quote.quotes.lead.total * 0.5).toFixed(2)} • 
-                  <strong> 50% Due on Day:</strong> ${(quote.quotes.lead.total * 0.5).toFixed(2)}
+                  <strong style={{ color: 'hsl(0, 0%, 0%)' }}>50% Advance:</strong> ${formatPrice(quote.quotes.lead.total * 0.5)} • 
+                  <strong> 50% Due on Day:</strong> ${formatPrice(quote.quotes.lead.total * 0.5)}
                 </p>
               </div>
             </div>
@@ -415,14 +440,14 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
             <div style={{ marginBottom: '20px' }}>
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                 <span style={{ fontSize: '36px', fontWeight: 700, color: 'hsl(0, 0%, 0%)', fontFamily: 'monospace' }}>
-                  ${quote.quotes.team.total.toFixed(2)}
+                  ${formatPrice(quote.quotes.team.total)}
                 </span>
                 <p style={{ fontSize: '13px', color: '#777', margin: '4px 0 0 0' }}>Total (including 13% GST)</p>
               </div>
               <div style={{ padding: '12px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', marginTop: '16px' }}>
                 <p style={{ fontSize: '14px', margin: '4px 0', textAlign: 'center' }}>
-                  <strong style={{ color: 'hsl(0, 0%, 0%)' }}>50% Advance:</strong> ${(quote.quotes.team.total * 0.5).toFixed(2)} • 
-                  <strong> 50% Due on Day:</strong> ${(quote.quotes.team.total * 0.5).toFixed(2)}
+                  <strong style={{ color: 'hsl(0, 0%, 0%)' }}>50% Advance:</strong> ${formatPrice(quote.quotes.team.total * 0.5)} • 
+                  <strong> 50% Due on Day:</strong> ${formatPrice(quote.quotes.team.total * 0.5)}
                 </p>
               </div>
             </div>
@@ -453,7 +478,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
         </p>
         
         <div style={footer}>
-          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a></p>
         </div>
       </div>
     </div>

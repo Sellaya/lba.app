@@ -1,5 +1,6 @@
 import * as React from 'react';
 import type { FinalQuote, PriceTier } from '@/lib/types';
+import { formatPrice } from '@/lib/price-format';
 import { format } from 'date-fns';
 
 interface ContractEmailProps {
@@ -59,13 +60,13 @@ export default function ContractEmailTemplate({ quote, selectedTier, signedDate 
 
       <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '24px', marginBottom: '12px' }}>3. Payment</h3>
       <p style={{ marginBottom: '12px', lineHeight: '1.6' }}>
-        The total fee for the services is <strong>${selectedQuote.total.toFixed(2)}</strong> (including GST).
+        The total fee for the services is <strong>${formatPrice(selectedQuote.total)}</strong> (including GST).
       </p>
       <p style={{ marginBottom: '12px', lineHeight: '1.6' }}>
-        A non-refundable deposit of <strong>${depositAmount.toFixed(2)} (50%)</strong> is required to secure the booking. This deposit is non-refundable and non-transferable.
+        A non-refundable deposit of <strong>${formatPrice(depositAmount)} (50%)</strong> is required to secure the booking. This deposit is non-refundable and non-transferable.
       </p>
       <p style={{ marginBottom: '16px', lineHeight: '1.6' }}>
-        The remaining balance of <strong>${(selectedQuote.total - depositAmount).toFixed(2)}</strong> is due on or before the day of the first scheduled service.
+        The remaining balance of <strong>${formatPrice(selectedQuote.total - depositAmount)}</strong> is due on or before the day of the first scheduled service.
       </p>
 
       <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '24px', marginBottom: '12px' }}>4. Client Responsibilities</h3>

@@ -171,7 +171,7 @@ const FinalPaymentConfirmationEmailTemplate: React.FC<Readonly<FinalPaymentConfi
 
         <div style={footer}>
           <p style={{margin: '8px 0'}}>
-            © 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.
+            © 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>
           </p>
           <p style={{margin: '8px 0', fontSize: '12px', color: '#999'}}>
             If you have any questions, please reply to this email or contact us directly.

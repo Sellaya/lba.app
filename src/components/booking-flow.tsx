@@ -7,6 +7,7 @@ import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Minus, AlertTriangle, Users, ArrowLeft, ArrowRight, Send, MapPin } from 'lucide-react';
+import { MakeupBrushVector, CalendarVector, SparkleVector } from '@/components/beauty-vectors';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuoteAction } from '@/actions';
 import type { ActionState, Day, ServiceOption, BridalTrial, BridalPartyServices, ServiceType } from '@/lib/types';
@@ -320,14 +321,27 @@ export default function BookingFlow() {
   
   const progress = ((STEPS.findIndex(s => s.id === currentStep) + 1) / STEPS.length) * 100;
 
+  const [stepDirection, setStepDirection] = useState<'left' | 'right'>('right');
+  
+  // Track step direction for animations
+  const prevStepRef = useRef(currentStep);
+  useEffect(() => {
+    if (currentStep > prevStepRef.current) {
+      setStepDirection('right');
+    } else if (currentStep < prevStepRef.current) {
+      setStepDirection('left');
+    }
+    prevStepRef.current = currentStep;
+  }, [currentStep]);
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <div className="mb-3 sm:mb-4 md:mb-5 px-1 sm:px-2">
-            <Progress value={progress} className="h-2" />
+        <div className="mb-3 sm:mb-4 md:mb-5 px-1 sm:px-2 animate-fade-in-up">
+            <Progress value={progress} className="h-2 transition-smooth" />
             <div className="flex flex-wrap justify-between gap-1 sm:gap-2 mt-2">
                 {STEPS.map((step, index) => (
                     <div key={step.id} className={cn(
-                        "text-xs sm:text-sm flex-1 min-w-0",
+                        "text-xs sm:text-sm flex-1 min-w-0 transition-smooth",
                         step.id < currentStep ? "text-black font-medium" :
                         step.id === currentStep ? "text-black font-bold" : "text-muted-foreground",
                         STEPS.length > 2 && index === 1 ? 'text-center' : '',
@@ -353,28 +367,40 @@ export default function BookingFlow() {
             </Alert>
         )}
 
-        <div className={cn(currentStep !== 1 && 'hidden')}>
-            <Card className="shadow-lg">
+        <div className={cn(
+          currentStep !== 1 && 'hidden',
+          stepDirection === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+        )}>
+            <Card className="shadow-lg animate-fade-in-scale">
                 <CardHeader className="px-3 sm:px-6 pb-3 sm:pb-6">
-                    <CardTitle className="font-headline text-xl sm:text-2xl">1. Services & Dates</CardTitle>
+                    <div className="flex items-center gap-3 mb-2">
+                        <MakeupBrushVector size={28} className="text-black/40 animate-float" />
+                        <CardTitle className="font-headline text-xl sm:text-2xl">1. Services & Dates</CardTitle>
+                    </div>
                     <CardDescription className="text-sm sm:text-base">Select services, dates, and times for your booking.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 sm:space-y-4 md:space-y-6 px-3 sm:px-6">
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-3 sm:space-y-4 animate-stagger">
                       {days.length === 0 ? null : (
                         <>
                           {days.map((day, index) => (
-                              <BookingDayCard
-                                  key={day.id}
-                                  day={day}
-                                  index={index}
-                                  updateDay={(id, data) => setDays(days.map(d => d.id === id ? {...d, ...data} : d))}
-                                  removeDay={(id) => setDays(days.filter(d => d.id !== id))}
-                                  isOnlyDay={days.length <= 1}
-                                  errors={safeState.errors}
-                              />
+                              <div key={day.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                                <BookingDayCard
+                                    day={day}
+                                    index={index}
+                                    updateDay={(id, data) => setDays(days.map(d => d.id === id ? {...d, ...data} : d))}
+                                    removeDay={(id) => setDays(days.filter(d => d.id !== id))}
+                                    isOnlyDay={days.length <= 1}
+                                    errors={safeState.errors}
+                                />
+                              </div>
                           ))}
-                          <Button type="button" variant="outline" onClick={() => setDays([...days, { id: Date.now(), date: new Date(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair', hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false, serviceType: 'mobile', mobileLocation: 'toronto', partyServices: getDefaultPartyServices(), partyPeopleCount: 1 }])} className="w-full">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setDays([...days, { id: Date.now(), date: new Date(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair', hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false, serviceType: 'mobile', mobileLocation: 'toronto', partyServices: getDefaultPartyServices(), partyPeopleCount: 1 }])} 
+                            className="w-full transition-smooth hover:scale-[1.02]"
+                          >
                           <Plus className="mr-2 h-4 w-4" /> Add Another Day
                           </Button>
                         </>
@@ -386,7 +412,10 @@ export default function BookingFlow() {
 
 
         {hasBridalService && (
-          <div className={cn(currentStep !== 2 && 'hidden')}>
+          <div className={cn(
+            currentStep !== 2 && 'hidden',
+            stepDirection === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+          )}>
               <BridalServiceOptions
                 bridalTrial={bridalTrial}
                 updateBridalTrial={(data) => setBridalTrial(prev => ({...prev, ...data}))}
@@ -397,26 +426,47 @@ export default function BookingFlow() {
           </div>
         )}
 
-                <div className={cn(currentStep !== STEPS.find(s => s.name === 'Contact Details')?.id && 'hidden')}>
-                    <Card className="shadow-lg">
+                <div className={cn(
+                  currentStep !== STEPS.find(s => s.name === 'Contact Details')?.id && 'hidden',
+                  stepDirection === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+                )}>
+                    <Card className="shadow-lg animate-fade-in-scale">
                 <CardHeader className="px-3 sm:px-6 pb-3 sm:pb-6">
-                    <CardTitle className="font-headline text-xl sm:text-2xl">{STEPS[STEPS.length -1].name}</CardTitle>
+                    <div className="flex items-center gap-3 mb-2">
+                        <SparkleVector size={28} className="text-black/40 animate-float" />
+                        <CardTitle className="font-headline text-xl sm:text-2xl">{STEPS[STEPS.length -1].name}</CardTitle>
+                    </div>
                     <CardDescription className="text-sm sm:text-base">Please provide your contact information to finalize the quote.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 sm:space-y-6 md:space-y-8 px-3 sm:px-6">
-                    <div>
+                    <div className="animate-stagger">
                         <div className="space-y-3 sm:space-y-4 mt-2">
-                            <div>
+                            <div className="animate-fade-in-up">
                                 <Label htmlFor="name">Full Name *</Label>
-                                <Input id="name" name="name" placeholder="Jane Doe" required defaultValue={safeState.fieldValues?.name as string || ''} />
-                                {safeState.errors?.name && <p className="text-sm text-destructive mt-1">{safeState.errors.name[0]}</p>}
+                                <Input 
+                                  id="name" 
+                                  name="name" 
+                                  placeholder="Jane Doe" 
+                                  required 
+                                  defaultValue={safeState.fieldValues?.name as string || ''} 
+                                  className="transition-smooth focus-ring"
+                                />
+                                {safeState.errors?.name && <p className="text-sm text-destructive mt-1 animate-fade-in-up">{safeState.errors.name[0]}</p>}
                             </div>
-                            <div>
+                            <div className="animate-fade-in-up">
                                 <Label htmlFor="email">Email Address *</Label>
-                                <Input id="email" name="email" type="email" placeholder="jane.doe@example.com" required defaultValue={safeState.fieldValues?.email as string || ''} />
-                                {safeState.errors?.email && <p className="text-sm text-destructive mt-1">{safeState.errors.email[0]}</p>}
+                                <Input 
+                                  id="email" 
+                                  name="email" 
+                                  type="email" 
+                                  placeholder="jane.doe@example.com" 
+                                  required 
+                                  defaultValue={safeState.fieldValues?.email as string || ''} 
+                                  className="transition-smooth focus-ring"
+                                />
+                                {safeState.errors?.email && <p className="text-sm text-destructive mt-1 animate-fade-in-up">{safeState.errors.email[0]}</p>}
                             </div>
-                            <div>
+                            <div className="animate-fade-in-up">
                                 <Label htmlFor="phone">Phone Number *</Label>
                                 <Input 
                                     id="phone" 
@@ -429,10 +479,11 @@ export default function BookingFlow() {
                                         setPhoneNumber(formatted);
                                     }}
                                     maxLength={14} // (XXX) XXX-XXXX = 14 characters
+                                    className="transition-smooth focus-ring"
                                 />
                                 {/* Hidden input to ensure phone value is submitted (controlled component doesn't submit automatically) */}
                                 <input type="hidden" name="phone" value={phoneNumber.replace(/\D/g, '')} />
-                                {safeState.errors?.phone && <p className="text-sm text-destructive mt-1">{safeState.errors.phone[0]}</p>}
+                                {safeState.errors?.phone && <p className="text-sm text-destructive mt-1 animate-fade-in-up">{safeState.errors.phone[0]}</p>}
                             </div>
                         </div>
                     </div>
@@ -440,14 +491,26 @@ export default function BookingFlow() {
             </Card>
         </div>
 
-        <div className="mt-3 sm:mt-4 md:mt-6 flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
-          <Button type="button" variant="outline" onClick={prevStep} className={cn(currentStep === 1 && 'invisible', 'w-full sm:w-auto h-10 sm:h-11')}>
+        <div className="mt-3 sm:mt-4 md:mt-6 flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 animate-fade-in-up">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={prevStep} 
+            className={cn(
+              currentStep === 1 && 'invisible', 
+              'w-full sm:w-auto h-10 sm:h-11 transition-smooth hover:scale-[1.02] active:scale-[0.98]'
+            )}
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
 
           {currentStep < STEPS[STEPS.length - 1].id ? (
-            <Button type="button" onClick={nextStep} className="w-full sm:w-auto h-10 sm:h-11">
+            <Button 
+              type="button" 
+              onClick={nextStep} 
+              className="w-full sm:w-auto h-10 sm:h-11 transition-smooth hover:scale-[1.02] active:scale-[0.98]"
+            >
               Next
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -1099,9 +1162,9 @@ function SubmitButton() {
 
     return (
         <Button 
-          type="submit" 
+          type="submit"
           size="lg" 
-          className="font-bold" 
+          className="font-bold transition-smooth hover:scale-[1.02] active:scale-[0.98]" 
           disabled={pending}
           onClick={(e) => {
             console.log('BookingFlow: SubmitButton clicked, pending:', pending);

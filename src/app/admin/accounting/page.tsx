@@ -12,12 +12,22 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AdminSettings } from '@/components/admin-settings';
 import Image from 'next/image';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Menu } from 'lucide-react';
 
 export default function AccountingPage() {
   const [bookings, setBookings] = useState<BookingDocument[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [accountingTab, setAccountingTab] = useState('overview');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -239,6 +249,57 @@ export default function AccountingPage() {
     }).format(amount);
   };
 
+  // Navigation menu component
+  const NavigationMenu = ({ onNavigate }: { onNavigate?: () => void }) => {
+    return (
+      <nav className="flex-1 space-y-1 p-4">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          const handleClick = (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            router.push(item.href);
+            if (onNavigate) onNavigate();
+          };
+          // Use button for pricing to avoid prefetch errors, Link for others
+          if (item.href === '/admin/pricing') {
+            return (
+              <button
+                key={item.href}
+                onClick={handleClick}
+                type="button"
+                className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-black text-white'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate ? () => onNavigate() : undefined}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen w-full bg-muted/40">
@@ -255,55 +316,46 @@ export default function AccountingPage() {
             </div>
             <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
           </div>
-          <nav className="flex-1 space-y-1 p-4">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              // Use button for pricing to avoid prefetch errors, Link for others
-              if (item.href === '/admin/pricing') {
-                return (
-                  <button
-                    key={item.href}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      router.push(item.href);
-                    }}
-                    type="button"
-                    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-black text-white'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </button>
-                );
-              }
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <NavigationMenu />
         </aside>
-        <div className="flex flex-1 flex-col">
-          <main className="flex-1 p-6">
+        <div className="flex flex-1 flex-col w-full md:w-auto">
+          <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-4 md:px-6">
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0">
+                <SheetHeader className="p-6 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-10 h-10 flex-shrink-0">
+                      <Image
+                        src="/LBA.png"
+                        alt="Looks by Anum Logo"
+                        fill
+                        className="object-contain"
+                        priority
+                      />
+                    </div>
+                    <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
+                      Looks by Anum
+                    </SheetTitle>
+                  </div>
+                </SheetHeader>
+                <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
+              </SheetContent>
+            </Sheet>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Accounting</h2>
+            <div className="ml-auto">
+              <AdminSettings />
+            </div>
+          </header>
+          <main className="flex-1 p-4 sm:p-6">
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
-                <p className="mt-4 text-muted-foreground">Loading accounting data...</p>
+                <p className="mt-4 text-muted-foreground text-sm sm:text-base">Loading accounting data...</p>
               </div>
             </div>
           </main>
@@ -328,57 +380,48 @@ export default function AccountingPage() {
             </div>
             <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
           </div>
-          <nav className="flex-1 space-y-1 p-4">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              // Use button for pricing to avoid prefetch errors, Link for others
-              if (item.href === '/admin/pricing') {
-                return (
-                  <button
-                    key={item.href}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      router.push(item.href);
-                    }}
-                    type="button"
-                    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-black text-white'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </button>
-                );
-              }
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <NavigationMenu />
         </aside>
-        <div className="flex flex-1 flex-col">
-          <main className="flex-1 p-6">
+        <div className="flex flex-1 flex-col w-full md:w-auto">
+          <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-4 md:px-6">
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0">
+                <SheetHeader className="p-6 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-10 h-10 flex-shrink-0">
+                      <Image
+                        src="/LBA.png"
+                        alt="Looks by Anum Logo"
+                        fill
+                        className="object-contain"
+                        priority
+                      />
+                    </div>
+                    <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
+                      Looks by Anum
+                    </SheetTitle>
+                  </div>
+                </SheetHeader>
+                <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
+              </SheetContent>
+            </Sheet>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Accounting</h2>
+            <div className="ml-auto">
+              <AdminSettings />
+            </div>
+          </header>
+          <main className="flex-1 p-4 sm:p-6">
             <Card>
               <CardHeader>
                 <CardTitle>Error</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-destructive">{error.message}</p>
+                <p className="text-destructive text-sm sm:text-base">{error.message}</p>
               </CardContent>
             </Card>
           </main>
@@ -389,47 +432,70 @@ export default function AccountingPage() {
 
   return (
     <div className="flex min-h-screen w-full bg-muted/40">
-      {/* Sidebar */}
+      {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-        <div className="flex h-16 items-center border-b px-6">
-          <h1 className="font-headline text-2xl font-bold text-primary tracking-wider">Looks by Anum</h1>
+        <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <Image
+              src="/LBA.png"
+              alt="Looks by Anum Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+          <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <NavigationMenu />
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        <main className="flex-1 p-6">
+      <div className="flex flex-1 flex-col w-full md:w-auto">
+        <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-4 md:px-6">
+          {/* Mobile Menu Button */}
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-0">
+              <SheetHeader className="p-6 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 flex-shrink-0">
+                    <Image
+                      src="/LBA.png"
+                      alt="Looks by Anum Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                  <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
+                    Looks by Anum
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
+            </SheetContent>
+          </Sheet>
+          
+          <h2 className="text-lg sm:text-xl font-semibold text-foreground">Accounting</h2>
+          <div className="ml-auto">
+            <AdminSettings />
+          </div>
+        </header>
+        <main className="flex-1 p-3 sm:p-4 md:p-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div>
-                <CardTitle>Accounting Dashboard</CardTitle>
-                <CardDescription>Complete financial overview of all bookings and payments</CardDescription>
+                <CardTitle className="text-xl sm:text-2xl">Accounting Dashboard</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Complete financial overview of all bookings and payments</CardDescription>
               </div>
-              <AdminSettings />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-6">
             <AccountingDashboard 
               metrics={accountingMetrics}
               formatCurrency={formatCurrency}
@@ -482,24 +548,24 @@ function AccountingDashboard({
 }) {
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
       {/* Accounting Sub-tabs */}
       <Tabs value={accountingTab} onValueChange={setAccountingTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="transactions">All Transactions</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-auto">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm py-2 sm:py-1.5">Overview</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs sm:text-sm py-2 sm:py-1.5">All Transactions</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-0 space-y-6">
+        <TabsContent value="overview" className="mt-0 space-y-4 sm:space-y-6">
           {/* Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(metrics.totalRevenue)}</div>
+              <CardContent className="p-4 sm:p-6">
+                <div className="text-xl sm:text-2xl font-bold text-green-600">{formatCurrency(metrics.totalRevenue)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   All received payments
                 </p>
@@ -547,7 +613,7 @@ function AccountingDashboard({
           </div>
 
           {/* Payment Breakdown */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Payment Breakdown</CardTitle>
@@ -676,18 +742,18 @@ function AccountingDashboard({
               <CardTitle>All Transactions</CardTitle>
               <CardDescription>Complete list of all payment transactions</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
+            <CardContent className="p-3 sm:p-6">
+              <div className="overflow-x-auto -mx-3 sm:mx-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">Transaction ID</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Customer</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Type</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Method</TableHead>
+                      <TableHead className="text-right text-xs sm:text-sm">Amount</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                      <TableHead className="hidden md:table-cell text-xs sm:text-sm">Transaction ID</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -700,8 +766,8 @@ function AccountingDashboard({
                     ) : (
                       metrics.transactions.map((transaction, index) => (
                         <TableRow key={`${transaction.id}-${transaction.type}-${index}`}>
-                          <TableCell className="text-sm">{transaction.date}</TableCell>
-                          <TableCell className="font-medium">{transaction.customer}</TableCell>
+                          <TableCell className="text-xs sm:text-sm">{transaction.date}</TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm">{transaction.customer}</TableCell>
                           <TableCell>
                             <Badge variant={transaction.type === 'advance' ? 'default' : 'secondary'}>
                               {transaction.type === 'advance' ? 'Advance' : 'Final'}

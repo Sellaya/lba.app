@@ -47,6 +47,9 @@ export default function StripeSuccessPage() {
             throw new Error('Booking ID mismatch');
           }
 
+          // Get tier from session metadata (for advance payment)
+          const tierFromMetadata = sessionData.metadata?.tier as 'lead' | 'team' | undefined;
+
           // Fetch current booking
           const getRes = await fetch(`/api/bookings/${bookingId}`, { cache: 'no-store' });
           if (!getRes.ok) {
@@ -57,13 +60,33 @@ export default function StripeSuccessPage() {
           const bookingDoc = booking;
           const finalQuote = bookingDoc.finalQuote || bookingDoc.final_quote;
 
+          // Ensure selectedQuote is set - use from quote, metadata, or infer from payment amount
+          let selectedQuote = finalQuote.selectedQuote || tierFromMetadata;
+          if (!selectedQuote && finalQuote.quotes) {
+            // Fallback: infer from payment amount if available
+            const paymentAmount = sessionData.amount_total ? sessionData.amount_total / 100 : 0;
+            if (paymentAmount > 0) {
+              const leadAmount = finalQuote.quotes.lead?.total * 0.5 || 0;
+              const teamAmount = finalQuote.quotes.team?.total * 0.5 || 0;
+              // Find which tier matches the payment amount (with small tolerance for rounding)
+              if (Math.abs(paymentAmount - leadAmount) < 1) {
+                selectedQuote = 'lead';
+              } else if (Math.abs(paymentAmount - teamAmount) < 1) {
+                selectedQuote = 'team';
+              }
+            }
+          }
+
           if (isFinalPayment) {
             setPaymentType('final');
             // Handle final payment - matches Interac flow: status = 'deposit-paid', send final payment confirmation email
             if (finalQuote && finalQuote.paymentDetails) {
-              const finalAmount = finalQuote.selectedQuote ? finalQuote.quotes[finalQuote.selectedQuote].total * 0.5 : 0;
+              // Use selectedQuote from above (preserved or inferred)
+              const quoteToUse = selectedQuote || finalQuote.selectedQuote || 'lead';
+              const finalAmount = finalQuote.quotes[quoteToUse]?.total * 0.5 || 0;
               const updatedQuote = {
                 ...finalQuote,
+                selectedQuote: quoteToUse, // Ensure selectedQuote is set
                 paymentDetails: {
                   ...finalQuote.paymentDetails,
                   finalPayment: {
@@ -108,14 +131,18 @@ export default function StripeSuccessPage() {
             setPaymentType('advance');
             // Handle advance payment (deposit) - matches Interac flow: status = 'deposit-paid', send confirmation email
             if (finalQuote && finalQuote.paymentDetails?.status !== 'deposit-paid') {
+              // Use selectedQuote from above (preserved or inferred)
+              const quoteToUse = selectedQuote || finalQuote.selectedQuote || 'lead';
+              const depositAmount = finalQuote.quotes[quoteToUse]?.total * 0.5 || 0;
               const updatedQuote = {
                 ...finalQuote,
                 status: 'confirmed',
+                selectedQuote: quoteToUse, // Ensure selectedQuote is set
                 paymentDetails: {
                   ...finalQuote.paymentDetails,
                   method: 'stripe',
                   status: 'deposit-paid',
-                  depositAmount: finalQuote.selectedQuote ? finalQuote.quotes[finalQuote.selectedQuote].total * 0.5 : 0,
+                  depositAmount: depositAmount,
                   transactionId: sessionId || undefined, // Store transaction ID for advance payment
                 },
               };
@@ -140,7 +167,7 @@ export default function StripeSuccessPage() {
               await sendConfirmationEmailAction(bookingId);
               
               // Track payment completion
-              const advanceAmount = finalQuote.selectedQuote ? finalQuote.quotes[finalQuote.selectedQuote].total * 0.5 : 0;
+              const advanceAmount = depositAmount;
               trackPaymentComplete({
                 bookingId: bookingId,
                 amount: advanceAmount,

@@ -123,10 +123,10 @@ export default function Home() {
                             Find Your Quote
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle className="font-headline text-2xl">Find Your Quote</DialogTitle>
-                            <DialogDescription>
+                            <DialogTitle className="font-headline text-xl sm:text-2xl">Find Your Quote</DialogTitle>
+                            <DialogDescription className="text-sm sm:text-base">
                                 Already have a quote? Enter your Booking ID and email to view it.
                             </DialogDescription>
                         </DialogHeader>

@@ -174,9 +174,26 @@ export async function approvePaymentAction(bookingId: string): Promise<ActionRes
         }
 
         // Update payment status to payment-approved and booking status to confirmed
+        // Preserve selectedQuote if it exists, or infer from payment amount if missing
+        let selectedQuote = bookingDoc.finalQuote.selectedQuote;
+        if (!selectedQuote && bookingDoc.finalQuote.paymentDetails && bookingDoc.finalQuote.quotes) {
+            // Infer from payment amount
+            const paymentAmount = bookingDoc.finalQuote.paymentDetails.depositAmount || 0;
+            if (paymentAmount > 0) {
+                const leadDeposit = bookingDoc.finalQuote.quotes.lead?.total * 0.5 || 0;
+                const teamDeposit = bookingDoc.finalQuote.quotes.team?.total * 0.5 || 0;
+                if (Math.abs(paymentAmount - leadDeposit) < 1) {
+                    selectedQuote = 'lead';
+                } else if (Math.abs(paymentAmount - teamDeposit) < 1) {
+                    selectedQuote = 'team';
+                }
+            }
+        }
+        
         const updatedQuote: FinalQuote = {
             ...bookingDoc.finalQuote,
             status: 'confirmed',
+            selectedQuote: selectedQuote || bookingDoc.finalQuote.selectedQuote, // Preserve or set selectedQuote
             paymentDetails: {
                 ...bookingDoc.finalQuote.paymentDetails!,
                 status: 'payment-approved',
