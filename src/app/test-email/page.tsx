@@ -39,8 +39,8 @@ export default function TestEmailPage() {
         <CardHeader>
           <CardTitle>Email Test</CardTitle>
           <CardDescription>
-            Click the button below to send a test email to 'booking@sellaya.ca'
-            and an admin notification to 'sellayadigital@gmail.com'.
+            Click the button below to send a test email to 'orders@looksbyanum.com'
+            and an admin notification to 'orders@looksbyanum.com'.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

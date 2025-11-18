@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { sendConfirmationEmailAction, sendFinalPaymentConfirmationEmailAction } from '@/app/admin/actions';
 import { scheduleEventReminder24HEmail } from '@/lib/scheduled-emails';
+import { trackPaymentComplete } from '@/lib/facebook-pixel';
 
 export default function StripeSuccessPage() {
   const params = useParams();
@@ -88,6 +89,15 @@ export default function StripeSuccessPage() {
               // Send final payment confirmation email - same as Interac flow
               await sendFinalPaymentConfirmationEmailAction(bookingId);
               
+              // Track payment completion
+              trackPaymentComplete({
+                bookingId: bookingId,
+                amount: finalAmount,
+                currency: 'CAD',
+                paymentType: 'final',
+                paymentMethod: 'stripe',
+              });
+              
               toast({
                 title: "Final Payment Successful!",
                 description: "Your final payment has been processed. A confirmation email has been sent.",
@@ -128,6 +138,16 @@ export default function StripeSuccessPage() {
                 variant: 'default',
               });
               await sendConfirmationEmailAction(bookingId);
+              
+              // Track payment completion
+              const advanceAmount = finalQuote.selectedQuote ? finalQuote.quotes[finalQuote.selectedQuote].total * 0.5 : 0;
+              trackPaymentComplete({
+                bookingId: bookingId,
+                amount: advanceAmount,
+                currency: 'CAD',
+                paymentType: 'advance',
+                paymentMethod: 'stripe',
+              });
               
               // Schedule event reminder email 24 hours before the event
               await scheduleEventReminder24HEmail(updatedQuote);
@@ -171,7 +191,7 @@ export default function StripeSuccessPage() {
             <p className="text-base sm:text-lg text-muted-foreground mt-4 max-w-2xl">
               Thank you for your payment! We're processing your booking confirmation and preparing your details.
             </p>
-            <Loader2 className="h-8 w-8 animate-spin text-primary my-8" />
+            <Loader2 className="h-8 w-8 animate-spin text-black my-8" />
             <p className="text-sm text-muted-foreground">
               Please wait while we update your booking...
             </p>
@@ -201,15 +221,15 @@ export default function StripeSuccessPage() {
                 </p>
                 <ul className="space-y-2 text-sm sm:text-base text-muted-foreground">
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-1">✓</span>
+                    <span className="text-black mt-1">✓</span>
                     <span>Check your email for your booking confirmation and important details</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-1">✓</span>
+                    <span className="text-black mt-1">✓</span>
                     <span>Save your booking ID: <span className="font-mono font-semibold text-foreground">{bookingId}</span></span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-1">✓</span>
+                    <span className="text-black mt-1">✓</span>
                     <span>We'll be in touch closer to your event date with any additional information</span>
                   </li>
                 </ul>

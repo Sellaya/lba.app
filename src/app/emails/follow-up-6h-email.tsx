@@ -21,20 +21,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '20px',
-  borderBottom: '1px solid hsl(345, 20%, 90%)',
+  borderBottom: '1px solid hsl(0, 0%, 85%)',
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   margin: '0 0 12px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -52,7 +52,7 @@ const section = {
 
 const urgencyBox = {
   background: 'hsl(0, 60%, 98%)',
-  border: '2px solid hsl(0, 84%, 60%)',
+  border: '2px solid hsl(0, 0%, 0%)',
   borderRadius: '12px',
   padding: '24px',
   textAlign: 'center' as const,
@@ -60,8 +60,8 @@ const urgencyBox = {
 };
 
 const instructionBox = {
-  background: 'hsl(345, 60%, 94%)',
-  border: '1px solid hsl(345, 20%, 90%)',
+  background: 'hsl(0, 0%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
   borderRadius: '12px',
   padding: '30px',
   textAlign: 'center' as const,
@@ -69,7 +69,7 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(345, 80%, 50%)',
+  backgroundColor: 'hsl(0, 0%, 0%)',
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -78,7 +78,7 @@ const button = {
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.25)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
   margin: '8px',
 };
 
@@ -123,7 +123,7 @@ const FollowUp6HEmailTemplate: React.FC<Readonly<FollowUp6HEmailProps>> = ({ quo
   // Format: country code + number without + or spaces (e.g., 14161234567 for US/Canada)
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '14161234567';
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=Hi%20Anum,%20I%20have%20questions%20about%20my%20booking%20${quote.id}`;
-  const emailLink = `mailto:booking@sellaya.ca?subject=Question%20about%20Booking%20${quote.id}`;
+  const emailLink = `mailto:orders@looksbyanum.com?subject=Question%20about%20Booking%20${quote.id}`;
 
   return (
     <div style={main}>
@@ -161,7 +161,7 @@ const FollowUp6HEmailTemplate: React.FC<Readonly<FollowUp6HEmailProps>> = ({ quo
             </a>
           </div>
 
-          <div style={{ padding: '24px', border: '1px solid hsl(345, 20%, 90%)', borderRadius: '12px', backgroundColor: '#ffffff', marginTop: '32px' }}>
+          <div style={{ padding: '24px', border: '1px solid hsl(0, 0%, 85%)', borderRadius: '12px', backgroundColor: '#ffffff', marginTop: '32px' }}>
             <p style={{...paragraph, textAlign: 'center', marginBottom: '16px', fontWeight: 600, fontSize: '18px'}}>
               Have Questions? Contact Anum Directly
             </p>
@@ -184,7 +184,7 @@ const FollowUp6HEmailTemplate: React.FC<Readonly<FollowUp6HEmailProps>> = ({ quo
         </p>
         
         <div style={footer}>
-          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(345, 80%, 50%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
         </div>
       </div>
     </div>

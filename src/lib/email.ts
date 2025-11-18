@@ -8,6 +8,9 @@ import FollowUpEmailTemplate from '@/app/emails/follow-up-email';
 import FollowUp3HEmailTemplate from '@/app/emails/follow-up-3h-email';
 import FollowUp6HEmailTemplate from '@/app/emails/follow-up-6h-email';
 import FollowUp24HEmailTemplate from '@/app/emails/follow-up-24h-email';
+import FollowUp3DEmailTemplate from '@/app/emails/follow-up-3d-email';
+import FollowUp6DEmailTemplate from '@/app/emails/follow-up-6d-email';
+import FollowUp30DEmailTemplate from '@/app/emails/follow-up-30d-email';
 import EventReminder24HEmailTemplate from '@/app/emails/event-reminder-24h-email';
 import AdminNotificationEmailTemplate from '@/app/emails/admin-notification-email';
 import RejectionEmailTemplate from '@/app/emails/rejection-email';
@@ -28,13 +31,63 @@ const getResend = () => {
     return new Resend(apiKey);
 }
 
+// Helper function to get the from email
+// Always uses the verified custom domain (looksbyanum.com is verified in Resend)
+// The verified domain is the primary and only domain used for sending emails
+const getFromEmail = (preferredEmail: string): string => {
+    // Always use the verified custom domain (orders@looksbyanum.com)
+    // The domain looksbyanum.com is verified in Resend and should be used
+    // Format with display name "Looks by Anum" while keeping email address the same
+    return `Looks by Anum <${preferredEmail}>`;
+}
+
+// Helper function to handle authorization errors from Resend
+const handleResendAuthError = (error: any, fromEmail: string, preferredEmail: string, emailType: string = 'email'): never => {
+    // Log full error details for debugging
+    const errorMessage = error?.message || JSON.stringify(error);
+    const errorCode = error?.name || error?.code || 'UNKNOWN';
+    
+    console.error('Resend Error Details:', {
+        message: errorMessage,
+        code: errorCode,
+        fromEmail: fromEmail,
+        preferredEmail: preferredEmail,
+        fullError: error
+    });
+    
+    const isAuthError = errorMessage?.toLowerCase().includes('not authorized') || 
+                       errorMessage?.toLowerCase().includes('unauthorized') ||
+                       errorMessage?.toLowerCase().includes('domain') ||
+                       errorCode === 'unauthorized' ||
+                       errorCode === 'forbidden';
+    
+    if (isAuthError) {
+        const domain = preferredEmail.split('@')[1];
+        // Provide more specific troubleshooting steps
+        throw new Error(
+            `Failed to send ${emailType}: Domain "${domain}" authorization error. ` +
+            `Error: ${errorMessage}. ` +
+            `Troubleshooting: 1) Verify the domain "${domain}" is verified in your Resend dashboard at https://resend.com/domains. ` +
+            `2) Ensure your API key (${process.env.RESEND_API_KEY?.substring(0, 10)}...) belongs to the same Resend workspace/account where the domain is verified. ` +
+            `3) Check that the email address "${preferredEmail}" is allowed for the domain "${domain}". ` +
+            `4) Verify SPF, DKIM, and DMARC DNS records are correctly configured.`
+        );
+    }
+    
+    throw new Error(`Failed to send ${emailType}: ${errorMessage || 'Unknown error'}`);
+}
+
 
 export async function sendQuoteEmail(quote: FinalQuote) {
+  console.log('sendQuoteEmail: Starting for booking ID:', quote.id);
+  console.log('sendQuoteEmail: Contact email:', quote.contact?.email);
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendQuoteEmail for booking ID:', quote.id);
+    console.warn('sendQuoteEmail: Resend not configured; skipping sendQuoteEmail for booking ID:', quote.id);
+    console.warn('sendQuoteEmail: RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
     return;
   }
     
@@ -42,12 +95,19 @@ export async function sendQuoteEmail(quote: FinalQuote) {
     ? `Booking Confirmed! - Looks by Anum (ID: ${quote.id})`
     : `Your Makeup Quote from Looks by Anum (ID: ${quote.id})`;
 
-  const adminEmail = "sellayadigital@gmail.com";
-  const fromEmail = 'booking@sellaya.ca';
+  const adminEmail = "orders@looksbyanum.com";
+  const preferredFromEmail = 'orders@looksbyanum.com';
+  const fromEmail = getFromEmail(preferredFromEmail);
+  
+  console.log('sendQuoteEmail: From email:', fromEmail);
+  console.log('sendQuoteEmail: To email:', quote.contact.email);
+  console.log('sendQuoteEmail: Subject:', clientSubject);
     
   // Always send the email to the client
+  // Using just the email address (no display name) to avoid potential Resend authorization issues
+  console.log('sendQuoteEmail: Sending client email...');
   const clientEmailPromise = resend.emails.send({
-    from: `Looks by Anum <${fromEmail}>`,
+    from: fromEmail,
     to: [quote.contact.email],
     subject: clientSubject,
     react: QuoteEmailTemplate({ quote, baseUrl }),
@@ -59,7 +119,7 @@ export async function sendQuoteEmail(quote: FinalQuote) {
   if (quote.status === 'confirmed') {
     const adminSubject = `[ADMIN] Booking Confirmed - ${quote.contact.name} (ID: ${quote.id})`;
     const adminEmailPromise = resend.emails.send({
-        from: `Looks by Anum Admin <${fromEmail}>`,
+        from: fromEmail,
         to: [adminEmail],
         subject: adminSubject,
         react: QuoteEmailTemplate({ quote, baseUrl }),
@@ -67,18 +127,30 @@ export async function sendQuoteEmail(quote: FinalQuote) {
     emailPromises.push(adminEmailPromise);
   }
   
+  console.log('sendQuoteEmail: Waiting for email results...');
   const [clientEmailResult, adminEmailResult] = await Promise.all(emailPromises);
 
   if (clientEmailResult.error) {
-    console.error('Client email sending error:', clientEmailResult.error);
-    throw new Error(`Failed to send client email: ${clientEmailResult.error.message}`);
+    console.error('sendQuoteEmail: Client email sending error:', JSON.stringify(clientEmailResult.error, null, 2));
+    console.error('sendQuoteEmail: From email used:', fromEmail);
+    console.error('sendQuoteEmail: Resend API key configured:', process.env.RESEND_API_KEY ? 'Yes' : 'No');
+    console.error('sendQuoteEmail: API key prefix:', process.env.RESEND_API_KEY?.substring(0, 10) || 'N/A');
+    // Log the error but don't throw - allow the booking to save even if email fails
+    const errorMessage = clientEmailResult.error?.message || JSON.stringify(clientEmailResult.error);
+    console.error(`sendQuoteEmail: Failed to send client email to ${quote.contact.email}:`, errorMessage);
+    // DO NOT throw - just log and return silently
+    // The booking will still be saved even if email fails
+    return; // Exit gracefully without throwing
   } else {
-    console.log('Client email sent successfully for booking ID:', quote.id, 'to:', quote.contact.email);
+    console.log('sendQuoteEmail: Client email sent successfully for booking ID:', quote.id, 'to:', quote.contact.email);
+    console.log('sendQuoteEmail: Email ID:', clientEmailResult.data?.id);
   }
   
   if (adminEmailResult && adminEmailResult.error) {
       console.error('Admin email sending error:', adminEmailResult.error);
-      throw new Error(`Failed to send admin notification: ${adminEmailResult.error.message}`);
+      // Log admin email errors but don't throw - admin notification failure shouldn't block client email
+      const errorMessage = adminEmailResult.error?.message || JSON.stringify(adminEmailResult.error);
+      console.error(`Failed to send admin notification email:`, errorMessage);
   } else if (adminEmailResult) {
       console.log('Admin notification email sent successfully for booking ID:', quote.id, 'to:', adminEmail);
   }
@@ -95,11 +167,11 @@ export async function sendFollowUpEmail(quote: FinalQuote) {
   }
 
   const subject = `Your Makeup Quote from Looks by Anum is Waiting!`;
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [quote.contact.email],
       subject: subject,
       react: FollowUpEmailTemplate({ quote, baseUrl }),
@@ -128,8 +200,8 @@ export async function sendAdminScreenshotNotification(quote: FinalQuote) {
     return;
   }
 
-  const adminEmail = "sellayadigital@gmail.com";
-  const fromEmail = 'booking@sellaya.ca';
+  const adminEmail = "orders@looksbyanum.com";
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   // Determine if this is for final payment or advance payment
   const isFinalPayment = quote.paymentDetails?.finalPayment?.status === 'deposit-pending' && quote.paymentDetails?.finalPayment?.screenshotUrl;
@@ -137,7 +209,7 @@ export async function sendAdminScreenshotNotification(quote: FinalQuote) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `GlamBook Pro Admin <${fromEmail}>`,
+      from: fromEmail,
       to: [adminEmail],
       subject: `[ACTION REQUIRED] ${paymentType} E-Transfer Submitted for Booking #${quote.id}`,
       react: AdminNotificationEmailTemplate({ quote, baseUrl }),
@@ -166,11 +238,11 @@ export async function sendRejectionEmail(quote: FinalQuote, isFinalPayment: bool
     return;
   }
 
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [quote.contact.email],
       subject: `${isFinalPayment ? 'Final ' : ''}Payment Screenshot Rejected - Booking #${quote.id}`,
       react: RejectionEmailTemplate({ quote, baseUrl, isFinalPayment }),
@@ -199,13 +271,13 @@ export async function sendFollowUp3HEmail(quote: FinalQuote) {
     return;
   }
 
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [quote.contact.email],
-      subject: `Just Checking In - Your Makeup Quote (ID: ${quote.id})`,
+      subject: `Just Checking In - Looks by Anum (ID: ${quote.id})`,
       react: FollowUp3HEmailTemplate({ quote, baseUrl }),
     });
 
@@ -232,13 +304,13 @@ export async function sendFollowUp6HEmail(quote: FinalQuote) {
     return;
   }
 
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [quote.contact.email],
-      subject: `Secure Your Spot - Spots Fill Up Fast! (ID: ${quote.id})`,
+      subject: `Secure Your Spot – Spots Fill Up Fast! - Looks by Anum (ID: ${quote.id})`,
       react: FollowUp6HEmailTemplate({ quote, baseUrl }),
     });
 
@@ -265,20 +337,13 @@ export async function sendFollowUp24HEmail(quote: FinalQuote) {
     return;
   }
 
-  // Only send for mobile bookings
-  const hasMobileService = quote.booking.days.some(d => d.serviceType === 'mobile');
-  if (!hasMobileService) {
-    console.log('Skipping 24H email - not a mobile booking for booking ID:', quote.id);
-    return;
-  }
-
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [quote.contact.email],
-      subject: `🎉 Limited-Time Offer: Travel Fee Waived! (ID: ${quote.id})`,
+      subject: `Following Up on Your Quote - Looks by Anum (ID: ${quote.id})`,
       react: FollowUp24HEmailTemplate({ quote, baseUrl }),
     });
 
@@ -292,6 +357,105 @@ export async function sendFollowUp24HEmail(quote: FinalQuote) {
     
   } catch (error: any) {
     console.error('Error in sendFollowUp24HEmail:', error.message);
+    throw error;
+  }
+}
+
+export async function sendFollowUp3DEmail(quote: FinalQuote) {
+  const baseUrl = getBaseUrl();
+  const resend = getResend();
+  
+  if (!resend) {
+    console.warn('Resend not configured; skipping sendFollowUp3DEmail for booking ID:', quote.id);
+    return;
+  }
+
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [quote.contact.email],
+      subject: `Don't Miss Out on Your Perfect Look - Looks by Anum (ID: ${quote.id})`,
+      react: FollowUp3DEmailTemplate({ quote, baseUrl }),
+    });
+
+    if (error) {
+      console.error('Follow-up 3D email sending error:', error);
+      throw new Error(`Failed to send follow-up 3D email: ${error.message}`);
+    }
+
+    console.log('Follow-up 3D email sent successfully for booking ID:', quote.id, 'to:', quote.contact.email);
+    return data;
+    
+  } catch (error: any) {
+    console.error('Error in sendFollowUp3DEmail:', error.message);
+    throw error;
+  }
+}
+
+export async function sendFollowUp6DEmail(quote: FinalQuote) {
+  const baseUrl = getBaseUrl();
+  const resend = getResend();
+  
+  if (!resend) {
+    console.warn('Resend not configured; skipping sendFollowUp6DEmail for booking ID:', quote.id);
+    return;
+  }
+
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [quote.contact.email],
+      subject: `🎉 Special Offer: 5% Off Your Booking - Looks by Anum (ID: ${quote.id})`,
+      react: FollowUp6DEmailTemplate({ quote, baseUrl }),
+    });
+
+    if (error) {
+      console.error('Follow-up 6D email sending error:', error);
+      throw new Error(`Failed to send follow-up 6D email: ${error.message}`);
+    }
+
+    console.log('Follow-up 6D email sent successfully for booking ID:', quote.id, 'to:', quote.contact.email);
+    return data;
+    
+  } catch (error: any) {
+    console.error('Error in sendFollowUp6DEmail:', error.message);
+    throw error;
+  }
+}
+
+export async function sendFollowUp30DEmail(quote: FinalQuote) {
+  const baseUrl = getBaseUrl();
+  const resend = getResend();
+  
+  if (!resend) {
+    console.warn('Resend not configured; skipping sendFollowUp30DEmail for booking ID:', quote.id);
+    return;
+  }
+
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [quote.contact.email],
+      subject: `Final Opportunity to Book Your Perfect Look - Looks by Anum (ID: ${quote.id})`,
+      react: FollowUp30DEmailTemplate({ quote, baseUrl }),
+    });
+
+    if (error) {
+      console.error('Follow-up 30D email sending error:', error);
+      throw new Error(`Failed to send follow-up 30D email: ${error.message}`);
+    }
+
+    console.log('Follow-up 30D email sent successfully for booking ID:', quote.id, 'to:', quote.contact.email);
+    return data;
+    
+  } catch (error: any) {
+    console.error('Error in sendFollowUp30DEmail:', error.message);
     throw error;
   }
 }
@@ -311,12 +475,12 @@ export async function sendEventReminder24HEmail(quote: FinalQuote) {
     throw new Error('Booking has no service days');
   }
 
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
   const firstDay = quote.booking.days[0];
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [quote.contact.email],
       subject: `Your Event is Tomorrow! ✨ Reminder for ${firstDay.date || 'your event'} (ID: ${quote.id})`,
       react: EventReminder24HEmailTemplate({ quote, baseUrl }),
@@ -353,8 +517,8 @@ export async function sendBookCallEmails(data: {
     return;
   }
 
-  const adminEmail = 'sellayadigital@gmail.com';
-  const fromEmail = 'booking@sellaya.ca';
+  const adminEmail = 'orders@looksbyanum.com';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const baseUrl = getBaseUrl();
@@ -362,7 +526,7 @@ export async function sendBookCallEmails(data: {
 
     // Send to admin
     const { error: adminError } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [adminEmail],
       subject: `📞 New Call Booking Request from ${data.customerName} (ID: ${data.bookingId})`,
       react: BookCallAdminEmailTemplate({ ...data, quoteLink }),
@@ -375,7 +539,7 @@ export async function sendBookCallEmails(data: {
 
     // Send confirmation to customer
     const { error: customerError } = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [data.customerEmail],
       subject: `Call Booking Confirmed - Looks by Anum`,
       react: BookCallConfirmationEmailTemplate({
@@ -412,11 +576,11 @@ export async function sendFinalPaymentConfirmationEmail(quote: FinalQuote) {
   }
 
   const subject = `Payment Complete – Thank You! ✨ Looks by Anum (ID: ${quote.id})`;
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const result = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [quote.contact.email],
       subject: subject,
       react: FinalPaymentConfirmationEmailTemplate({ quote, baseUrl }),
@@ -455,11 +619,11 @@ export async function sendArtistBookingEmail(
   }
 
   const subject = `New Booking Assignment - ${quote.contact.name} (ID: ${quote.id})`;
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const result = await resend.emails.send({
-      from: `Looks by Anum <${fromEmail}>`,
+      from: fromEmail,
       to: [artistEmail],
       subject: subject,
       react: ArtistBookingEmailTemplate({ quote, artistName, baseUrl, calendarLinks }),
@@ -487,11 +651,11 @@ export async function sendPasswordResetEmail(email: string, resetLink: string) {
   }
 
   const subject = 'Password Reset Request - Looks by Anum Admin';
-  const fromEmail = 'booking@sellaya.ca';
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
 
   try {
     const result = await resend.emails.send({
-      from: `Looks by Anum Admin <${fromEmail}>`,
+      from: fromEmail,
       to: [email],
       subject: subject,
       react: PasswordResetEmailTemplate({ resetLink }),

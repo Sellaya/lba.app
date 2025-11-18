@@ -21,20 +21,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '20px',
-  borderBottom: '1px solid hsl(345, 20%, 90%)',
+  borderBottom: '1px solid hsl(0, 0%, 85%)',
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   margin: '0 0 12px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -51,8 +51,8 @@ const section = {
 };
 
 const instructionBox = {
-  background: 'hsl(345, 60%, 94%)',
-  border: '1px solid hsl(345, 20%, 90%)',
+  background: 'hsl(0, 0%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
   borderRadius: '12px',
   padding: '30px',
   textAlign: 'center' as const,
@@ -60,7 +60,7 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(345, 80%, 50%)',
+  backgroundColor: 'hsl(0, 0%, 0%)',
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -69,7 +69,7 @@ const button = {
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.25)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
 };
 
 const footer = {
@@ -81,7 +81,7 @@ const footer = {
 
 const infoBox = {
   padding: '20px',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
   borderRadius: '12px',
   backgroundColor: '#ffffff',
   marginBottom: '20px',
@@ -137,7 +137,7 @@ const FollowUp3HEmailTemplate: React.FC<Readonly<FollowUp3HEmailProps>> = ({ quo
         </p>
         
         <div style={footer}>
-          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(345, 80%, 50%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@ export default function BookPage() {
     return (
       <div className="flex flex-col min-h-screen">
         <div className="flex flex-1 flex-col items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <Loader2 className="h-12 w-12 animate-spin text-black" />
           <p className="mt-4 text-muted-foreground">Loading your booking...</p>
         </div>
       </div>

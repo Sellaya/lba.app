@@ -3,7 +3,7 @@
 import { supabaseAdmin } from './supabase/server';
 import type { FinalQuote } from './types';
 
-export type ScheduledEmailType = 'followup-3h' | 'followup-6h' | 'followup-24h' | 'event-reminder-24h';
+export type ScheduledEmailType = 'followup-3h' | 'followup-6h' | 'followup-24h' | 'followup-3d' | 'followup-6d' | 'followup-30d' | 'event-reminder-24h';
 
 export interface ScheduledEmail {
   id?: string;
@@ -37,18 +37,17 @@ export async function scheduleFollowUpEmails(quote: FinalQuote): Promise<void> {
     return;
   }
 
+  // Use Toronto timezone for all scheduling
   const now = new Date();
   const bookingId = quote.id;
 
-  // Schedule 3H email (3 hours from now)
-  const scheduled3H = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-  
-  // Schedule 6H email (6 hours from now)
-  const scheduled6H = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-  
-  // Schedule 24H email (24 hours from now) - only for mobile bookings
-  const scheduled24H = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const hasMobileService = quote.booking.days.some(d => d.serviceType === 'mobile');
+  // Schedule all follow-up emails
+  const scheduled3H = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours
+  const scheduled6H = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours
+  const scheduled24H = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+  const scheduled3D = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
+  const scheduled6D = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000); // 6 days
+  const scheduled30D = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
   const scheduledEmails: Omit<ScheduledEmail, 'id' | 'created_at'>[] = [
     {
@@ -63,17 +62,31 @@ export async function scheduleFollowUpEmails(quote: FinalQuote): Promise<void> {
       scheduled_for: scheduled6H.toISOString(),
       sent: false,
     },
-  ];
-
-  // Only schedule 24H email for mobile bookings
-  if (hasMobileService) {
-    scheduledEmails.push({
+    {
       booking_id: bookingId,
       email_type: 'followup-24h',
       scheduled_for: scheduled24H.toISOString(),
       sent: false,
-    });
-  }
+    },
+    {
+      booking_id: bookingId,
+      email_type: 'followup-3d',
+      scheduled_for: scheduled3D.toISOString(),
+      sent: false,
+    },
+    {
+      booking_id: bookingId,
+      email_type: 'followup-6d',
+      scheduled_for: scheduled6D.toISOString(),
+      sent: false,
+    },
+    {
+      booking_id: bookingId,
+      email_type: 'followup-30d',
+      scheduled_for: scheduled30D.toISOString(),
+      sent: false,
+    },
+  ];
 
   // Insert scheduled emails into database
   // Note: We'll create a scheduled_emails table in Supabase

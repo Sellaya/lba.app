@@ -2,10 +2,11 @@
 
 import 'dotenv/config';
 import { getBooking } from '@/firebase/server-actions';
-import { sendQuoteEmail, sendAdminScreenshotNotification, sendRejectionEmail, sendFinalPaymentConfirmationEmail } from '@/lib/email';
+import { sendQuoteEmail, sendAdminScreenshotNotification, sendRejectionEmail, sendFinalPaymentConfirmationEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { scheduleFollowUpEmails, scheduleEventReminder24HEmail } from '@/lib/scheduled-emails';
 import type { FinalQuote } from '@/lib/types';
+import { format } from 'date-fns';
 
 
 type ActionResult = {
@@ -15,10 +16,21 @@ type ActionResult = {
 
 // Save a newly generated quote to Supabase and send the quote email (server-side, uses service role)
 export async function saveQuoteAndEmailAction(quote: FinalQuote): Promise<ActionResult> {
+  console.log('saveQuoteAndEmailAction: Starting, booking ID:', quote?.id);
+  console.log('saveQuoteAndEmailAction: Quote contact email:', quote?.contact?.email);
+  
   if (!quote?.id) {
+    console.error('saveQuoteAndEmailAction: Missing booking ID');
     return { success: false, message: 'Quote payload missing booking ID.' };
   }
+  
+  if (!quote?.contact?.email) {
+    console.error('saveQuoteAndEmailAction: Missing contact email');
+    return { success: false, message: 'Quote payload missing contact email.' };
+  }
+  
   try {
+    console.log('saveQuoteAndEmailAction: Saving to Supabase...');
     const payload = {
       id: quote.id,
       uid: 'web', // server-side default owner; adjust if you add auth
@@ -28,16 +40,37 @@ export async function saveQuoteAndEmailAction(quote: FinalQuote): Promise<Action
     };
     const { error } = await supabaseAdmin.from('bookings').upsert(payload, { onConflict: 'id' });
     if (error) {
+      console.error('saveQuoteAndEmailAction: Supabase save error:', error);
       return { success: false, message: `Failed to save booking: ${error.message}` };
     }
-    // Send the quote email (formatted link to /book/{id})
+    console.log('saveQuoteAndEmailAction: Successfully saved to Supabase');
+    
+    // Send the quote email (non-blocking - don't fail the save if email fails)
+    console.log('saveQuoteAndEmailAction: Attempting to send quote email...');
+    try {
     await sendQuoteEmail(quote);
+      console.log('saveQuoteAndEmailAction: Quote email sent successfully');
+    } catch (emailError: any) {
+      console.error('saveQuoteAndEmailAction: Failed to send quote email:', emailError);
+      console.error('saveQuoteAndEmailAction: Email error details:', JSON.stringify(emailError, null, 2));
+      // Continue even if email fails - booking is saved
+    }
     
-    // Schedule follow-up emails (3H, 6H, and 24H if mobile)
+    // Schedule follow-up emails (non-blocking)
+    console.log('saveQuoteAndEmailAction: Attempting to schedule follow-up emails...');
+    try {
     await scheduleFollowUpEmails(quote);
+      console.log('saveQuoteAndEmailAction: Follow-up emails scheduled successfully');
+    } catch (scheduleError: any) {
+      console.error('saveQuoteAndEmailAction: Failed to schedule follow-up emails:', scheduleError);
+      // Continue even if scheduling fails
+    }
     
-    return { success: true, message: 'Quote saved and email sent.' };
+    console.log('saveQuoteAndEmailAction: Completed successfully');
+    return { success: true, message: 'Quote saved successfully.' };
   } catch (e: any) {
+    console.error('saveQuoteAndEmailAction: Unexpected error:', e);
+    console.error('saveQuoteAndEmailAction: Error stack:', e?.stack);
     return { success: false, message: e?.message || 'Unknown error saving quote.' };
   }
 }
@@ -423,5 +456,141 @@ export async function rejectFinalPaymentAction(bookingId: string): Promise<Actio
     } catch (error: any) {
         console.error('Failed to reject final payment screenshot:', error);
         return { success: false, message: error.message || 'An unknown error occurred while rejecting final payment screenshot.' };
+    }
+}
+
+// Test email actions for follow-up emails
+export async function testFollowUp24HEmailAction(): Promise<ActionResult> {
+  try {
+    const testQuote: FinalQuote = {
+      id: 'TEST-24H',
+      contact: { name: 'Test User', email: 'orders@looksbyanum.com', phone: 'N/A' },
+      booking: {
+        days: [
+          {
+            date: format(new Date(), 'PPP'),
+            getReadyTime: '12:00 PM',
+            serviceName: 'Test Service',
+            serviceOption: 'Makeup & Hair',
+            serviceType: 'mobile',
+            location: 'Test Location',
+            addOns: ['Test Add-on'],
+          },
+        ],
+        hasMobileService: true,
+      },
+      quotes: {
+        lead: {
+          lineItems: [{ description: 'Test Item', price: 100 }],
+          subtotal: 100,
+          tax: 13,
+          total: 113,
+        },
+        team: {
+          lineItems: [{ description: 'Test Item', price: 80 }],
+          subtotal: 80,
+          tax: 10.4,
+          total: 90.4,
+        },
+      },
+      selectedQuote: 'lead',
+      status: 'quoted',
+    };
+
+    await sendFollowUp24HEmail(testQuote);
+    return { success: true, message: '24-hour follow-up test email sent successfully to orders@looksbyanum.com' };
+  } catch (error: any) {
+    console.error('Failed to send test 24H email:', error);
+    return { success: false, message: error.message || 'Failed to send test email.' };
+  }
+}
+
+export async function testFollowUp3DEmailAction(): Promise<ActionResult> {
+  try {
+    const testQuote: FinalQuote = {
+      id: 'TEST-3D',
+      contact: { name: 'Test User', email: 'orders@looksbyanum.com', phone: 'N/A' },
+      booking: {
+        days: [
+          {
+            date: format(new Date(), 'PPP'),
+            getReadyTime: '12:00 PM',
+            serviceName: 'Test Service',
+            serviceOption: 'Makeup & Hair',
+            serviceType: 'mobile',
+            location: 'Test Location',
+            addOns: ['Test Add-on'],
+          },
+        ],
+        hasMobileService: true,
+      },
+      quotes: {
+        lead: {
+          lineItems: [{ description: 'Test Item', price: 100 }],
+          subtotal: 100,
+          tax: 13,
+          total: 113,
+        },
+        team: {
+          lineItems: [{ description: 'Test Item', price: 80 }],
+          subtotal: 80,
+          tax: 10.4,
+          total: 90.4,
+        },
+      },
+      selectedQuote: 'lead',
+      status: 'quoted',
+    };
+
+    await sendFollowUp3DEmail(testQuote);
+    return { success: true, message: '3-day follow-up test email sent successfully to orders@looksbyanum.com' };
+  } catch (error: any) {
+    console.error('Failed to send test 3D email:', error);
+    return { success: false, message: error.message || 'Failed to send test email.' };
+  }
+}
+
+export async function testFollowUp6DEmailAction(): Promise<ActionResult> {
+  try {
+    const testQuote: FinalQuote = {
+      id: 'TEST-6D',
+      contact: { name: 'Test User', email: 'orders@looksbyanum.com', phone: 'N/A' },
+      booking: {
+        days: [
+          {
+            date: format(new Date(), 'PPP'),
+            getReadyTime: '12:00 PM',
+            serviceName: 'Test Service',
+            serviceOption: 'Makeup & Hair',
+            serviceType: 'mobile',
+            location: 'Test Location',
+            addOns: ['Test Add-on'],
+          },
+        ],
+        hasMobileService: true,
+      },
+      quotes: {
+        lead: {
+          lineItems: [{ description: 'Test Item', price: 100 }],
+          subtotal: 100,
+          tax: 13,
+          total: 113,
+        },
+        team: {
+          lineItems: [{ description: 'Test Item', price: 80 }],
+          subtotal: 80,
+          tax: 10.4,
+          total: 90.4,
+        },
+      },
+      selectedQuote: 'lead',
+      status: 'quoted',
+    };
+
+    await sendFollowUp6DEmail(testQuote);
+    return { success: true, message: '6-day follow-up test email sent successfully to orders@looksbyanum.com' };
+  } catch (error: any) {
+    console.error('Failed to send test 6D email:', error);
+    return { success: false, message: error.message || 'Failed to send test email.' };
     }
 }

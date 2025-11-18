@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import type { BookingDocument } from '@/firebase/firestore/bookings';
 import { sendConfirmationEmailAction, approvePaymentAction, rejectScreenshotAction, approveFinalPaymentAction, rejectFinalPaymentAction } from '@/app/admin/actions';
+import { trackPaymentComplete } from '@/lib/facebook-pixel';
 import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
@@ -76,6 +77,9 @@ interface EmailStatusData {
   'followup-3h': EmailStatus;
   'followup-6h': EmailStatus;
   'followup-24h': EmailStatus;
+  'followup-3d': EmailStatus;
+  'followup-6d': EmailStatus;
+  'followup-30d': EmailStatus;
   'event-reminder-24h': EmailStatus;
 }
 
@@ -95,6 +99,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
   const [isSendingTest3H, setIsSendingTest3H] = useState(false);
   const [isSendingTest6H, setIsSendingTest6H] = useState(false);
   const [isSendingTest24H, setIsSendingTest24H] = useState(false);
+  const [isSendingTest3D, setIsSendingTest3D] = useState(false);
+  const [isSendingTest6D, setIsSendingTest6D] = useState(false);
+  const [isSendingTest30D, setIsSendingTest30D] = useState(false);
   const { toast } = useToast();
 
   // Determine selected quote data - use quote.selectedQuote or infer from payment details
@@ -178,6 +185,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       { type: 'followup-3h', scheduledFor: emailStatus['followup-3h']?.scheduledFor, sent: emailStatus['followup-3h']?.sent },
       { type: 'followup-6h', scheduledFor: emailStatus['followup-6h']?.scheduledFor, sent: emailStatus['followup-6h']?.sent },
       { type: 'followup-24h', scheduledFor: emailStatus['followup-24h']?.scheduledFor, sent: emailStatus['followup-24h']?.sent },
+      { type: 'followup-3d', scheduledFor: emailStatus['followup-3d']?.scheduledFor, sent: emailStatus['followup-3d']?.sent },
+      { type: 'followup-6d', scheduledFor: emailStatus['followup-6d']?.scheduledFor, sent: emailStatus['followup-6d']?.sent },
+      { type: 'followup-30d', scheduledFor: emailStatus['followup-30d']?.scheduledFor, sent: emailStatus['followup-30d']?.sent },
       // Event reminder only shows if booking is confirmed and payment is made
       ...(isConfirmed && hasAdvancePayment && emailStatus['event-reminder-24h'] ? [{ type: 'event-reminder-24h', scheduledFor: emailStatus['event-reminder-24h'].scheduledFor, sent: emailStatus['event-reminder-24h'].sent }] : []),
     ].filter(e => e.scheduledFor && !e.sent && isFuture(new Date(e.scheduledFor)));
@@ -216,6 +226,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               'followup-3h': { sent: false, sentAt: null, scheduledFor: null },
               'followup-6h': { sent: false, sentAt: null, scheduledFor: null },
               'followup-24h': { sent: false, sentAt: null, scheduledFor: null },
+              'followup-3d': { sent: false, sentAt: null, scheduledFor: null },
+              'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
+              'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
               'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
             });
           } catch (e) {
@@ -225,6 +238,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               'followup-3h': { sent: false, sentAt: null, scheduledFor: null },
               'followup-6h': { sent: false, sentAt: null, scheduledFor: null },
               'followup-24h': { sent: false, sentAt: null, scheduledFor: null },
+              'followup-3d': { sent: false, sentAt: null, scheduledFor: null },
+              'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
+              'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
               'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
             });
           }
@@ -237,6 +253,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
           'followup-3h': { sent: false, sentAt: null, scheduledFor: null },
           'followup-6h': { sent: false, sentAt: null, scheduledFor: null },
           'followup-24h': { sent: false, sentAt: null, scheduledFor: null },
+          'followup-3d': { sent: false, sentAt: null, scheduledFor: null },
+          'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
+          'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
           'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
         });
       } finally {
@@ -280,7 +299,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
 
       toast({
         title: "Test Email Sent",
-        description: "3H follow-up email has been sent successfully!",
+        description: "3-hour follow-up email has been sent successfully!",
       });
 
       await refreshEmailStatus();
@@ -312,7 +331,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
 
       toast({
         title: "Test Email Sent",
-        description: "6H follow-up email has been sent successfully!",
+        description: "6-hour follow-up email has been sent successfully!",
       });
 
       await refreshEmailStatus();
@@ -344,7 +363,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
 
       toast({
         title: "Test Email Sent",
-        description: "24H follow-up email has been sent successfully!",
+        description: "24-hour follow-up email has been sent successfully!",
       });
 
       await refreshEmailStatus();
@@ -356,6 +375,102 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       });
     } finally {
       setIsSendingTest24H(false);
+    }
+  };
+
+  // Handler to send test 3D follow-up email
+  const handleSendTest3D = async () => {
+    setIsSendingTest3D(true);
+    try {
+      const res = await fetch(`/api/bookings/${quote.id}/test-followup-3d-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+
+      toast({
+        title: "Test Email Sent",
+        description: "3-day follow-up email has been sent successfully!",
+      });
+
+      await refreshEmailStatus();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to send test email',
+      });
+    } finally {
+      setIsSendingTest3D(false);
+    }
+  };
+
+  // Handler to send test 6D follow-up email
+  const handleSendTest6D = async () => {
+    setIsSendingTest6D(true);
+    try {
+      const res = await fetch(`/api/bookings/${quote.id}/test-followup-6d-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+
+      toast({
+        title: "Test Email Sent",
+        description: "6-day follow-up email has been sent successfully!",
+      });
+
+      await refreshEmailStatus();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to send test email',
+      });
+    } finally {
+      setIsSendingTest6D(false);
+    }
+  };
+
+  // Handler to send test 30D follow-up email
+  const handleSendTest30D = async () => {
+    setIsSendingTest30D(true);
+    try {
+      const res = await fetch(`/api/bookings/${quote.id}/test-followup-30d-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+
+      toast({
+        title: "Test Email Sent",
+        description: "30-day follow-up email has been sent successfully!",
+      });
+
+      await refreshEmailStatus();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to send test email',
+      });
+    } finally {
+      setIsSendingTest30D(false);
     }
   };
 
@@ -574,7 +689,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       {isActionPending && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <Loader2 className="w-10 h-10 animate-spin text-black" />
             <p className="text-sm text-muted-foreground font-medium">Processing...</p>
           </div>
         </div>
@@ -586,7 +701,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader className="pb-4 border-b">
             <CardTitle className="text-xl font-headline flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
+              <User className="h-5 w-5 text-black" />
               Client Information
             </CardTitle>
           </CardHeader>
@@ -603,7 +718,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</p>
-                <a href={`mailto:${quote.contact.email}`} className='text-base text-primary hover:underline font-medium break-all'>
+                <a href={`mailto:${quote.contact.email}`} className='text-base text-black hover:underline font-medium break-all'>
                   {quote.contact.email}
                 </a>
               </div>
@@ -641,7 +756,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         href={googleMapsUrl} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="font-medium hover:underline text-primary flex items-center gap-1"
+                        className="font-medium hover:underline text-black flex items-center gap-1"
                       >
                         {quote.booking.address.street}
                         <MapPin className="h-3 w-3" />
@@ -650,7 +765,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         href={googleMapsUrl} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="text-muted-foreground hover:underline text-primary block"
+                        className="text-muted-foreground hover:underline text-black block"
                       >
                         {quote.booking.address.city}, {quote.booking.address.province} {quote.booking.address.postalCode}
                       </a>
@@ -690,7 +805,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                             rel="noopener noreferrer"
                             className="block group"
                           >
-                            <div className="relative aspect-square rounded-lg border-2 border-border overflow-hidden hover:border-primary transition-colors">
+                            <div className="relative aspect-square rounded-lg border-2 border-border overflow-hidden hover:border-black transition-colors">
                               <img
                                 src={imageUrl}
                                 alt={`Inspiration ${index + 1}`}
@@ -712,7 +827,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                             href={link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-xs text-primary hover:underline p-1.5 rounded-md hover:bg-muted/50 transition-colors"
+                            className="flex items-center gap-2 text-xs text-black hover:underline p-1.5 rounded-md hover:bg-muted/50 transition-colors"
                           >
                             <LinkIcon className="h-3 w-3 flex-shrink-0" />
                             <span className="break-all">{link}</span>
@@ -753,7 +868,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 <div className="pt-2 border-t">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Selected Package</Label>
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    {quote.selectedQuote === 'lead' ? <User className="h-5 w-5 text-primary" /> : <Users className="h-5 w-5 text-primary" />}
+                    {quote.selectedQuote === 'lead' ? <User className="h-5 w-5 text-black" /> : <Users className="h-5 w-5 text-black" />}
                     <p className="font-semibold text-sm">
                       {quote.selectedQuote === 'lead' ? 'Anum - Lead Artist' : 'Team'}
                     </p>
@@ -765,10 +880,10 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
 
           {/* Order & Payment Summary - Always show when paymentDetails exists */}
           {quote.paymentDetails && (
-            <Card className="shadow-lg border-primary/20 bg-gradient-to-br from-primary/5 to-transparent w-full">
+            <Card className="shadow-lg border-gray-300 bg-gradient-to-br from-gray-50 to-transparent w-full">
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-xl font-headline flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <CheckCircle2 className="h-5 w-5 text-black" />
                   Order & Payment Summary
                 </CardTitle>
               </CardHeader>
@@ -777,15 +892,15 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 {selectedQuoteData && (
                   <div className="space-y-6">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Selected Package</h4>
-                    <div className="flex items-center justify-center gap-3 p-4 bg-background rounded-lg border-2 border-primary/20">
-                      {inferredSelectedQuote === 'lead' ? <User className="h-5 w-5 text-primary flex-shrink-0" /> : <Users className="h-5 w-5 text-primary flex-shrink-0" />}
+                    <div className="flex items-center justify-center gap-3 p-4 bg-background rounded-lg border-2 border-gray-300">
+                      {inferredSelectedQuote === 'lead' ? <User className="h-5 w-5 text-black flex-shrink-0" /> : <Users className="h-5 w-5 text-black flex-shrink-0" />}
                       <p className="font-semibold text-base">
                         {inferredSelectedQuote === 'lead' ? 'Anum - Lead Artist' : 'Team'}
                       </p>
                     </div>
                     <div className="space-y-4 py-4">
                       <div className="flex items-center gap-4">
-                        <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0"></div>
+                        <div className="h-2 w-2 rounded-full bg-black flex-shrink-0"></div>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">Total Amount</p>
                           <p className="text-2xl font-bold">${selectedQuoteData.total.toFixed(2)}</p>
@@ -804,7 +919,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0"></div>
+                        <div className="h-2 w-2 rounded-full bg-black flex-shrink-0"></div>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1">Remaining (50%)</p>
                           <p className="text-2xl font-bold">${(selectedQuoteData.total * 0.5).toFixed(2)}</p>
@@ -955,7 +1070,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     <CardTitle className="text-lg flex items-center gap-2"><CalendarClock className='w-5 h-5'/>Time to Event</CardTitle>
                 </CardHeader>
                 <CardContent>
-                     <p className={`text-xl font-bold ${eventTimeInfo.isPast ? 'text-muted-foreground' : 'text-primary'}`}>{eventTimeInfo.text}</p>
+                     <p className={`text-xl font-bold ${eventTimeInfo.isPast ? 'text-muted-foreground' : 'text-black'}`}>{eventTimeInfo.text}</p>
                 </CardContent>
             </Card>
         </div>
@@ -986,7 +1101,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     <span className="text-muted-foreground">Location:</span>
                     <p className="font-medium mt-0.5">
                       {day.location === 'Studio' ? (
-                        <a href={STUDIO_ADDRESS.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:underline text-primary">
+                        <a href={STUDIO_ADDRESS.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:underline text-black">
                           <MapPin className="h-3 w-3" />
                           {STUDIO_ADDRESS.street}, {STUDIO_ADDRESS.city}
                         </a>
@@ -995,13 +1110,13 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       )}
                     </p>
                   </div>
-                  {day.addOns.length > 0 && (
+                  {day.addOns && day.addOns.length > 0 && (
                     <div className="sm:col-span-2">
                       <span className="text-muted-foreground">Add-ons:</span>
                       <ul className="mt-1.5 space-y-1">
                         {day.addOns.map((addon, i) => (
                           <li key={i} className="flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-black"></span>
                             <span className="text-sm">{addon}</span>
                           </li>
                         ))}
@@ -1017,18 +1132,18 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
             )}
 
             {quote.booking.trial && (
-              <div className="p-4 border-2 rounded-lg bg-gradient-to-br from-primary/5 to-primary/10">
+              <div className="p-4 border-2 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <h4 className="font-semibold text-base">Bridal Trial</h4>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span>{quote.booking.trial.date} at {quote.booking.trial.time}</span>
+                    <span>{quote.booking.trial?.date || 'N/A'} at {quote.booking.trial?.time || 'N/A'}</span>
                   </div>
                 </div>
               </div>
             )}
 
-            {quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0 && (
+            {quote.booking.bridalParty && quote.booking.bridalParty.services && quote.booking.bridalParty.services.length > 0 && (
               <div className="p-4 border-2 rounded-lg bg-gradient-to-br from-muted/30 to-muted/10">
                 <h4 className="font-semibold text-base mb-3">Bridal Party Services</h4>
                 <div className="space-y-2">
@@ -1211,7 +1326,22 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                                                                       const res = await fetch(`/api/bookings/${quote.id}`, { cache: 'no-store' });
                                                                       if (res.ok) {
                                                                           const { booking } = await res.json();
-                                                                          onUpdate(booking.finalQuote || booking.final_quote);
+                                                                          const updatedQuote = booking.finalQuote || booking.final_quote;
+                                                                          onUpdate(updatedQuote);
+                                                                          
+                                                                          // Track payment completion for Interac payments
+                                                                          if (updatedQuote.paymentDetails?.method === 'interac') {
+                                                                              const selectedQuote = updatedQuote.selectedQuote || 'lead';
+                                                                              const quoteData = updatedQuote.quotes[selectedQuote];
+                                                                              const advanceAmount = quoteData ? quoteData.total * 0.5 : 0;
+                                                                              trackPaymentComplete({
+                                                                                  bookingId: quote.id,
+                                                                                  amount: advanceAmount,
+                                                                                  currency: 'CAD',
+                                                                                  paymentType: 'advance',
+                                                                                  paymentMethod: 'interac',
+                                                                              });
+                                                                          }
                                                                       }
                                                                   } else {
                                                                       toast({
@@ -1465,7 +1595,20 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                                                                               const res = await fetch(`/api/bookings/${quote.id}`, { cache: 'no-store' });
                                                                               if (res.ok) {
                                                                                   const { booking } = await res.json();
-                                                                                  onUpdate(booking.finalQuote || booking.final_quote);
+                                                                                  const updatedQuote = booking.finalQuote || booking.final_quote;
+                                                                                  onUpdate(updatedQuote);
+                                                                                  
+                                                                                  // Track payment completion for Interac final payments
+                                                                                  if (updatedQuote.paymentDetails?.finalPayment?.method === 'interac') {
+                                                                                      const finalAmount = updatedQuote.paymentDetails.finalPayment.amount || 0;
+                                                                                      trackPaymentComplete({
+                                                                                          bookingId: quote.id,
+                                                                                          amount: finalAmount,
+                                                                                          currency: 'CAD',
+                                                                                          paymentType: 'final',
+                                                                                          paymentMethod: 'interac',
+                                                                                      });
+                                                                                  }
                                                                               }
                                                                           } else {
                                                                               toast({
@@ -1604,27 +1747,27 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 <div>
                   <h4 className="font-medium text-base mb-3">Package Details</h4>
                   <ul className="space-y-1 text-sm">
-                    {selectedQuoteData.lineItems.map((item, index) => (
+                    {selectedQuoteData.lineItems?.map((item, index) => (
                       <li key={index} className="flex justify-between">
-                        <span className={item.description.startsWith('  -') ? 'pl-4 text-muted-foreground' : ''}>{item.description}</span>
-                        <span>${item.price.toFixed(2)}</span>
+                        <span className={item.description?.startsWith('  -') ? 'pl-4 text-muted-foreground' : ''}>{item.description || 'Item'}</span>
+                        <span>${(item.price || 0).toFixed(2)}</span>
                       </li>
-                    ))}
+                    )) || <li className="text-muted-foreground text-sm">No items</li>}
                   </ul>
                   <Separator className="my-3" />
                   <div className="space-y-2">
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm text-muted-foreground">Subtotal:</span>
-                      <span className="font-medium">${selectedQuoteData.subtotal.toFixed(2)}</span>
+                      <span className="font-medium">${(selectedQuoteData.subtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm text-muted-foreground">GST (13%):</span>
-                      <span className="font-medium">${selectedQuoteData.tax.toFixed(2)}</span>
+                      <span className="font-medium">${(selectedQuoteData.tax || 0).toFixed(2)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between items-baseline">
                       <span className="font-bold text-base">Total Amount:</span>
-                      <span className="font-bold text-primary text-lg">${selectedQuoteData.total.toFixed(2)}</span>
+                      <span className="font-bold text-primary text-lg">${(selectedQuoteData.total || 0).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -1749,17 +1892,17 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-1 text-sm">
-                      {quote.quotes[tier].lineItems.map((item, index) => (
+                      {quote.quotes[tier]?.lineItems?.map((item, index) => (
                         <li key={index} className="flex justify-between">
-                          <span className={item.description.startsWith('  -') ? 'pl-4 text-muted-foreground' : ''}>{item.description}</span>
-                          <span>${quote.quotes[tier].lineItems[index].price.toFixed(2)}</span>
+                          <span className={item.description?.startsWith('  -') ? 'pl-4 text-muted-foreground' : ''}>{item.description || 'Item'}</span>
+                          <span>${(item.price || 0).toFixed(2)}</span>
                         </li>
-                      ))}
+                      )) || <li className="text-muted-foreground text-sm">No items</li>}
                     </ul>
                     <Separator className="my-2" />
                     <div className="flex justify-between items-baseline">
                       <span className="font-bold">Total</span>
-                      <span className="font-bold text-primary">${quote.quotes[tier].total.toFixed(2)}</span>
+                      <span className="font-bold text-primary">${(quote.quotes[tier]?.total || 0).toFixed(2)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -1853,7 +1996,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 const willNotSend = hasAdvancePayment || quote.status === 'confirmed';
                 
                 return (
-                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-3h' ? 'border-primary bg-primary/5' : willNotSend ? 'bg-muted/50' : ''}`}>
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-3h' ? 'border-black bg-gray-50' : willNotSend ? 'bg-muted/50' : ''}`}>
                     <div className="flex items-center gap-3 flex-1">
                       <div className="flex-shrink-0">
                         {emailStatus['followup-3h']?.sent ? (
@@ -1940,7 +2083,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 const willNotSend = hasAdvancePayment || quote.status === 'confirmed';
                 
                 return (
-                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-6h' ? 'border-primary bg-primary/5' : willNotSend ? 'bg-muted/50' : ''}`}>
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-6h' ? 'border-black bg-gray-50' : willNotSend ? 'bg-muted/50' : ''}`}>
                     <div className="flex items-center gap-3 flex-1">
                       <div className="flex-shrink-0">
                         {emailStatus['followup-6h']?.sent ? (
@@ -2020,14 +2163,14 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 );
               })()}
 
-              {/* Email 4 - 24H Follow-up (only for mobile bookings) */}
-              {hasMobileService && (() => {
+              {/* Email 4 - 24H Follow-up */}
+              {(() => {
                 const hasAdvancePayment = quote.paymentDetails && 
                   (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
                 const willNotSend = hasAdvancePayment || quote.status === 'confirmed';
                 
                 return (
-                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-24h' ? 'border-primary bg-primary/5' : willNotSend ? 'bg-muted/50' : ''}`}>
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-24h' ? 'border-black bg-gray-50' : willNotSend ? 'bg-muted/50' : ''}`}>
                     <div className="flex items-center gap-3 flex-1">
                       <div className="flex-shrink-0">
                         {emailStatus['followup-24h']?.sent ? (
@@ -2042,7 +2185,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">Email 4 - 24 Hour Follow-up (Travel Fee Waiver)</p>
+                          <p className="font-medium">Email 4 - 24 Hour Follow-up</p>
                           {nextEmail?.type === 'followup-24h' && !willNotSend && (
                             <Badge variant="outline" className="text-xs">Next</Badge>
                           )}
@@ -2107,7 +2250,268 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 );
               })()}
 
-              {/* Email 5 - Event Reminder 24H (only for confirmed bookings with payment) */}
+              {/* Email 3 - 3D Follow-up */}
+              {(() => {
+                const hasAdvancePayment = quote.paymentDetails && 
+                  (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+                const willNotSend = hasAdvancePayment || quote.status === 'confirmed';
+                
+                return (
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-3d' ? 'border-black bg-gray-50' : willNotSend ? 'bg-muted/50' : ''}`}>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex-shrink-0">
+                        {emailStatus['followup-3d']?.sent ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : willNotSend ? (
+                          <XCircle className="h-5 w-5 text-orange-500" />
+                        ) : emailStatus['followup-3d']?.scheduledFor && isFuture(new Date(emailStatus['followup-3d'].scheduledFor)) ? (
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Email 5 - 3 Day Follow-up</p>
+                          {nextEmail?.type === 'followup-3d' && !willNotSend && (
+                            <Badge variant="outline" className="text-xs">Next</Badge>
+                          )}
+                          {willNotSend && (
+                            <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">Cancelled</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {emailStatus['followup-3d']?.sent 
+                            ? emailStatus['followup-3d']?.sentAt 
+                              ? `Sent on ${format(new Date(emailStatus['followup-3d'].sentAt), 'PPp')}`
+                              : 'Sent'
+                            : willNotSend
+                              ? hasAdvancePayment 
+                                ? 'Cancelled - Advance payment made'
+                                : 'Cancelled - Booking confirmed'
+                              : emailStatus['followup-3d']?.scheduledFor
+                                ? (() => {
+                                    const scheduledDate = new Date(emailStatus['followup-3d'].scheduledFor);
+                                    const isInFuture = isFuture(scheduledDate);
+                                    return isInFuture
+                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
+                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                  })()
+                                : 'Not scheduled'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendTest3D}
+                        disabled={isSendingTest3D}
+                        className="text-xs"
+                      >
+                        {isSendingTest3D ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-1 h-3 w-3" />
+                            Test Send
+                          </>
+                        )}
+                      </Button>
+                      <Badge variant={
+                        emailStatus['followup-3d']?.sent ? 'default' : 
+                        willNotSend ? 'destructive' :
+                        emailStatus['followup-3d']?.scheduledFor ? 'secondary' : 
+                        'outline'
+                      }>
+                        {emailStatus['followup-3d']?.sent ? 'Sent' : 
+                         willNotSend ? 'Cancelled' :
+                         emailStatus['followup-3d']?.scheduledFor ? 'Scheduled' : 
+                         'Not Scheduled'}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Email 4 - 6D Follow-up */}
+              {(() => {
+                const hasAdvancePayment = quote.paymentDetails && 
+                  (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+                const willNotSend = hasAdvancePayment || quote.status === 'confirmed';
+                
+                return (
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-6d' ? 'border-black bg-gray-50' : willNotSend ? 'bg-muted/50' : ''}`}>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex-shrink-0">
+                        {emailStatus['followup-6d']?.sent ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : willNotSend ? (
+                          <XCircle className="h-5 w-5 text-orange-500" />
+                        ) : emailStatus['followup-6d']?.scheduledFor && isFuture(new Date(emailStatus['followup-6d'].scheduledFor)) ? (
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Email 6 - 6 Day Follow-up (5% Discount)</p>
+                          {nextEmail?.type === 'followup-6d' && !willNotSend && (
+                            <Badge variant="outline" className="text-xs">Next</Badge>
+                          )}
+                          {willNotSend && (
+                            <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">Cancelled</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {emailStatus['followup-6d']?.sent 
+                            ? emailStatus['followup-6d']?.sentAt 
+                              ? `Sent on ${format(new Date(emailStatus['followup-6d'].sentAt), 'PPp')}`
+                              : 'Sent'
+                            : willNotSend
+                              ? hasAdvancePayment 
+                                ? 'Cancelled - Advance payment made'
+                                : 'Cancelled - Booking confirmed'
+                              : emailStatus['followup-6d']?.scheduledFor
+                                ? (() => {
+                                    const scheduledDate = new Date(emailStatus['followup-6d'].scheduledFor);
+                                    const isInFuture = isFuture(scheduledDate);
+                                    return isInFuture
+                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
+                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                  })()
+                                : 'Not scheduled'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendTest6D}
+                        disabled={isSendingTest6D}
+                        className="text-xs"
+                      >
+                        {isSendingTest6D ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-1 h-3 w-3" />
+                            Test Send
+                          </>
+                        )}
+                      </Button>
+                      <Badge variant={
+                        emailStatus['followup-6d']?.sent ? 'default' : 
+                        willNotSend ? 'destructive' :
+                        emailStatus['followup-6d']?.scheduledFor ? 'secondary' : 
+                        'outline'
+                      }>
+                        {emailStatus['followup-6d']?.sent ? 'Sent' : 
+                         willNotSend ? 'Cancelled' :
+                         emailStatus['followup-6d']?.scheduledFor ? 'Scheduled' : 
+                         'Not Scheduled'}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Email 7 - 30D Follow-up */}
+              {(() => {
+                const hasAdvancePayment = quote.paymentDetails && 
+                  (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+                const willNotSend = hasAdvancePayment || quote.status === 'confirmed';
+                
+                return (
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'followup-30d' ? 'border-black bg-gray-50' : willNotSend ? 'bg-muted/50' : ''}`}>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex-shrink-0">
+                        {emailStatus['followup-30d']?.sent ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : willNotSend ? (
+                          <XCircle className="h-5 w-5 text-orange-500" />
+                        ) : emailStatus['followup-30d']?.scheduledFor && isFuture(new Date(emailStatus['followup-30d'].scheduledFor)) ? (
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Email 7 - 30 Day Follow-up</p>
+                          {nextEmail?.type === 'followup-30d' && !willNotSend && (
+                            <Badge variant="outline" className="text-xs">Next</Badge>
+                          )}
+                          {willNotSend && (
+                            <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">Cancelled</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {emailStatus['followup-30d']?.sent 
+                            ? emailStatus['followup-30d']?.sentAt 
+                              ? `Sent on ${format(new Date(emailStatus['followup-30d'].sentAt), 'PPp')}`
+                              : 'Sent'
+                            : willNotSend
+                              ? hasAdvancePayment 
+                                ? 'Cancelled - Advance payment made'
+                                : 'Cancelled - Booking confirmed'
+                              : emailStatus['followup-30d']?.scheduledFor
+                                ? (() => {
+                                    const scheduledDate = new Date(emailStatus['followup-30d'].scheduledFor);
+                                    const isInFuture = isFuture(scheduledDate);
+                                    return isInFuture
+                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
+                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                  })()
+                                : 'Not scheduled'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendTest30D}
+                        disabled={isSendingTest30D}
+                        className="text-xs"
+                      >
+                        {isSendingTest30D ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-1 h-3 w-3" />
+                            Test Send
+                          </>
+                        )}
+                      </Button>
+                      <Badge variant={
+                        emailStatus['followup-30d']?.sent ? 'default' : 
+                        willNotSend ? 'destructive' :
+                        emailStatus['followup-30d']?.scheduledFor ? 'secondary' : 
+                        'outline'
+                      }>
+                        {emailStatus['followup-30d']?.sent ? 'Sent' : 
+                         willNotSend ? 'Cancelled' :
+                         emailStatus['followup-30d']?.scheduledFor ? 'Scheduled' : 
+                         'Not Scheduled'}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Email 8 - Event Reminder 24H (only for confirmed bookings with payment) */}
               {(() => {
                 const hasAdvancePayment = quote.paymentDetails && 
                   (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
@@ -2117,7 +2521,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 if (!shouldShow) return null;
                 
                 return (
-                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'event-reminder-24h' ? 'border-primary bg-primary/5' : ''}`}>
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'event-reminder-24h' ? 'border-black bg-gray-50' : ''}`}>
                     <div className="flex items-center gap-3 flex-1">
                       <div className="flex-shrink-0">
                         {emailStatus['event-reminder-24h']?.sent ? (

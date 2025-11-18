@@ -21,20 +21,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border (gray)
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '20px',
-  borderBottom: '1px solid hsl(345, 20%, 90%)', // --border
+  borderBottom: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)', // --primary
+  color: 'hsl(0, 0%, 0%)', // --primary (black)
   margin: '0 0 12px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -60,8 +60,8 @@ const sectionTitle = {
 };
 
 const instructionBox = {
-    background: 'hsl(345, 60%, 94%)', // --accent
-    border: '1px solid hsl(345, 20%, 90%)', // --border
+    background: 'hsl(0, 0%, 90%)', // --accent (light gray)
+    border: '1px solid hsl(0, 0%, 85%)', // --border (gray)
     borderRadius: '12px',
     padding: '30px',
     textAlign: 'center' as const,
@@ -69,7 +69,7 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(345, 80%, 50%)', // --primary
+  backgroundColor: 'hsl(0, 0%, 0%)', // --primary (black)
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -78,7 +78,7 @@ const button = {
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.25)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
 };
 
 const footer = {
@@ -90,7 +90,7 @@ const footer = {
 
 const bookingSummaryCard = {
     padding: '24px',
-    border: '1px solid hsl(345, 20%, 90%)', // --border
+    border: '1px solid hsl(0, 0%, 85%)', // --border (gray)
     borderRadius: '12px',
     backgroundColor: '#ffffff',
     marginBottom: '20px',
@@ -99,7 +99,7 @@ const bookingSummaryCard = {
 const bookingSummaryTitle = {
     fontSize: '20px',
     fontWeight: 'bold',
-    color: 'hsl(345, 80%, 50%)', // --primary
+    color: 'hsl(0, 0%, 0%)', // --primary (black)
     margin: '0 0 4px 0',
     fontFamily: "'Belleza', sans-serif",
 };
@@ -174,12 +174,12 @@ const FollowUpEmailTemplate: React.FC<Readonly<FollowUpEmailProps>> = ({ quote, 
               // Show only the selected package
               const selectedQuoteData = quote.quotes[quote.selectedQuote];
               return (
-                <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(345, 20%, 90%)', marginTop: '20px' }}>
+                <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(0, 0%, 85%)', marginTop: '20px' }}>
                   <h4 style={{...bookingSummaryTitle, fontSize: '16px', marginBottom: '8px', textAlign: 'center'}}>
                     {quote.selectedQuote === 'lead' ? 'Lead Artist - Anum' : 'Team Package'}
                   </h4>
                   <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${selectedQuoteData.total.toFixed(2)}</strong></p>
-                  <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(345, 80%, 50%)' }}>50% Advance: <strong>${(selectedQuoteData.total * 0.5).toFixed(2)}</strong></p>
+                  <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${(selectedQuoteData.total * 0.5).toFixed(2)}</strong></p>
                   <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${(selectedQuoteData.total * 0.5).toFixed(2)}</strong></p>
                 </div>
               );
@@ -188,16 +188,16 @@ const FollowUpEmailTemplate: React.FC<Readonly<FollowUpEmailProps>> = ({ quote, 
               return (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                    <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(345, 20%, 90%)' }}>
+                    <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(0, 0%, 85%)' }}>
                       <h4 style={{...bookingSummaryTitle, fontSize: '16px', marginBottom: '8px', textAlign: 'center'}}>Option 1: Lead Artist</h4>
                       <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${quote.quotes.lead.total.toFixed(2)}</strong></p>
-                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(345, 80%, 50%)' }}>50% Advance: <strong>${(quote.quotes.lead.total * 0.5).toFixed(2)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${(quote.quotes.lead.total * 0.5).toFixed(2)}</strong></p>
                       <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${(quote.quotes.lead.total * 0.5).toFixed(2)}</strong></p>
                     </div>
-                    <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(345, 20%, 90%)' }}>
+                    <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', border: '1px solid hsl(0, 0%, 85%)' }}>
                       <h4 style={{...bookingSummaryTitle, fontSize: '16px', marginBottom: '8px', textAlign: 'center'}}>Option 2: Team</h4>
                       <p style={{ margin: '4px 0', fontSize: '14px' }}>Total: <strong>${quote.quotes.team.total.toFixed(2)}</strong></p>
-                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(345, 80%, 50%)' }}>50% Advance: <strong>${(quote.quotes.team.total * 0.5).toFixed(2)}</strong></p>
+                      <p style={{ margin: '4px 0', fontSize: '14px', color: 'hsl(0, 0%, 0%)' }}>50% Advance: <strong>${(quote.quotes.team.total * 0.5).toFixed(2)}</strong></p>
                       <p style={{ margin: '4px 0', fontSize: '14px' }}>50% Due on Day: <strong>${(quote.quotes.team.total * 0.5).toFixed(2)}</strong></p>
                     </div>
                   </div>
@@ -243,7 +243,7 @@ const FollowUpEmailTemplate: React.FC<Readonly<FollowUpEmailProps>> = ({ quote, 
       </p>
       
       <div style={footer}>
-        <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(345, 80%, 50%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+        <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
       </div>
     </div>
   </div>

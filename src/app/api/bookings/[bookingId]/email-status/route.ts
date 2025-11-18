@@ -30,6 +30,9 @@ export async function GET(
 					'followup-3h': { sent: false, sentAt: null, scheduledFor: null },
 					'followup-6h': { sent: false, sentAt: null, scheduledFor: null },
 					'followup-24h': { sent: false, sentAt: null, scheduledFor: null },
+					'followup-3d': { sent: false, sentAt: null, scheduledFor: null },
+					'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
+					'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 					'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
 				}
 			});
@@ -70,6 +73,9 @@ export async function GET(
 			'followup-3h': { sent: false, sentAt: null, scheduledFor: null },
 			'followup-6h': { sent: false, sentAt: null, scheduledFor: null },
 			'followup-24h': { sent: false, sentAt: null, scheduledFor: null },
+			'followup-3d': { sent: false, sentAt: null, scheduledFor: null },
+			'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
+			'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 			'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
 		};
 
@@ -103,6 +109,9 @@ export async function GET(
 				'followup-3h': { sent: false, sentAt: null, scheduledFor: null },
 				'followup-6h': { sent: false, sentAt: null, scheduledFor: null },
 				'followup-24h': { sent: false, sentAt: null, scheduledFor: null },
+				'followup-3d': { sent: false, sentAt: null, scheduledFor: null },
+				'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
+				'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 				'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
 			}
 		});

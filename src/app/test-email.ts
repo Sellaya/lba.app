@@ -12,7 +12,7 @@ export async function sendTestEmailAction(): Promise<{success: boolean; message:
   console.log('Attempting to send test email...');
   const testQuote: FinalQuote = {
     id: 'TEST-001',
-    contact: { name: 'Test User', email: 'booking@sellaya.ca', phone: 'N/A' },
+    contact: { name: 'Test User', email: 'orders@looksbyanum.com', phone: 'N/A' },
     booking: {
       days: [
         {
@@ -54,7 +54,7 @@ export async function sendTestEmailAction(): Promise<{success: boolean; message:
   try {
     await sendQuoteEmail(testQuote);
     console.log('Test email action completed successfully.');
-    return { success: true, message: `Test email sent successfully! Please check the inboxes for 'booking@sellaya.ca' and the admin email.` };
+    return { success: true, message: `Test email sent successfully! Please check the inboxes for 'orders@looksbyanum.com' and the admin email.` };
   } catch (error: any) {
     console.error('Test email action failed:', error);
     // Return a user-friendly error message

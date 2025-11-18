@@ -9,7 +9,7 @@ interface QuoteEmailTemplateProps {
 
 // --- Inline CSS Styles using the App's Theme Colors ---
 const main = {
-  backgroundColor: 'hsl(345, 60%, 98%)', // Light Gray/Off-white from --background
+  backgroundColor: 'hsl(345, 60%, 98%)', // Keep background as is
   fontFamily: "'Alegreya', 'Helvetica Neue', Helvetica, Arial, sans-serif",
   padding: '20px',
 };
@@ -22,20 +22,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border (gray)
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '20px',
-  borderBottom: '1px solid hsl(345, 20%, 90%)', // --border
+  borderBottom: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)', // Deep Purple-Pink from --primary
+  color: 'hsl(0, 0%, 0%)', // Black from --primary
   margin: '0 0 12px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -61,7 +61,7 @@ const sectionTitle = {
 };
 
 const button = {
-  backgroundColor: 'hsl(345, 80%, 50%)', // --primary
+  backgroundColor: 'hsl(0, 0%, 0%)', // --primary (black)
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -70,12 +70,12 @@ const button = {
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.25)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
 };
 
 const bookingSummaryCard = {
     padding: '24px',
-    border: '1px solid hsl(345, 20%, 90%)', // --border
+    border: '1px solid hsl(0, 0%, 85%)', // --border (gray)
     borderRadius: '12px',
     backgroundColor: 'hsl(345, 60%, 98%)', // --background
     marginBottom: '20px',
@@ -84,7 +84,7 @@ const bookingSummaryCard = {
 const bookingSummaryTitle = {
     fontSize: '20px',
     fontWeight: 'bold',
-    color: 'hsl(345, 80%, 50%)', // --primary
+    color: 'hsl(0, 0%, 0%)', // --primary
     margin: '0 0 4px 0',
     fontFamily: "'Belleza', sans-serif",
 };
@@ -105,13 +105,13 @@ const bulletPoint = {
     position: 'absolute' as const,
     left: '0px',
     top: '2px',
-    color: 'hsl(345, 80%, 50%)', // --primary
+    color: 'hsl(0, 0%, 0%)', // --primary
     fontSize: '12px',
 }
 
 const priceBox = { 
   padding: '24px', 
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border (gray)
   borderRadius: '12px', 
   marginBottom: '24px', 
   backgroundColor: '#ffffff' 
@@ -123,7 +123,7 @@ const priceTitle = {
   textAlign: 'center' as const,
   marginTop: 0, 
   marginBottom: '24px',
-  color: 'hsl(345, 80%, 50%)', // --primary
+  color: 'hsl(0, 0%, 0%)', // --primary
 };
 
 const priceTable = {
@@ -145,7 +145,7 @@ const priceValueCell = {
 };
 
 const totalRow = {
-  borderTop: '1px solid hsl(345, 20%, 90%)',
+  borderTop: '1px solid hsl(0, 0%, 85%)',
 };
 
 const totalCell = {
@@ -166,7 +166,7 @@ const grandTotalLabelCell = {
 const grandTotalPriceCell = {
   ...grandTotalLabelCell,
   textAlign: 'right' as const,
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   fontSize: '24px',
 };
 
@@ -253,7 +253,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
               <div key={index} style={bookingSummaryCard}>
                 <p style={bookingSummaryTitle}>Day {index + 1}: {day.serviceName}</p>
                 <p style={bookingSummarySubtitle}>{day.date} at {day.getReadyTime}</p>
-                <hr style={{ border: 'none', borderTop: '1px solid hsl(345, 20%, 92%)', margin: '16px 0' }} />
+                <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />
                 <p style={bookingSummaryDetail}><span style={bulletPoint}>&#9679;</span> Style: {day.serviceOption}</p>
                 <p style={bookingSummaryDetail}><span style={bulletPoint}>&#9679;</span> Location: {day.location}</p>
                 {day.addOns.length > 0 && 
@@ -277,7 +277,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
             {quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0 && (
               <div style={bookingSummaryCard}>
                 <p style={bookingSummaryTitle}>Bridal Party Services</p>
-                 <hr style={{ border: 'none', borderTop: '1px solid hsl(345, 20%, 92%)', margin: '16px 0' }} />
+                 <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />
                 {quote.booking.bridalParty.services.map((partySvc, i) => (
                   <p key={i} style={bookingSummaryDetail}><span style={bulletPoint}>&#9679;</span> {partySvc.service} (x{partySvc.quantity})</p>
                 ))}
@@ -288,7 +288,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
             {quote.booking.address && (
               <div style={bookingSummaryCard}>
                 <p style={bookingSummaryTitle}>Service Address</p>
-                 <hr style={{ border: 'none', borderTop: '1px solid hsl(345, 20%, 92%)', margin: '16px 0' }} />
+                 <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />
                 <p style={{...paragraph, margin: 0, fontStyle: 'italic' }}>
                   {quote.booking.address.street},<br/>
                   {quote.booking.address.city}, {quote.booking.address.province}, {quote.booking.address.postalCode}
@@ -309,8 +309,8 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
                     <td style={priceValueCell}>: ${quote.quotes[quote.selectedQuote].total.toFixed(2)}</td>
                   </tr>
                   <tr style={totalRow}>
-                    <td style={{...totalCell, fontWeight: 600, color: 'hsl(345, 80%, 50%)'}}>50% Advance Payment (Required Now):</td>
-                    <td style={{...priceValueCell, ...totalCell, color: 'hsl(345, 80%, 50%)', fontWeight: 700}}>: ${(quote.quotes[quote.selectedQuote].total * 0.5).toFixed(2)}</td>
+                    <td style={{...totalCell, fontWeight: 600, color: 'hsl(0, 0%, 0%)'}}>50% Advance Payment (Required Now):</td>
+                    <td style={{...priceValueCell, ...totalCell, color: 'hsl(0, 0%, 0%)', fontWeight: 700}}>: ${(quote.quotes[quote.selectedQuote].total * 0.5).toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td style={priceItemCell}>50% Remaining Balance (Due on Booking Day):</td>
@@ -326,7 +326,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
           </p>
           
           <div style={footer}>
-            <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(345, 80%, 50%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+            <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
           </div>
         </div>
       </div>
@@ -351,7 +351,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
           <p style={paragraph}>
             Thank you for your interest in our makeup services! We've prepared two personalized quote options for you based on your selections. Each package includes all the services you requested, and you can choose the one that best fits your needs and budget.
           </p>
-          <p style={{...paragraph, fontWeight: 600, color: 'hsl(345, 80%, 50%)'}}>
+          <p style={{...paragraph, fontWeight: 600, color: 'hsl(0, 0%, 0%)'}}>
             You can open each quote separately to view full details, compare pricing (including 13% tax), see the required 50% advance payment, and proceed with your booking.
           </p>
         </div>
@@ -360,7 +360,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
           <h2 style={sectionTitle}>Your Two Available Packages</h2>
           
           {/* Lead Artist Quote Card */}
-          <div style={{...priceBox, marginBottom: '32px', backgroundColor: '#ffffff', border: '2px solid hsl(345, 20%, 90%)'}}>
+          <div style={{...priceBox, marginBottom: '32px', backgroundColor: '#ffffff', border: '2px solid hsl(0, 0%, 85%)'}}>
             <h3 style={{...priceTitle, fontSize: '24px', marginBottom: '8px'}}>Lead Makeup Artist – Anum</h3>
             <p style={{...paragraph, textAlign: 'center', fontSize: '14px', color: '#777', marginBottom: '20px', marginTop: 0}}>
               Premium service with our lead artist
@@ -368,14 +368,14 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
             
             <div style={{ marginBottom: '20px' }}>
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '36px', fontWeight: 700, color: 'hsl(345, 80%, 50%)', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '36px', fontWeight: 700, color: 'hsl(0, 0%, 0%)', fontFamily: 'monospace' }}>
                   ${quote.quotes.lead.total.toFixed(2)}
                 </span>
                 <p style={{ fontSize: '13px', color: '#777', margin: '4px 0 0 0' }}>Total (including 13% GST)</p>
               </div>
               <div style={{ padding: '12px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', marginTop: '16px' }}>
                 <p style={{ fontSize: '14px', margin: '4px 0', textAlign: 'center' }}>
-                  <strong style={{ color: 'hsl(345, 80%, 50%)' }}>50% Advance:</strong> ${(quote.quotes.lead.total * 0.5).toFixed(2)} • 
+                  <strong style={{ color: 'hsl(0, 0%, 0%)' }}>50% Advance:</strong> ${(quote.quotes.lead.total * 0.5).toFixed(2)} • 
                   <strong> 50% Due on Day:</strong> ${(quote.quotes.lead.total * 0.5).toFixed(2)}
                 </p>
               </div>
@@ -389,7 +389,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
           </div>
 
           {/* Team Package Quote Card */}
-          <div style={{...priceBox, marginBottom: '32px', backgroundColor: '#ffffff', border: '2px solid hsl(345, 20%, 90%)'}}>
+          <div style={{...priceBox, marginBottom: '32px', backgroundColor: '#ffffff', border: '2px solid hsl(0, 0%, 85%)'}}>
             <h3 style={{...priceTitle, fontSize: '24px', marginBottom: '8px'}}>Team Package</h3>
             <p style={{...paragraph, textAlign: 'center', fontSize: '14px', color: '#777', marginBottom: '20px', marginTop: 0}}>
               Professional service with our team
@@ -397,14 +397,14 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
             
             <div style={{ marginBottom: '20px' }}>
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '36px', fontWeight: 700, color: 'hsl(345, 80%, 50%)', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '36px', fontWeight: 700, color: 'hsl(0, 0%, 0%)', fontFamily: 'monospace' }}>
                   ${quote.quotes.team.total.toFixed(2)}
                 </span>
                 <p style={{ fontSize: '13px', color: '#777', margin: '4px 0 0 0' }}>Total (including 13% GST)</p>
               </div>
               <div style={{ padding: '12px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '8px', marginTop: '16px' }}>
                 <p style={{ fontSize: '14px', margin: '4px 0', textAlign: 'center' }}>
-                  <strong style={{ color: 'hsl(345, 80%, 50%)' }}>50% Advance:</strong> ${(quote.quotes.team.total * 0.5).toFixed(2)} • 
+                  <strong style={{ color: 'hsl(0, 0%, 0%)' }}>50% Advance:</strong> ${(quote.quotes.team.total * 0.5).toFixed(2)} • 
                   <strong> 50% Due on Day:</strong> ${(quote.quotes.team.total * 0.5).toFixed(2)}
                 </p>
               </div>
@@ -417,7 +417,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
             </div>
           </div>
 
-          <div style={{ padding: '24px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '12px', border: '1px solid hsl(345, 20%, 90%)', marginTop: '32px' }}>
+          <div style={{ padding: '24px', backgroundColor: 'hsl(345, 60%, 98%)', borderRadius: '12px', border: '1px solid hsl(0, 0%, 85%)', marginTop: '32px' }}>
             <p style={{...paragraph, textAlign: 'center', marginBottom: '12px', fontWeight: 600, fontSize: '17px'}}>
               How to Choose Your Package
             </p>
@@ -436,7 +436,7 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
         </p>
         
         <div style={footer}>
-          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(345, 80%, 50%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
         </div>
       </div>
     </div>

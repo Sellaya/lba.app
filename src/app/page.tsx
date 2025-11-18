@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Loader2, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import Image from 'next/image';
 
 export default function Home() {
   const [bookingId, setBookingId] = useState('');
@@ -93,13 +94,27 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="py-8 px-4 md:px-8">
-        <h1 className="font-headline text-5xl md:text-6xl font-bold text-primary text-center tracking-wider animate-in fade-in slide-in-from-top-4 duration-1000">Looks by Anum</h1>
-        <p className="text-center text-lg text-muted-foreground mt-2 font-body animate-in fade-in slide-in-from-top-4 duration-1000 delay-200">Your personal makeup artist for every occasion.</p>
+      <header className="py-2 sm:py-3 px-4 md:px-8">
+        <div className="flex flex-col items-center justify-center space-y-2 sm:space-y-3 animate-in fade-in slide-in-from-top-4 duration-1000">
+          <a href="https://looksbyanum.com" target="_blank" rel="noopener noreferrer" className="relative w-48 h-48 sm:w-52 sm:h-52 md:w-56 md:h-56 hover:opacity-80 transition-opacity cursor-pointer">
+            <Image
+              src="/LBA.png"
+              alt="Looks by Anum Logo"
+              fill
+              sizes="(max-width: 640px) 192px, (max-width: 768px) 208px, 224px"
+              className="object-contain"
+              priority
+            />
+          </a>
+          <div className="text-center">
+            <h1 className="font-headline text-4xl md:text-5xl font-bold text-black tracking-wider">Looks by Anum</h1>
+            <p className="text-center text-lg text-muted-foreground mt-1.5 sm:mt-2 font-body animate-in fade-in slide-in-from-top-4 duration-1000 delay-200">Your personal makeup artist for every occasion.</p>
+          </div>
+        </div>
       </header>
 
-      <main className="container mx-auto px-4 pb-16">
-        <div className="max-w-2xl mx-auto my-12 animate-in fade-in slide-in-from-top-4 duration-1000 delay-300">
+      <main className="container mx-auto px-3 sm:px-4 pb-8 sm:pb-12 md:pb-16">
+        <div className="max-w-2xl mx-auto my-4 sm:my-5 md:my-6 animate-in fade-in slide-in-from-top-4 duration-1000 delay-300">
             <div className="text-center">
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
@@ -173,9 +188,9 @@ export default function Home() {
             </div>
         </div>
 
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-1000 delay-400">
-            <h2 className="font-headline text-4xl md:text-5xl font-bold text-foreground">Book Your Session</h2>
-            <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto font-body">
+        <div className="text-center mb-4 sm:mb-5 md:mb-6 animate-in fade-in slide-in-from-top-4 duration-1000 delay-400">
+            <h2 className="font-headline text-3xl sm:text-4xl md:text-5xl font-bold text-foreground">Book Your Session</h2>
+            <p className="text-base sm:text-lg text-muted-foreground mt-1.5 sm:mt-2 max-w-2xl mx-auto font-body px-3 sm:px-0">
               Select your services, choose your dates, and get an instant quote for a flawless makeup experience.
             </p>
         </div>

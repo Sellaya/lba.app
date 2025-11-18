@@ -18,6 +18,7 @@ import type { FinalQuote } from '@/lib/types';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import Image from 'next/image';
 
 function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' | 'interac'): { text: string; variant: 'secondary' | 'destructive' | 'default' } {
     switch (status) {
@@ -442,7 +443,7 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <Loader2 className="h-12 w-12 animate-spin text-black" />
         <p className="mt-4 text-muted-foreground">Loading Bookings...</p>
       </div>
     );
@@ -483,7 +484,7 @@ export default function AdminDashboard() {
           onClick={() => setShowWelcome(false)}
         >
           <div 
-            className="bg-background/95 backdrop-blur-xl border border-primary/20 rounded-2xl shadow-xl p-10 max-w-lg mx-4 animate-slideUp relative"
+            className="bg-background/95 backdrop-blur-xl border border-gray-300 rounded-2xl shadow-xl p-10 max-w-lg mx-4 animate-slideUp relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -494,8 +495,17 @@ export default function AdminDashboard() {
               <X className="w-4 h-4" />
             </button>
             <div className="text-center space-y-6">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 mb-2 animate-zoomIn" style={{ animationDelay: '0.15s', animationFillMode: 'both' }}>
-                <CheckCircle2 className="w-7 h-7 text-primary" />
+              <div className="inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-white to-gray-50 p-3 shadow-md border border-gray-200 mb-2 animate-zoomIn" style={{ animationDelay: '0.15s', animationFillMode: 'both' }}>
+                <div className="relative w-16 h-16">
+                  <Image
+                    src="/LBA.png"
+                    alt="Looks by Anum Logo"
+                    fill
+                    className="object-contain"
+                    priority
+                    sizes="64px"
+                  />
+                </div>
               </div>
               <div className="space-y-3">
                 <h1 className="text-2xl font-headline font-semibold text-foreground tracking-tight animate-fadeInSlideDown" style={{ animationDelay: '0.25s', animationFillMode: 'both' }}>
@@ -512,7 +522,7 @@ export default function AdminDashboard() {
                     href="https://www.instagram.com/sellayadigital" 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="text-primary/80 hover:text-primary transition-colors font-medium"
+                    className="text-gray-700 hover:text-black transition-colors font-medium"
                   >
                     Sellaya
                   </a>
@@ -524,8 +534,17 @@ export default function AdminDashboard() {
       )}
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-        <div className="flex h-16 items-center border-b px-6">
-          <h1 className="font-headline text-xl font-bold text-primary tracking-wider">Looks by Anum</h1>
+        <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <Image
+              src="/LBA.png"
+              alt="Looks by Anum Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+          <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
@@ -544,7 +563,7 @@ export default function AdminDashboard() {
                   type="button"
                   className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-black text-white'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >

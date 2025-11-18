@@ -12,7 +12,7 @@ export function ContractDisplay({ quote, selectedTier }: { quote: FinalQuote; se
   return (
     <div className="p-4 sm:p-6 border rounded-lg bg-background/50 prose prose-sm max-w-none prose-headings:font-headline prose-h4:text-lg prose-h4:mb-2 prose-p:my-2 prose-ul:my-2">
       <h4>1. Parties</h4>
-      <p>This Service Agreement ("Agreement") is made between <strong>{quote.contact.name}</strong> ("Client") and <strong>Sellaya.ca</strong> ("Artist").</p>
+      <p>This Service Agreement ("Agreement") is made between <strong>{quote.contact.name}</strong> ("Client") and <strong>Looks by Anum</strong> ("Artist").</p>
 
       <h4>2. Services</h4>
       <p>The Artist agrees to provide the following makeup and/or hair services:</p>

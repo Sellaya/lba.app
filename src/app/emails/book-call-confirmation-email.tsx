@@ -22,20 +22,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '20px',
-  borderBottom: '1px solid hsl(345, 20%, 90%)', // --border
+  borderBottom: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)', // Deep Purple-Pink from --primary
+  color: 'hsl(0, 0%, 0%)', // Deep Purple-Pink from --primary
   margin: '0 0 12px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -53,7 +53,7 @@ const section = {
 
 const infoCard = {
   padding: '24px',
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border
   borderRadius: '12px',
   backgroundColor: 'hsl(345, 60%, 98%)', // --background
   marginBottom: '20px',
@@ -62,14 +62,14 @@ const infoCard = {
 const infoTitle = {
   fontSize: '20px',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)', // --primary
+  color: 'hsl(0, 0%, 0%)', // --primary
   margin: '0 0 16px 0',
   fontFamily: "'Belleza', sans-serif",
 };
 
 const infoRow = {
   padding: '8px 0',
-  borderBottom: '1px solid hsl(345, 20%, 90%)',
+  borderBottom: '1px solid hsl(0, 0%, 85%)',
 };
 
 const infoLabel = {
@@ -151,10 +151,10 @@ export default function BookCallConfirmationEmail({
 
         <p style={{ fontSize: '14px', color: 'hsl(240, 5%, 50%)', marginTop: '20px', lineHeight: '1.6', textAlign: 'center' }}>
           Best regards,<br />
-          <strong style={{ color: 'hsl(345, 80%, 50%)' }}>Looks by Anum</strong>
+          <strong style={{ color: 'hsl(0, 0%, 0%)' }}>Looks by Anum</strong>
         </p>
 
-        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid hsl(345, 20%, 90%)', textAlign: 'center' }}>
+        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid hsl(0, 0%, 85%)', textAlign: 'center' }}>
           <p style={{ fontSize: '12px', color: 'hsl(240, 5%, 50%)', margin: 0, lineHeight: '1.5' }}>
             © 2025 Looks by Anum | Product by{' '}
             <a 
@@ -162,7 +162,7 @@ export default function BookCallConfirmationEmail({
               target="_blank" 
               rel="noopener noreferrer"
               style={{ 
-                color: 'hsl(345, 80%, 50%)', 
+                color: 'hsl(0, 0%, 0%)', 
                 textDecoration: 'none',
                 fontWeight: '500',
               }}

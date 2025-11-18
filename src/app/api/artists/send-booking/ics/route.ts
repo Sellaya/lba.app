@@ -125,7 +125,7 @@ function generateCalendarEvent(quote: FinalQuote, artistName: string): string {
     `SUMMARY:${summary}`,
     `DESCRIPTION:${description.replace(/\n/g, '\\n').replace(/,/g, '\\,')}`,
     `LOCATION:${firstDay.location}`,
-    `ORGANIZER;CN=Looks by Anum:mailto:booking@sellaya.ca`,
+    `ORGANIZER;CN=Looks by Anum:mailto:orders@looksbyanum.com`,
     `ATTENDEE;CN=${artistName};RSVP=TRUE:mailto:${quote.contact.email}`,
     'STATUS:CONFIRMED',
     'SEQUENCE:0',

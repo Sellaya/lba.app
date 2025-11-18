@@ -57,6 +57,7 @@ export type Day = {
   serviceType: ServiceType;
   mobileLocation?: keyof typeof MOBILE_LOCATION_OPTIONS;
   partyServices?: BridalPartyServices; // Party services for this specific day (if bridal/semi-bridal)
+  partyPeopleCount?: number; // Number of people for Party Glam service
 };
 
 export type BridalTrial = {

@@ -27,20 +27,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '20px',
-  borderBottom: '1px solid hsl(345, 20%, 90%)', // --border
+  borderBottom: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)', // Deep Purple-Pink from --primary
+  color: 'hsl(0, 0%, 0%)', // Deep Purple-Pink from --primary
   margin: '0 0 12px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -66,7 +66,7 @@ const sectionTitle = {
 };
 
 const button = {
-  backgroundColor: 'hsl(345, 80%, 50%)', // --primary
+  backgroundColor: 'hsl(0, 0%, 0%)', // --primary
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -75,12 +75,12 @@ const button = {
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.25)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
 };
 
 const infoCard = {
   padding: '24px',
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border
   borderRadius: '12px',
   backgroundColor: 'hsl(345, 60%, 98%)', // --background
   marginBottom: '20px',
@@ -89,14 +89,14 @@ const infoCard = {
 const infoTitle = {
   fontSize: '20px',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)', // --primary
+  color: 'hsl(0, 0%, 0%)', // --primary
   margin: '0 0 16px 0',
   fontFamily: "'Belleza', sans-serif",
 };
 
 const infoRow = {
   padding: '8px 0',
-  borderBottom: '1px solid hsl(345, 20%, 90%)',
+  borderBottom: '1px solid hsl(0, 0%, 85%)',
 };
 
 const infoLabel = {
@@ -116,7 +116,7 @@ const infoValue = {
 const messageBox = {
   padding: '20px',
   backgroundColor: '#ffffff',
-  border: '2px solid hsl(345, 80%, 50%)',
+  border: '2px solid hsl(0, 0%, 0%)',
   borderRadius: '8px',
   marginTop: '16px',
 };
@@ -174,14 +174,14 @@ export default function BookCallAdminEmail({
             </div>
             <div style={infoRow}>
               <span style={infoLabel}>Email:</span>
-              <a href={`mailto:${customerEmail}`} style={{ ...infoValue, color: 'hsl(345, 80%, 50%)', textDecoration: 'none' }}>
+              <a href={`mailto:${customerEmail}`} style={{ ...infoValue, color: 'hsl(0, 0%, 0%)', textDecoration: 'none' }}>
                 {customerEmail}
               </a>
             </div>
             {customerPhone && (
               <div style={infoRow}>
                 <span style={infoLabel}>Phone:</span>
-                <a href={`tel:${customerPhone}`} style={{ ...infoValue, color: 'hsl(345, 80%, 50%)', textDecoration: 'none' }}>
+                <a href={`tel:${customerPhone}`} style={{ ...infoValue, color: 'hsl(0, 0%, 0%)', textDecoration: 'none' }}>
                   {customerPhone}
                 </a>
               </div>
@@ -237,7 +237,7 @@ export default function BookCallAdminEmail({
                 href={quoteLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                style={{ ...infoValue, color: 'hsl(345, 80%, 50%)', textDecoration: 'none' }}
+                style={{ ...infoValue, color: 'hsl(0, 0%, 0%)', textDecoration: 'none' }}
               >
                 View Quote & Booking Details
               </a>
@@ -245,7 +245,7 @@ export default function BookCallAdminEmail({
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', paddingTop: '20px', borderTop: '1px solid hsl(345, 20%, 90%)' }}>
+        <div style={{ textAlign: 'center', paddingTop: '20px', borderTop: '1px solid hsl(0, 0%, 85%)' }}>
           <a href={whatsappLink} target="_blank" rel="noopener noreferrer" style={whatsappButton}>
             Contact Customer on WhatsApp
           </a>
@@ -260,7 +260,7 @@ export default function BookCallAdminEmail({
           This is an automated notification from the Looks by Anum booking system.
         </p>
 
-        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid hsl(345, 20%, 90%)', textAlign: 'center' }}>
+        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid hsl(0, 0%, 85%)', textAlign: 'center' }}>
           <p style={{ fontSize: '12px', color: 'hsl(240, 5%, 50%)', margin: 0, lineHeight: '1.5' }}>
             © 2025 Looks by Anum | Product by{' '}
             <a 
@@ -268,7 +268,7 @@ export default function BookCallAdminEmail({
               target="_blank" 
               rel="noopener noreferrer"
               style={{ 
-                color: 'hsl(345, 80%, 50%)', 
+                color: 'hsl(0, 0%, 0%)', 
                 textDecoration: 'none',
                 fontWeight: '500',
               }}

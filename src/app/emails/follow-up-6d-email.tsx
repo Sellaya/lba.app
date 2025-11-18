@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { FinalQuote } from '@/lib/types';
 
-interface FollowUp24HEmailProps {
+interface FollowUp6DEmailProps {
   quote: FinalQuote;
   baseUrl: string;
 }
@@ -50,6 +50,16 @@ const section = {
   padding: '30px 0',
 };
 
+const offerBox = {
+  background: 'linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(0, 0%, 20%) 100%)',
+  border: '3px solid hsl(0, 0%, 0%)',
+  borderRadius: '12px',
+  padding: '32px',
+  textAlign: 'center' as const,
+  margin: '30px 0',
+  color: '#ffffff',
+};
+
 const instructionBox = {
   background: 'hsl(0, 0%, 90%)',
   border: '1px solid hsl(0, 0%, 85%)',
@@ -60,16 +70,16 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(0, 0%, 0%)',
+  backgroundColor: '#ffffff',
   borderRadius: '8px',
-  color: '#ffffff',
+  color: 'hsl(0, 0%, 0%)',
   fontSize: '18px',
   fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
 };
 
 const footer = {
@@ -77,6 +87,15 @@ const footer = {
   textAlign: 'center' as const,
   fontSize: '13px',
   color: '#999',
+};
+
+const countdownBox = {
+  padding: '20px',
+  border: '2px dashed #ffffff',
+  borderRadius: '12px',
+  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  marginBottom: '20px',
+  textAlign: 'center' as const,
 };
 
 const infoBox = {
@@ -87,7 +106,7 @@ const infoBox = {
   marginBottom: '20px',
 };
 
-const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ quote, baseUrl }) => {
+const FollowUp6DEmailTemplate: React.FC<Readonly<FollowUp6DEmailProps>> = ({ quote, baseUrl }) => {
   const quoteLink = `${baseUrl}/book/${quote.id}`;
 
   return (
@@ -96,7 +115,7 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
         <div style={header}>
           <h1 style={heading}>Looks by Anum</h1>
           <p style={{...paragraph, color: '#6c757d', fontSize: '18px', marginBottom: 0}}>
-            Following Up on Your Quote
+            Special Offer: 5% Off Your Booking
           </p>
         </div>
 
@@ -105,44 +124,64 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
             Hi {quote.contact.name},
           </p>
           <p style={paragraph}>
-            We hope this message finds you well. We wanted to follow up on the makeup quote we prepared for your special occasion. We understand that planning an event involves many decisions, and we're here to help make this one easy for you.
+            We wanted to reach out one more time with a special offer. We know that choosing the right makeup artist is an important decision, and we'd love to make it easier for you to say yes.
           </p>
           
+          <div style={offerBox}>
+            <p style={{...paragraph, marginBottom: '12px', fontWeight: 700, fontSize: '28px', color: '#ffffff'}}>
+              🎉 Exclusive Offer: 5% Off Your Total
+            </p>
+            <p style={{...paragraph, marginBottom: '20px', fontSize: '18px', color: '#ffffff'}}>
+              Book within the next 48 hours and receive 5% off your total booking amount!
+            </p>
+            <div style={countdownBox}>
+              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#ffffff' }}>
+                ⏰ Limited-Time Offer – Valid for 48 Hours Only
+              </p>
+            </div>
+          </div>
+
+          <div style={{ padding: '16px', backgroundColor: 'hsl(345, 60%, 98%)', border: '1px solid hsl(0, 0%, 85%)', borderRadius: '8px', margin: '20px 0' }}>
+            <p style={{ margin: 0, fontSize: '14px', color: 'hsl(240, 10%, 3.9%)', fontStyle: 'italic', textAlign: 'center' }}>
+              <strong>Note:</strong> The 5% discount will be automatically applied to your final quote when you complete your booking within 48 hours.
+            </p>
+          </div>
+
           <div style={infoBox}>
             <p style={{...paragraph, marginBottom: '12px', fontWeight: 600, fontSize: '17px', textAlign: 'center'}}>
-              Your Booking Details
+              What You'll Get
             </p>
             <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '15px', lineHeight: '1.8', color: 'hsl(240, 10%, 3.9%)' }}>
-              <li>Booking ID: <strong>{quote.id}</strong></li>
-              <li>Two package options available (Lead Artist or Team)</li>
-              <li>Secure your date with a 50% advance payment</li>
-              <li>Flexible payment options available</li>
+              <li>5% discount on your total booking amount</li>
+              <li>Same exceptional service and professional team</li>
+              <li>Secure your preferred date and time</li>
+              <li>50% advance payment still required to lock in your booking</li>
             </ul>
           </div>
           
           <div style={instructionBox}>
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: 'hsl(240, 5.9%, 10%)', fontSize: '18px', fontWeight: 600 }}>
-              Ready to secure your booking?
+              Don't miss out on this exclusive offer!
             </p>
             <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              View Quote & Book Now
+              Book Now & Save 5%
             </a>
-            <p style={{ fontSize: '14px', color: '#777', marginTop: '16px', marginBottom: 0 }}>
-              Click the button above to view your personalized quote and complete your booking in just a few minutes.
+            <p style={{ fontSize: '13px', color: '#999', marginTop: '16px', marginBottom: 0 }}>
+              This offer is valid for the next 48 hours only. Book now to take advantage of this special discount!
             </p>
           </div>
 
           <p style={paragraph}>
-            Our team is committed to delivering exceptional service and ensuring you look and feel your absolute best on your special day. We'd love to be part of making your occasion memorable.
+            We're committed to making your special day perfect, and this offer is our way of showing how much we value your business. Don't let this opportunity pass you by.
           </p>
 
           <p style={paragraph}>
-            If you have any questions or would like to discuss your booking further, please don't hesitate to reply to this email. We're here to help!
+            If you have any questions about this offer or your booking, please reply to this email. We're here to help!
           </p>
         </div>
         
         <p style={{ ...paragraph, fontSize: '14px', color: '#6c757d', textAlign: 'center', marginBottom: 0, marginTop: '20px' }}>
-          We look forward to working with you!
+          This is a limited-time offer. Act now to secure your discount!
         </p>
         
         <div style={footer}>
@@ -153,4 +192,6 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
   );
 };
 
-export default FollowUp24HEmailTemplate;
+export default FollowUp6DEmailTemplate;
+
+

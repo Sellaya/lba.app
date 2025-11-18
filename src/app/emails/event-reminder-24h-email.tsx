@@ -21,20 +21,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '30px',
-  borderBottom: '2px solid hsl(345, 20%, 90%)',
+  borderBottom: '2px solid hsl(0, 0%, 85%)',
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   margin: '0 0 16px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -52,7 +52,7 @@ const section = {
 
 const reminderBox = {
   backgroundColor: 'hsl(345, 60%, 98%)',
-  border: '2px solid hsl(345, 80%, 50%)',
+  border: '2px solid hsl(0, 0%, 0%)',
   borderRadius: '12px',
   padding: '30px',
   margin: '30px 0',
@@ -61,7 +61,7 @@ const reminderBox = {
 
 const infoBox = {
   backgroundColor: '#ffffff',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
   borderRadius: '12px',
   padding: '24px',
   marginBottom: '20px',
@@ -70,7 +70,7 @@ const infoBox = {
 const infoTitle = {
   fontSize: '18px',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   margin: '0 0 16px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -87,13 +87,13 @@ const bulletPoint = {
   position: 'absolute' as const,
   left: '0px',
   top: '2px',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   fontSize: '12px',
 };
 
 const checklistBox = {
   backgroundColor: 'hsl(345, 60%, 98%)',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
   borderRadius: '12px',
   padding: '24px',
   marginTop: '24px',
@@ -111,7 +111,7 @@ const checklistItem = {
 const footer = {
   textAlign: 'center' as const,
   paddingTop: '30px',
-  borderTop: '1px solid hsl(345, 20%, 90%)',
+  borderTop: '1px solid hsl(0, 0%, 85%)',
   marginTop: '30px',
   fontSize: '14px',
   color: '#6c757d',
@@ -126,7 +126,7 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
       <div style={container}>
         <div style={header}>
           <h1 style={heading}>Looks by Anum</h1>
-          <p style={{...paragraph, color: 'hsl(345, 80%, 50%)', fontSize: '22px', fontWeight: 600, marginBottom: 0}}>
+          <p style={{...paragraph, color: 'hsl(0, 0%, 0%)', fontSize: '22px', fontWeight: 600, marginBottom: 0}}>
             Your Event is Tomorrow! ✨
           </p>
         </div>
@@ -141,7 +141,7 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
           </p>
 
           <div style={reminderBox}>
-            <p style={{...paragraph, fontSize: '20px', fontWeight: 700, color: 'hsl(345, 80%, 50%)', marginBottom: '12px'}}>
+            <p style={{...paragraph, fontSize: '20px', fontWeight: 700, color: 'hsl(0, 0%, 0%)', marginBottom: '12px'}}>
               📅 Your Appointment Details
             </p>
             <p style={{...paragraph, fontSize: '18px', marginBottom: '8px', fontWeight: 600}}>
@@ -166,7 +166,7 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
             <div style={infoBox}>
               <p style={infoTitle}>Additional Service Days</p>
               {quote.booking.days.slice(1).map((day, index) => (
-                <div key={index} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: index < quote.booking.days.length - 2 ? '1px solid hsl(345, 20%, 90%)' : 'none' }}>
+                <div key={index} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: index < quote.booking.days.length - 2 ? '1px solid hsl(0, 0%, 85%)' : 'none' }}>
                   <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Day {index + 2}:</strong> {day.serviceName}</p>
                   <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Date:</strong> {day.date} at {day.getReadyTime}</p>
                   <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Location:</strong> {day.location}</p>
@@ -184,7 +184,7 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
           )}
 
           <div style={checklistBox}>
-            <p style={{...paragraph, marginBottom: '16px', fontWeight: 600, fontSize: '17px', color: 'hsl(345, 80%, 50%)'}}>
+            <p style={{...paragraph, marginBottom: '16px', fontWeight: 600, fontSize: '17px', color: 'hsl(0, 0%, 0%)'}}>
               📋 Preparation Checklist
             </p>
             <p style={checklistItem}>
@@ -217,8 +217,8 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
             </p>
           </div>
 
-          <div style={{...infoBox, backgroundColor: 'hsl(345, 60%, 98%)', border: '2px solid hsl(345, 80%, 50%)'}}>
-            <p style={{...paragraph, marginBottom: '12px', fontWeight: 600, fontSize: '17px', color: 'hsl(345, 80%, 50%)', textAlign: 'center'}}>
+          <div style={{...infoBox, backgroundColor: 'hsl(345, 60%, 98%)', border: '2px solid hsl(0, 0%, 0%)'}}>
+            <p style={{...paragraph, marginBottom: '12px', fontWeight: 600, fontSize: '17px', color: 'hsl(0, 0%, 0%)', textAlign: 'center'}}>
               💬 Need to Make Changes?
             </p>
             <p style={{...paragraph, marginBottom: 0, fontSize: '15px', textAlign: 'center'}}>
@@ -232,7 +232,7 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
         </div>
         
         <div style={footer}>
-          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(345, 80%, 50%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
+          <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
         </div>
       </div>
     </div>
@@ -240,5 +240,7 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
 };
 
 export default EventReminder24HEmailTemplate;
+
+
 
 

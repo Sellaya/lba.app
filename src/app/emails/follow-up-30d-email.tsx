@@ -1,12 +1,11 @@
 import * as React from 'react';
 import type { FinalQuote } from '@/lib/types';
 
-interface FollowUp24HEmailProps {
+interface FollowUp30DEmailProps {
   quote: FinalQuote;
   baseUrl: string;
 }
 
-// --- Inline CSS Styles using App's Theme Colors ---
 const main = {
   backgroundColor: 'hsl(345, 60%, 98%)',
   fontFamily: "'Alegreya', 'Helvetica Neue', Helvetica, Arial, sans-serif",
@@ -50,6 +49,15 @@ const section = {
   padding: '30px 0',
 };
 
+const finalOfferBox = {
+  background: 'linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(0, 0%, 20%) 100%)',
+  border: '2px solid hsl(0, 0%, 0%)',
+  borderRadius: '12px',
+  padding: '32px',
+  textAlign: 'center' as const,
+  margin: '30px 0',
+};
+
 const instructionBox = {
   background: 'hsl(0, 0%, 90%)',
   border: '1px solid hsl(0, 0%, 85%)',
@@ -63,7 +71,7 @@ const button = {
   backgroundColor: 'hsl(0, 0%, 0%)',
   borderRadius: '8px',
   color: '#ffffff',
-  fontSize: '18px',
+  fontSize: '16px',
   fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
@@ -79,15 +87,7 @@ const footer = {
   color: '#999',
 };
 
-const infoBox = {
-  padding: '20px',
-  border: '1px solid hsl(0, 0%, 85%)',
-  borderRadius: '12px',
-  backgroundColor: '#ffffff',
-  marginBottom: '20px',
-};
-
-const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ quote, baseUrl }) => {
+const FollowUp30DEmailTemplate: React.FC<Readonly<FollowUp30DEmailProps>> = ({ quote, baseUrl }) => {
   const quoteLink = `${baseUrl}/book/${quote.id}`;
 
   return (
@@ -96,7 +96,7 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
         <div style={header}>
           <h1 style={heading}>Looks by Anum</h1>
           <p style={{...paragraph, color: '#6c757d', fontSize: '18px', marginBottom: 0}}>
-            Following Up on Your Quote
+            Final Opportunity to Book Your Perfect Look
           </p>
         </div>
 
@@ -105,46 +105,40 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
             Hi {quote.contact.name},
           </p>
           <p style={paragraph}>
-            We hope this message finds you well. We wanted to follow up on the makeup quote we prepared for your special occasion. We understand that planning an event involves many decisions, and we're here to help make this one easy for you.
+            We wanted to reach out one final time regarding your quote. We understand that planning for special events takes time, and we want to make sure you have every opportunity to secure your booking with Looks by Anum.
           </p>
-          
-          <div style={infoBox}>
-            <p style={{...paragraph, marginBottom: '12px', fontWeight: 600, fontSize: '17px', textAlign: 'center'}}>
-              Your Booking Details
+
+          <div style={finalOfferBox}>
+            <p style={{...paragraph, marginBottom: '12px', fontWeight: 700, fontSize: '28px', color: '#ffffff'}}>
+              🎯 Last Chance to Book
             </p>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '15px', lineHeight: '1.8', color: 'hsl(240, 10%, 3.9%)' }}>
-              <li>Booking ID: <strong>{quote.id}</strong></li>
-              <li>Two package options available (Lead Artist or Team)</li>
-              <li>Secure your date with a 50% advance payment</li>
-              <li>Flexible payment options available</li>
-            </ul>
+            <p style={{...paragraph, marginBottom: '20px', fontSize: '18px', color: '#ffffff'}}>
+              This is your final opportunity to secure your booking. Your quote is still available, but we encourage you to act soon as our calendar continues to fill up.
+            </p>
+            <div style={{ padding: '15px', border: '2px dashed #ffffff', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#ffffff' }}>
+                ⏰ Don't Miss Out on Your Perfect Look!
+              </p>
+            </div>
           </div>
-          
+
           <div style={instructionBox}>
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: 'hsl(240, 5.9%, 10%)', fontSize: '18px', fontWeight: 600 }}>
-              Ready to secure your booking?
+              Ready to complete your booking?
             </p>
             <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              View Quote & Book Now
+              View Your Quote & Book Now
             </a>
             <p style={{ fontSize: '14px', color: '#777', marginTop: '16px', marginBottom: 0 }}>
-              Click the button above to view your personalized quote and complete your booking in just a few minutes.
+              This link will take you directly to your personalized quote page where you can complete your booking.
             </p>
           </div>
 
-          <p style={paragraph}>
-            Our team is committed to delivering exceptional service and ensuring you look and feel your absolute best on your special day. We'd love to be part of making your occasion memorable.
-          </p>
-
-          <p style={paragraph}>
-            If you have any questions or would like to discuss your booking further, please don't hesitate to reply to this email. We're here to help!
+          <p style={{ ...paragraph, fontSize: '14px', color: '#6c757d', textAlign: 'center', marginBottom: 0, marginTop: '20px' }}>
+            If you have any questions or need assistance, please reply directly to this email. We're here to help make your special day perfect!
           </p>
         </div>
-        
-        <p style={{ ...paragraph, fontSize: '14px', color: '#6c757d', textAlign: 'center', marginBottom: 0, marginTop: '20px' }}>
-          We look forward to working with you!
-        </p>
-        
+
         <div style={footer}>
           <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.</p>
         </div>
@@ -153,4 +147,5 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
   );
 };
 
-export default FollowUp24HEmailTemplate;
+export default FollowUp30DEmailTemplate;
+

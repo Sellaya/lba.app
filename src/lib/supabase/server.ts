@@ -23,27 +23,22 @@ function getSupabaseAdmin(): SupabaseClient {
 	return _supabaseAdmin;
 }
 
-// Export a getter function that lazily initializes
+// Export a function that returns the client directly
+// This function is safe to call and will handle errors gracefully
+export function getSupabaseClient(): SupabaseClient {
+	try {
+		return getSupabaseAdmin();
+	} catch (error: any) {
+		console.error('Failed to get Supabase client:', error);
+		throw error;
+	}
+}
+
+// Export a Proxy that lazily initializes on first property access
 export const supabaseAdmin = new Proxy({} as SupabaseClient, {
 	get(_target, prop) {
 		const client = getSupabaseAdmin();
-		const value = (client as any)[prop];
-		if (typeof value === 'function') {
-			return value.bind(client);
-		}
-		if (value && typeof value === 'object') {
-			// Handle nested objects like storage, auth, etc.
-			return new Proxy(value, {
-				get(_target, nestedProp) {
-					const nestedValue = (value as any)[nestedProp];
-					if (typeof nestedValue === 'function') {
-						return nestedValue.bind(value);
-					}
-					return nestedValue;
-				},
-			});
-		}
-		return value;
+		return (client as any)[prop];
 	},
 });
 

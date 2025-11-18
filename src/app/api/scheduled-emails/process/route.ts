@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDueScheduledEmails, markScheduledEmailAsSent } from '@/lib/scheduled-emails';
 import { getBooking } from '@/firebase/server-actions';
-import { sendFollowUp3HEmail, sendFollowUp6HEmail, sendFollowUp24HEmail, sendEventReminder24HEmail } from '@/lib/email';
+import { sendFollowUp3HEmail, sendFollowUp6HEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail, sendFollowUp30DEmail, sendEventReminder24HEmail } from '@/lib/email';
 
 /**
  * API route to process scheduled emails
@@ -80,9 +80,9 @@ export async function GET(request: Request) {
 
           await sendEventReminder24HEmail(booking.finalQuote);
         } else {
-          // For follow-up emails, don't send if booking is confirmed or payment is made
-          if (booking.finalQuote.status === 'confirmed') {
-            console.log(`Skipping scheduled email for confirmed booking ${scheduledEmail.booking_id}`);
+          // For follow-up emails, only send if status is 'quoted' and no advance payment has been made
+          if (booking.finalQuote.status !== 'quoted') {
+            console.log(`Skipping scheduled email for booking ${scheduledEmail.booking_id} - status is not 'quoted' (current: ${booking.finalQuote.status})`);
             await markScheduledEmailAsSent(scheduledEmail.id!);
             continue;
           }
@@ -108,6 +108,15 @@ export async function GET(request: Request) {
               break;
             case 'followup-24h':
               await sendFollowUp24HEmail(booking.finalQuote);
+              break;
+            case 'followup-3d':
+              await sendFollowUp3DEmail(booking.finalQuote);
+              break;
+            case 'followup-6d':
+              await sendFollowUp6DEmail(booking.finalQuote);
+              break;
+            case 'followup-30d':
+              await sendFollowUp30DEmail(booking.finalQuote);
               break;
             default:
               console.warn(`Unknown email type: ${scheduledEmail.email_type}`);

@@ -22,20 +22,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)', // --border
+  border: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '20px',
-  borderBottom: '1px solid hsl(345, 20%, 90%)', // --border
+  borderBottom: '1px solid hsl(0, 0%, 85%)', // --border
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)', // Deep Purple-Pink from --primary
+  color: 'hsl(0, 0%, 0%)', // Deep Purple-Pink from --primary
   margin: '0 0 12px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -52,7 +52,7 @@ const section = {
 };
 
 const button = {
-  backgroundColor: 'hsl(345, 80%, 50%)', // --primary
+  backgroundColor: 'hsl(0, 0%, 0%)', // --primary
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -61,13 +61,13 @@ const button = {
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.25)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
 };
 
 const footer = {
   marginTop: '40px',
   paddingTop: '20px',
-  borderTop: '1px solid hsl(345, 20%, 90%)', // --border
+  borderTop: '1px solid hsl(0, 0%, 85%)', // --border
   textAlign: 'center' as const,
   fontSize: '14px',
   color: '#777',
@@ -102,7 +102,7 @@ export default function RejectionEmail({ quote, baseUrl, isFinalPayment = false 
             </p>
           </div>
           
-          <div style={{ padding: '24px', border: '1px solid hsl(345, 20%, 90%)', borderRadius: '12px', backgroundColor: 'hsl(345, 60%, 98%)', marginBottom: '24px' }}>
+          <div style={{ padding: '24px', border: '1px solid hsl(0, 0%, 85%)', borderRadius: '12px', backgroundColor: 'hsl(345, 60%, 98%)', marginBottom: '24px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'hsl(240, 10%, 3.9%)', marginBottom: '12px', textAlign: 'center' as const }}>
               Payment Instructions
             </h3>
@@ -110,9 +110,8 @@ export default function RejectionEmail({ quote, baseUrl, isFinalPayment = false 
               To complete your booking, please:
             </p>
             <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
-              <li>Send {isFinalPayment ? 'the remaining 50% final payment' : 'a 50% advance payment'} via Interac e-Transfer to <strong>booking@sellaya.ca</strong></li>
-              <li>Set the security question to: <strong>What is my booking ID?</strong></li>
-              <li>Set the security answer to: <strong>{quote.id}</strong> (case-sensitive)</li>
+              <li>Send {isFinalPayment ? 'the remaining 50% final payment' : 'a 50% advance payment'} via Interac e-Transfer to <strong>info@looksbyanum.com</strong></li>
+              <li>Write your booking ID (<strong>{quote.id}</strong>) in the message for your booking reference</li>
               <li>Take a clear screenshot of the confirmation page</li>
               <li>Upload the screenshot using the link above</li>
             </ol>
@@ -132,7 +131,7 @@ export default function RejectionEmail({ quote, baseUrl, isFinalPayment = false 
           <p>Best regards,<br />Looks by Anum</p>
         </div>
 
-        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid hsl(345, 20%, 90%)', textAlign: 'center' }}>
+        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid hsl(0, 0%, 85%)', textAlign: 'center' }}>
           <p style={{ fontSize: '12px', color: 'hsl(240, 5%, 50%)', margin: 0, lineHeight: '1.5' }}>
             © 2025 Looks by Anum | Product by{' '}
             <a 
@@ -140,7 +139,7 @@ export default function RejectionEmail({ quote, baseUrl, isFinalPayment = false 
               target="_blank" 
               rel="noopener noreferrer"
               style={{ 
-                color: 'hsl(345, 80%, 50%)', 
+                color: 'hsl(0, 0%, 0%)', 
                 textDecoration: 'none',
                 fontWeight: '500',
               }}

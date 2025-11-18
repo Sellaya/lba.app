@@ -52,7 +52,7 @@ function QuoteTierCard({ title, icon, quote, tier, selectedTier, onSelect }: {
   return (
     <Label htmlFor={`tier-${tier}`} className={cn(
       "block border rounded-lg cursor-pointer transition-all",
-      isSelected ? "border-primary ring-2 ring-primary shadow-lg" : "border-border hover:border-primary/50"
+      isSelected ? "border-black ring-2 ring-black shadow-lg" : "border-border hover:border-gray-400"
     )}>
         <RadioGroupItem value={tier} id={`tier-${tier}`} className="sr-only" />
         <Card className="shadow-none border-none bg-transparent">
@@ -88,7 +88,7 @@ function QuoteTierCard({ title, icon, quote, tier, selectedTier, onSelect }: {
                         <span className="text-base font-bold">Total</span>
                         <span className="text-xs text-muted-foreground mt-0.5">include 13% GST</span>
                     </div>
-                    <span className="text-xl font-bold text-primary">${quote.total.toFixed(2)}</span>
+                    <span className="text-xl font-bold text-black">${quote.total.toFixed(2)}</span>
                 </div>
             </CardContent>
             <CardFooter className="bg-secondary/30 p-4 rounded-b-lg space-y-2">
@@ -197,8 +197,8 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
     return slots;
   }, []);
 
-  const containsStudioService = useMemo(() => quote.booking.days.some(d => d.serviceType === 'studio'), [quote.booking.days]);
-  const containsMobileService = useMemo(() => quote.booking.days.some(d => d.serviceType === 'mobile'), [quote.booking.days]);
+  const containsStudioService = useMemo(() => quote.booking?.days?.some(d => d?.serviceType === 'studio') || false, [quote.booking?.days]);
+  const containsMobileService = useMemo(() => quote.booking?.days?.some(d => d?.serviceType === 'mobile') || false, [quote.booking?.days]);
   
   const showLeadArtistOption = useMemo(() => true, []);
   const showTeamOption = useMemo(() => containsMobileService, [containsMobileService]);
@@ -768,9 +768,9 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-8 sm:py-12 min-h-screen flex flex-col">
-      <Card className="shadow-2xl border-primary/20 animate-in fade-in zoom-in-95 duration-500 flex-1">
-        <CardHeader className="text-center items-center p-6 sm:p-8">
+    <div className="w-full max-w-5xl mx-auto py-4 sm:py-6 md:py-8 lg:py-12 min-h-screen flex flex-col px-3 sm:px-4">
+      <Card className="shadow-2xl border-gray-300 animate-in fade-in zoom-in-95 duration-500 flex-1">
+        <CardHeader className="text-center items-center p-4 sm:p-6 md:p-8">
           {(() => {
             // Final payment paid - fully paid
             if (quote.paymentDetails?.finalPayment?.status === 'payment-approved' || quote.paymentDetails?.finalPayment?.status === 'deposit-paid') {
@@ -785,7 +785,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               return <ShieldCheck className="h-16 w-16 text-green-500 animate-in fade-in zoom-in-50 duration-700 delay-200" />;
             }
             // Default icon
-            return <CheckCircle2 className="h-16 w-16 text-primary animate-in fade-in zoom-in-50 duration-700 delay-200" />;
+            return <CheckCircle2 className="h-16 w-16 text-black animate-in fade-in zoom-in-50 duration-700 delay-200" />;
           })()}
           <CardTitle className="font-headline text-3xl sm:text-4xl mt-4">
             {(() => {
@@ -884,24 +884,24 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
           )}
           
         </CardHeader>
-        <CardContent className="space-y-6 px-4 sm:px-6">
+        <CardContent className="space-y-4 sm:space-y-6 px-3 sm:px-4 md:px-6">
 
           {(!bookingConfirmed || quote.paymentDetails?.status === 'screenshot-rejected') && (
-            <div className="flex justify-center items-center gap-2 sm:gap-6 my-4">
+            <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-6 my-3 sm:my-4">
               {STEPS.map((step, index) => (
                 <React.Fragment key={step.id}>
                   <div className="flex flex-col items-center gap-2 text-center">
                     <div className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                      index < currentStepIndex ? "bg-primary text-primary-foreground" :
-                      index === currentStepIndex ? "bg-primary border-2 border-primary-foreground ring-2 ring-primary text-primary-foreground" :
+                      index < currentStepIndex ? "bg-black text-white" :
+                      index === currentStepIndex ? "bg-black border-2 border-white ring-2 ring-black text-white" :
                       "bg-muted text-muted-foreground"
                     )}>
                       <step.icon className="w-5 h-5" />
                     </div>
                     <span className={cn(
                       "text-xs sm:text-sm font-medium",
-                      index <= currentStepIndex ? "text-primary" : "text-muted-foreground"
+                      index <= currentStepIndex ? "text-black" : "text-muted-foreground"
                     )}>{step.name}</span>
                   </div>
                   {index < STEPS.length - 1 && <div className="flex-1 h-px bg-border max-w-8 sm:max-w-16" />}
@@ -914,12 +914,12 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               <RadioGroup 
                   value={selectedTier} 
                   onValueChange={(val) => setSelectedTier(val as PriceTier)} 
-                  className={cn("grid grid-cols-1 gap-6 p-4", showLeadArtistOption && showTeamOption ? "sm:grid-cols-2" : "max-w-md mx-auto")}
+                  className={cn("grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-4", showLeadArtistOption && showTeamOption ? "sm:grid-cols-2" : "max-w-md mx-auto")}
               >
                   {showLeadArtistOption && (
                       <QuoteTierCard 
                       title="Anum - Lead Artist"
-                      icon={<User className="w-8 h-8 text-primary" />}
+                      icon={<User className="w-8 h-8 text-black" />}
                       quote={quote.quotes.lead}
                       tier="lead"
                       selectedTier={selectedTier}
@@ -929,7 +929,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                   {showTeamOption && (
                       <QuoteTierCard 
                       title="Team"
-                      icon={<Users className="w-8 h-8 text-primary" />}
+                      icon={<Users className="w-8 h-8 text-black" />}
                       quote={quote.quotes.team}
                       tier="team"
                       selectedTier={selectedTier}
@@ -939,11 +939,11 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               </RadioGroup>
               
               {/* Book a Call Section */}
-              <div className="mt-8 p-6 border-2 border-primary/20 rounded-lg bg-gradient-to-br from-primary/5 to-primary/10">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-3">
-                    <Phone className="h-6 w-6 text-primary" />
-                    <h3 className="font-headline text-xl">Have Questions About Your Quote?</h3>
+              <div className="mt-4 sm:mt-6 md:mt-8 p-4 sm:p-6 border-2 border-gray-300 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100">
+                <div className="text-center space-y-3 sm:space-y-4">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+                    <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-black" />
+                    <h3 className="font-headline text-lg sm:text-xl">Have Questions About Your Quote?</h3>
                   </div>
                   <p className="text-muted-foreground">
                     Book a call with Anum to discuss your quote and have any questions answered directly.
@@ -962,7 +962,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                           Fill in your preferred date and time, and we'll contact you to discuss your quote.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4 py-4">
+                      <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
                         <div className="space-y-2">
                           <Label>Your Contact Information</Label>
                           <div className="p-3 bg-muted rounded-md text-sm">
@@ -1029,7 +1029,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                               <Button
                                 variant="outline"
                                 className={cn(
-                                  "w-full justify-start text-left font-normal",
+                                  "w-full justify-start text-left font-normal h-9 sm:h-10",
                                   !callBookingDate && "text-muted-foreground"
                                 )}
                               >
@@ -1037,7 +1037,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                                 {callBookingDate ? format(callBookingDate, "PPP") : "Pick a date"}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto p-0" align="start" side="bottom">
                               <Calendar
                                 mode="single"
                                 selected={callBookingDate}
@@ -1057,7 +1057,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                         <div className="space-y-2">
                           <Label htmlFor="call-time">Preferred Time (9 AM - 9 PM) *</Label>
                           <Select value={callBookingTime} onValueChange={setCallBookingTime}>
-                            <SelectTrigger id="call-time">
+                            <SelectTrigger id="call-time" className="h-9 sm:h-10">
                               <SelectValue placeholder="Select a time" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1077,9 +1077,9 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                             placeholder="Share details about your event, special requirements, or any questions you have about the booking..."
                             value={callBookingMessage}
                             onChange={(e) => setCallBookingMessage(e.target.value)}
-                            rows={5}
+                            rows={4}
                             required
-                            className="resize-none"
+                            className="resize-none text-sm sm:text-base"
                           />
                         </div>
                       </div>
@@ -1115,10 +1115,10 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
           </div>
           
           <div className={cn(currentStep !== 'address' && 'hidden')}>
-            <div className="space-y-6 px-6">
-              <div className="p-4 border rounded-lg bg-background/50">
-                  <h3 className="font-headline text-xl mb-4">Mobile Service Address</h3>
-                  <div className='space-y-4'>
+            <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 md:px-6">
+              <div className="p-3 sm:p-4 border rounded-lg bg-background/50">
+                <h3 className="font-headline text-lg sm:text-xl mb-3 sm:mb-4">Mobile Service Address</h3>
+                <div className='space-y-3 sm:space-y-4'>
                           {addressErrors && Object.keys(addressErrors).length > 0 && (
                               <Alert variant="destructive">
                                   <AlertDescription>Please correct the address errors.</AlertDescription>
@@ -1129,7 +1129,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                               <Input id="street" name="street" placeholder="123 Glamour Ave" required value={address.street} onChange={e => setAddress({...address, street: e.target.value})} />
                               {addressErrors?.street && <p className="text-sm text-destructive mt-1">{addressErrors.street}</p>}
                           </div>
-                          <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4'>
+                          <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4'>
                               <div>
                                   <Label htmlFor="city">City</Label>
                                   <Input id="city" name="city" placeholder="Toronto" required value={address.city} onChange={e => setAddress({...address, city: e.target.value})} />
@@ -1149,9 +1149,9 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               </div>
 
               {/* Inspirations Section */}
-              <div className="p-4 border rounded-lg bg-background/50 mt-6">
-                <h3 className="font-headline text-xl mb-4">Inspirations (Optional)</h3>
-                <p className="text-sm text-muted-foreground mb-4">
+              <div className="p-3 sm:p-4 border rounded-lg bg-background/50 mt-4 sm:mt-6">
+                <h3 className="font-headline text-lg sm:text-xl mb-3 sm:mb-4">Inspirations (Optional)</h3>
+                <p className="text-sm text-muted-foreground mb-3 sm:mb-4">
                   Share images or links to show us what kind of makeup look you're interested in
                 </p>
                 
@@ -1182,7 +1182,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                         </Button>
                       </div>
                     ))}
-                    <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-border rounded-md cursor-pointer hover:border-primary transition-colors">
+                    <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-border rounded-md cursor-pointer hover:border-black transition-colors">
                       <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
                       <span className="text-xs text-muted-foreground text-center px-1">Add Image</span>
                       <input
@@ -1436,11 +1436,11 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               <div className="text-center">
                   <h3 className="font-headline text-2xl">Secure Your Booking</h3>
                   <p className="text-muted-foreground">A 50% non-refundable deposit is required to finalize your booking.</p>
-                  <p className="text-4xl font-bold text-primary mt-2">${depositAmount.toFixed(2)}</p>
+                  <p className="text-4xl font-bold text-black mt-2">${depositAmount.toFixed(2)}</p>
               </div>
 
               <RadioGroup value={paymentMethod} onValueChange={(val) => setPaymentMethod(val as PaymentMethod)} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <Label htmlFor='payment-stripe' className={cn('block border rounded-lg p-6 cursor-pointer', paymentMethod === 'stripe' ? 'border-primary ring-2 ring-primary' : 'hover:border-primary/50')}>
+                  <Label htmlFor='payment-stripe' className={cn('block border rounded-lg p-6 cursor-pointer', paymentMethod === 'stripe' ? 'border-black ring-2 ring-black' : 'hover:border-gray-400')}>
                       <div className='flex items-center gap-4'>
                            <RadioGroupItem value="stripe" id="payment-stripe" />
                            <h4 className="font-headline text-xl">Pay with Card</h4>
@@ -1448,7 +1448,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       </div>
                       <p className="text-sm text-muted-foreground mt-4">Securely pay the deposit with your credit card via Stripe.</p>
                   </Label>
-                  <Label htmlFor='payment-interac' className={cn('block border rounded-lg p-6 cursor-pointer', paymentMethod === 'interac' ? 'border-primary ring-2 ring-primary' : 'hover:border-primary/50')}>
+                  <Label htmlFor='payment-interac' className={cn('block border rounded-lg p-6 cursor-pointer', paymentMethod === 'interac' ? 'border-black ring-2 ring-black' : 'hover:border-gray-400')}>
                        <div className='flex items-center gap-4'>
                           <RadioGroupItem value="interac" id="payment-interac" />
                           <h4 className="font-headline text-xl">Interac e-Transfer</h4>
@@ -1471,9 +1471,8 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       )}
                       <h4 className="font-semibold">e-Transfer Instructions</h4>
                       <ol className="list-decimal list-inside text-sm space-y-2 text-muted-foreground">
-                          <li>Send <strong>${depositAmount.toFixed(2)}</strong> to <strong>booking@sellaya.ca</strong></li>
-                          <li>Set the security question to: <strong>What is my booking ID?</strong></li>
-                          <li>Set the security answer to: <strong>{quote.id}</strong> (This is case-sensitive)</li>
+                          <li>Send <strong>${depositAmount.toFixed(2)}</strong> to <strong>info@looksbyanum.com</strong></li>
+                          <li>Write your booking ID (<strong>{quote.id}</strong>) in the message for your booking reference</li>
                           <li>Once sent, take a clear screenshot of the confirmation page showing all transaction details.</li>
                           <li>Upload the screenshot below and submit.</li>
                       </ol>
@@ -1545,11 +1544,11 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                     <h3 className="font-headline text-2xl text-center mb-4">Pay Remaining Balance</h3>
                     <div className="text-center mb-6">
                       <p className="text-muted-foreground">Pay the remaining 50% to complete your booking.</p>
-                      <p className="text-4xl font-bold text-primary mt-2">${finalPaymentAmount.toFixed(2)}</p>
+                      <p className="text-4xl font-bold text-black mt-2">${finalPaymentAmount.toFixed(2)}</p>
                     </div>
 
                 <RadioGroup value={finalPaymentMethod} onValueChange={(val) => setFinalPaymentMethod(val as PaymentMethod)} className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-                  <Label htmlFor='final-payment-stripe' className={cn('block border rounded-lg p-6 cursor-pointer', finalPaymentMethod === 'stripe' ? 'border-primary ring-2 ring-primary' : 'hover:border-primary/50')}>
+                  <Label htmlFor='final-payment-stripe' className={cn('block border rounded-lg p-6 cursor-pointer', finalPaymentMethod === 'stripe' ? 'border-black ring-2 ring-black' : 'hover:border-gray-400')}>
                     <div className='flex items-center gap-4'>
                       <RadioGroupItem value="stripe" id="final-payment-stripe" />
                       <h4 className="font-headline text-xl">Pay with Card</h4>
@@ -1557,7 +1556,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                     </div>
                     <p className="text-sm text-muted-foreground mt-4">Securely pay the remaining balance with your credit card via Stripe.</p>
                   </Label>
-                  <Label htmlFor='final-payment-interac' className={cn('block border rounded-lg p-6 cursor-pointer', finalPaymentMethod === 'interac' ? 'border-primary ring-2 ring-primary' : 'hover:border-primary/50')}>
+                  <Label htmlFor='final-payment-interac' className={cn('block border rounded-lg p-6 cursor-pointer', finalPaymentMethod === 'interac' ? 'border-black ring-2 ring-black' : 'hover:border-gray-400')}>
                     <div className='flex items-center gap-4'>
                       <RadioGroupItem value="interac" id="final-payment-interac" />
                       <h4 className="font-headline text-xl">Interac e-Transfer</h4>
@@ -1580,9 +1579,8 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                     )}
                     <h4 className="font-semibold">e-Transfer Instructions</h4>
                     <ol className="list-decimal list-inside text-sm space-y-2 text-muted-foreground">
-                      <li>Send <strong>${finalPaymentAmount.toFixed(2)}</strong> to <strong>booking@sellaya.ca</strong></li>
-                      <li>Set the security question to: <strong>What is my booking ID?</strong></li>
-                      <li>Set the security answer to: <strong>{quote.id}</strong> (This is case-sensitive)</li>
+                      <li>Send <strong>${finalPaymentAmount.toFixed(2)}</strong> to <strong>info@looksbyanum.com</strong></li>
+                      <li>Write your booking ID (<strong>{quote.id}</strong>) in the message for your booking reference</li>
                       <li>Once sent, take a clear screenshot of the confirmation page showing all transaction details.</li>
                       <li>Upload the screenshot below and submit.</li>
                     </ol>

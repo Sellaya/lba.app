@@ -52,6 +52,10 @@ function parseDaysFromFormData(formData: FormData): Omit<Day, 'id'>[] {
                 };
             }
             
+            const partyPeopleCount = serviceId === 'party' 
+                ? parseInt(formData.get(`partyPeopleCount_${i}`) as string || '1', 10)
+                : undefined;
+
             daysData.push({
                 date: new Date(dateStr),
                 getReadyTime: formData.get(`getReadyTime_${i}`) as string,
@@ -64,6 +68,7 @@ function parseDaysFromFormData(formData: FormData): Omit<Day, 'id'>[] {
                 serviceType: formData.get(`serviceType_${i}`) as ServiceType,
                 mobileLocation: formData.get(`mobileLocation_${i}`) as keyof typeof MOBILE_LOCATION_OPTIONS | undefined,
                 partyServices,
+                partyPeopleCount,
             });
         }
         i++;
@@ -110,11 +115,19 @@ const calculateQuoteForTier = async (tier: PriceTier, days: Omit<Day, 'id'>[], b
             price = service.basePrice[tier];
           }
           
+          // For Party Glam, multiply by people count
+          const peopleCount = service.id === 'party' ? (day.partyPeopleCount || 1) : 1;
+          const totalPrice = price * peopleCount;
+          
+          const serviceDescription = service.id === 'party' 
+            ? `Day ${days.indexOf(day) + 1}: ${service.name} (${service.askServiceType ? optionDetail.label : 'Standard'}) - ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'}`
+            : `Day ${days.indexOf(day) + 1}: ${service.name} (${service.askServiceType ? optionDetail.label : 'Standard'})`;
+          
           lineItems.push({
-            description: `Day ${days.indexOf(day) + 1}: ${service.name} (${service.askServiceType ? optionDetail.label : 'Standard'})`,
-            price: price,
+            description: serviceDescription,
+            price: totalPrice,
           });
-          subtotal += price;
+          subtotal += totalPrice;
 
           const resolveAddonPrice = async (
             addonKey: keyof NonNullable<typeof service.addonOverrides>,
@@ -125,27 +138,42 @@ const calculateQuoteForTier = async (tier: PriceTier, days: Omit<Day, 'id'>[], b
             }
             return await getAddonPrice(defaultAddonId, tier);
           };
-
+          
           if (day.hairExtensions > 0) {
               const extensionUnitPrice = await resolveAddonPrice('hairExtension', 'hairExtension');
-              const extensionPrice = day.hairExtensions * extensionUnitPrice;
-              lineItems.push({ description: `  - Bride's Hair Extensions (x${day.hairExtensions})`, price: extensionPrice });
+              const extensionPrice = day.hairExtensions * extensionUnitPrice * peopleCount;
+              const extensionDescription = service.id === 'party' 
+                ? `  - Hair Extensions (x${day.hairExtensions} per person × ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`
+                : `  - Bride's Hair Extensions (x${day.hairExtensions})`;
+              lineItems.push({ description: extensionDescription, price: extensionPrice });
               subtotal += extensionPrice;
           }
           if (day.jewellerySetting) {
               const jewelleryPrice = await resolveAddonPrice('jewellerySetting', 'jewellerySetting');
-              lineItems.push({ description: `  - Bride's Jewellery Setting`, price: jewelleryPrice });
-              subtotal += jewelleryPrice;
+              const jewelleryTotalPrice = jewelleryPrice * peopleCount;
+              const jewelleryDescription = service.id === 'party'
+                ? `  - Jewellery/Dupatta Setting (× ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`
+                : `  - Bride's Jewellery Setting`;
+              lineItems.push({ description: jewelleryDescription, price: jewelleryTotalPrice });
+              subtotal += jewelleryTotalPrice;
           }
-          if ((service.id === 'bridal' || service.id === 'semi-bridal') && day.sareeDraping) {
+          if ((service.id === 'bridal' || service.id === 'semi-bridal' || service.id === 'party') && day.sareeDraping) {
               const sareePrice = await resolveAddonPrice('sareeDraping', 'sareeDraping');
-              lineItems.push({ description: `  - Bride's Saree Draping`, price: sareePrice });
-              subtotal += sareePrice;
+              const sareeTotalPrice = sareePrice * peopleCount;
+              const sareeDescription = service.id === 'party'
+                ? `  - Saree Draping (× ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`
+                : `  - Bride's Saree Draping`;
+              lineItems.push({ description: sareeDescription, price: sareeTotalPrice });
+              subtotal += sareeTotalPrice;
           }
-           if ((service.id === 'bridal' || service.id === 'semi-bridal') && day.hijabSetting) {
+           if ((service.id === 'bridal' || service.id === 'semi-bridal' || service.id === 'party') && day.hijabSetting) {
               const hijabPrice = await resolveAddonPrice('hijabSetting', 'hijabSetting');
-              lineItems.push({ description: `  - Bride's Hijab Setting`, price: hijabPrice });
-              subtotal += hijabPrice;
+              const hijabTotalPrice = hijabPrice * peopleCount;
+              const hijabDescription = service.id === 'party'
+                ? `  - Hijab Setting (× ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`
+                : `  - Bride's Hijab Setting`;
+              lineItems.push({ description: hijabDescription, price: hijabTotalPrice });
+              subtotal += hijabTotalPrice;
           }
           
           if (day.serviceType === 'mobile' && day.mobileLocation && mobileLocationOptions[day.mobileLocation]) {
@@ -154,6 +182,20 @@ const calculateQuoteForTier = async (tier: PriceTier, days: Omit<Day, 'id'>[], b
               if (daySurcharge > 0) {
                   lineItems.push({ description: `  - Travel Surcharge (${locationInfo.label})`, price: daySurcharge });
                   subtotal += daySurcharge;
+              }
+          }
+          
+          // Check for late night/early morning surcharge (9 PM to 6 AM)
+          if (day.getReadyTime) {
+              const [hours] = day.getReadyTime.split(':').map(Number);
+              const hour = hours || 0;
+              // Check if time is between 21:00 (9 PM) and 05:59 (5:59 AM)
+              if (hour >= 21 || hour < 6) {
+                  const lateNightSurcharge = 25;
+                  // Format time for display (e.g., "9:00 PM" instead of "21:00")
+                  const formattedTime = format(new Date(`1970-01-01T${day.getReadyTime}`), 'p');
+                  lineItems.push({ description: `  - Late Night/Early Morning Surcharge (${formattedTime})`, price: lateNightSurcharge });
+                  subtotal += lateNightSurcharge;
               }
           }
           
@@ -238,229 +280,293 @@ export async function generateQuoteAction(
   prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-    const fieldValues = {
-        name: formData.get('name') as string,
-        email: formData.get('email') as string,
-        phone: formData.get('phone') as string,
-        ...Object.fromEntries(formData.entries()),
-    };
-
-    const validatedFields = FormSchema.safeParse(fieldValues);
+    console.log('========================================');
+    console.log('generateQuoteAction: CALLED!');
+    console.log('generateQuoteAction: prevState:', prevState);
+    console.log('generateQuoteAction: formData keys:', Array.from(formData.keys()));
     
-    if (!validatedFields.success) {
-        return {
-            status: 'error',
-            message: 'Please correct the errors below.',
-            quote: null,
-            errors: validatedFields.error.flatten().fieldErrors,
-            fieldValues
-        };
-    }
-
-    const days = parseDaysFromFormData(formData);
-    const bridalTrial = parseBridalTrialFromFormData(formData);
-
-    if (days.length === 0 || days.some(d => !d.date || !d.serviceId || !d.getReadyTime)) {
-        return {
-            status: 'error',
-            message: 'Please select a date, time, and service for each booking.',
-            quote: null,
-            errors: { form: ['Please select a date, time, and service for each booking day.'] },
-            fieldValues
-        };
-    }
-
-     if (days.some(d => d.serviceType === 'mobile' && !d.mobileLocation)) {
-        return {
-            status: 'error',
-            message: 'Please select a mobile service location for all mobile service days.',
-            quote: null,
-            errors: { mobileLocation: ['Please select a mobile service location for all mobile service days.'] },
-            fieldValues
-        };
-    }
-    
-    const bridalServiceDay = days.find(d => d.serviceId === 'bridal');
-    if (bridalServiceDay && bridalTrial.addTrial && bridalServiceDay?.date && bridalTrial.date) {
-        if (bridalTrial.date >= bridalServiceDay.date) {
-            return {
-                status: 'error',
-                message: 'Bridal trial date must be before the event date.',
-                quote: null,
-                errors: { trialDate: ['Trial date must be before the event date.'] },
-                fieldValues
-            };
-        }
-    }
-    if (bridalServiceDay && bridalTrial.addTrial && (!bridalTrial.date || !bridalTrial.time)) {
-        return {
-            status: 'error',
-message: 'Please select a date and time for the bridal trial.',
-            quote: null,
-            errors: { trialDate: ['Please select a date and time for the trial.'] },
-            fieldValues
-        }
-    }
-
-
-    // Sort days chronologically
-    days.sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0));
-    
-    const firstDate = days[0].date;
-    const firstTime = days[0].getReadyTime;
-    const combinedDateTime = firstDate && firstTime ? `${format(firstDate, 'yyyy-MM-dd')}T${firstTime}:00Z` : new Date().toISOString();
-
-
-    const totalDuration = days.reduce((acc, day) => {
-        const service = SERVICES.find(s => s.id === day.serviceId);
-        return acc + (service?.duration || 0);
-    }, 0);
-
-    // Calculate travel time based on service locations
-    const hasMobileService = days.some(d => d.serviceType === 'mobile');
-    const travelTime = hasMobileService ? 60 : 0; // 60 mins travel time for mobile services within GTA
-    
-    const availabilityInput = {
-        existingBookings: JSON.stringify([]), // Empty array - actual bookings should be fetched from database if needed
-        serviceDuration: totalDuration,
-        travelTime: travelTime,
-        newAppointmentDateTime: combinedDateTime,
-    };
-
     try {
-        const availabilityResult = await updateAvailability(availabilityInput);
+        console.log('generateQuoteAction: Starting quote generation...');
+        
+        const fieldValues = {
+            name: formData.get('name') as string,
+            email: formData.get('email') as string,
+            phone: formData.get('phone') as string,
+            ...Object.fromEntries(formData.entries()),
+        };
 
-        if (!availabilityResult.isAvailable) {
+        console.log('generateQuoteAction: fieldValues:', {
+            name: fieldValues.name,
+            email: fieldValues.email,
+            phone: fieldValues.phone?.substring(0, 10) + '...'
+        });
+
+        const validatedFields = FormSchema.safeParse(fieldValues);
+    
+        if (!validatedFields.success) {
+            console.log('generateQuoteAction: Validation failed');
             return {
                 status: 'error',
-                message: availabilityResult.reason || "The selected time slot is not available due to a schedule conflict.",
+                message: 'Please correct the errors below.',
                 quote: null,
-                errors: null,
+                errors: validatedFields.error.flatten().fieldErrors,
                 fieldValues
             };
         }
-    } catch (error) {
-        console.error("AI availability check failed:", error);
-    }
-    
-    const quoteLead = await calculateQuoteForTier('lead', days, bridalTrial);
-    const quoteTeam = await calculateQuoteForTier('team', days, bridalTrial);
 
-    const bookingDays: FinalQuote['booking']['days'] = [];
-    const addOnsByDay: Record<number, string[]> = {};
+        const days = parseDaysFromFormData(formData);
+        const bridalTrial = parseBridalTrialFromFormData(formData);
 
-    days.forEach((day, index) => {
-        const service = SERVICES.find((s) => s.id === day.serviceId);
-        if (service && day.date && day.getReadyTime) {
-            const serviceOption = service.askServiceType && day.serviceOption ? SERVICE_OPTION_DETAILS[day.serviceOption] : SERVICE_OPTION_DETAILS['makeup-hair'];
-            addOnsByDay[index] = [];
-            
-            if (day.hairExtensions > 0) addOnsByDay[index].push(`Bride's Hair Extensions (x${day.hairExtensions})`);
-            if (day.jewellerySetting) addOnsByDay[index].push("Bride's Jewellery Setting");
-            if ((service.id === 'bridal' || service.id === 'semi-bridal') && day.sareeDraping) addOnsByDay[index].push("Bride's Saree Draping");
-            if ((service.id === 'bridal' || service.id === 'semi-bridal') && day.hijabSetting) addOnsByDay[index].push("Bride's Hijab Setting");
-
-            bookingDays.push({ 
-                date: format(day.date, "PPP"), 
-                getReadyTime: day.getReadyTime,
-                serviceName: service.name,
-                serviceType: day.serviceType,
-                location: day.serviceType === 'mobile' && day.mobileLocation ? MOBILE_LOCATION_OPTIONS[day.mobileLocation].label : "Studio",
-                serviceOption: service.askServiceType ? serviceOption.label : 'Standard',
-                addOns: addOnsByDay[index]
-            });
+        if (days.length === 0 || days.some(d => !d.date || !d.serviceId || !d.getReadyTime)) {
+            console.log('generateQuoteAction: Days validation failed');
+            return {
+                status: 'error',
+                message: 'Please select a date, time, and service for each booking.',
+                quote: null,
+                errors: { form: ['Please select a date, time, and service for each booking day.'] },
+                fieldValues
+            };
         }
-    });
 
-    // Aggregate party services from all bridal/semi-bridal days
-    const aggregatedPartyServices: BridalPartyServices = {
-        addServices: false,
-        hairAndMakeup: 0,
-        makeupOnly: 0,
-        hairOnly: 0,
-        dupattaSetting: 0,
-        hairExtensionInstallation: 0,
-        partySareeDraping: 0,
-        partyHijabSetting: 0,
-        airbrush: 0,
-    };
-    
-    days.forEach(day => {
-        if (day.partyServices && day.partyServices.addServices) {
-            // If both bridal and semi-bridal are on the same date, only aggregate from bridal
-            if (day.serviceId === 'semi-bridal' && day.date) {
-                const sameDateDays = days.filter(d => 
-                    d.date && 
-                    d.date.toISOString().split('T')[0] === day.date!.toISOString().split('T')[0]
-                );
-                const hasBridalOnSameDate = sameDateDays.some(d => d.serviceId === 'bridal');
-                if (hasBridalOnSameDate) {
-                    // Skip semi-bridal party services if bridal is on same date
-                    return;
-                }
+        if (days.some(d => d.serviceType === 'mobile' && !d.mobileLocation)) {
+            console.log('generateQuoteAction: Mobile location validation failed');
+            return {
+                status: 'error',
+                message: 'Please select a mobile service location for all mobile service days.',
+                quote: null,
+                errors: { mobileLocation: ['Please select a mobile service location for all mobile service days.'] },
+                fieldValues
+            };
+        }
+        
+        const bridalServiceDay = days.find(d => d.serviceId === 'bridal');
+        if (bridalServiceDay && bridalTrial.addTrial && bridalServiceDay?.date && bridalTrial.date) {
+            if (bridalTrial.date >= bridalServiceDay.date) {
+                console.log('generateQuoteAction: Trial date validation failed');
+                return {
+                    status: 'error',
+                    message: 'Bridal trial date must be before the event date.',
+                    quote: null,
+                    errors: { trialDate: ['Trial date must be before the event date.'] },
+                    fieldValues
+                };
             }
-            
-            aggregatedPartyServices.addServices = true;
-            aggregatedPartyServices.hairAndMakeup += day.partyServices.hairAndMakeup;
-            aggregatedPartyServices.makeupOnly += day.partyServices.makeupOnly;
-            aggregatedPartyServices.hairOnly += day.partyServices.hairOnly;
-            aggregatedPartyServices.dupattaSetting += day.partyServices.dupattaSetting;
-            aggregatedPartyServices.hairExtensionInstallation += day.partyServices.hairExtensionInstallation;
-            aggregatedPartyServices.partySareeDraping += day.partyServices.partySareeDraping;
-            aggregatedPartyServices.partyHijabSetting += day.partyServices.partyHijabSetting;
-            aggregatedPartyServices.airbrush += day.partyServices.airbrush;
         }
-    });
-    
-    const bridalPartyBookings: FinalQuote['booking']['bridalParty'] | undefined = aggregatedPartyServices.addServices ? { services: [], airbrush: aggregatedPartyServices.airbrush } : undefined;
-    
-    if (aggregatedPartyServices.addServices && bridalPartyBookings) {
-        if(aggregatedPartyServices.hairAndMakeup > 0) bridalPartyBookings.services.push({ service: 'Hair & Makeup', quantity: aggregatedPartyServices.hairAndMakeup });
-        if(aggregatedPartyServices.makeupOnly > 0) bridalPartyBookings.services.push({ service: 'Makeup Only', quantity: aggregatedPartyServices.makeupOnly });
-        if(aggregatedPartyServices.hairOnly > 0) bridalPartyBookings.services.push({ service: 'Hair Only', quantity: aggregatedPartyServices.hairOnly });
-        if(aggregatedPartyServices.dupattaSetting > 0) bridalPartyBookings.services.push({ service: 'Dupatta/Veil Setting', quantity: aggregatedPartyServices.dupattaSetting });
-        if(aggregatedPartyServices.hairExtensionInstallation > 0) bridalPartyBookings.services.push({ service: 'Hair Extension Installation', quantity: aggregatedPartyServices.hairExtensionInstallation });
-        if(aggregatedPartyServices.partySareeDraping > 0) bridalPartyBookings.services.push({ service: 'Saree Draping', quantity: aggregatedPartyServices.partySareeDraping });
-        if(aggregatedPartyServices.partyHijabSetting > 0) bridalPartyBookings.services.push({ service: 'Hijab Setting', quantity: aggregatedPartyServices.partyHijabSetting });
+        if (bridalServiceDay && bridalTrial.addTrial && (!bridalTrial.date || !bridalTrial.time)) {
+            console.log('generateQuoteAction: Trial date/time validation failed');
+            return {
+                status: 'error',
+                message: 'Please select a date and time for the bridal trial.',
+                quote: null,
+                errors: { trialDate: ['Please select a date and time for the trial.'] },
+                fieldValues
+            };
+        }
+
+        console.log('generateQuoteAction: Validations passed, calculating quotes...');
+
+        // Sort days chronologically
+        days.sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0));
+        
+        const firstDate = days[0].date;
+        const firstTime = days[0].getReadyTime;
+        const combinedDateTime = firstDate && firstTime ? `${format(firstDate, 'yyyy-MM-dd')}T${firstTime}:00Z` : new Date().toISOString();
+
+        const totalDuration = days.reduce((acc, day) => {
+            const service = SERVICES.find(s => s.id === day.serviceId);
+            return acc + (service?.duration || 0);
+        }, 0);
+
+        // Calculate travel time based on service locations
+        const hasMobileService = days.some(d => d.serviceType === 'mobile');
+        const travelTime = hasMobileService ? 60 : 0; // 60 mins travel time for mobile services within GTA
+        
+        const availabilityInput = {
+            existingBookings: JSON.stringify([]), // Empty array - actual bookings should be fetched from database if needed
+            serviceDuration: totalDuration,
+            travelTime: travelTime,
+            newAppointmentDateTime: combinedDateTime,
+        };
+
+        try {
+            const availabilityResult = await updateAvailability(availabilityInput);
+
+            if (!availabilityResult.isAvailable) {
+                console.log('generateQuoteAction: Availability check failed');
+                return {
+                    status: 'error',
+                    message: availabilityResult.reason || "The selected time slot is not available due to a schedule conflict.",
+                    quote: null,
+                    errors: null,
+                    fieldValues
+                };
+            }
+        } catch (error) {
+            console.error("generateQuoteAction: AI availability check failed:", error);
+            // Continue even if availability check fails
+        }
+        
+        console.log('generateQuoteAction: Calculating quotes for lead and team tiers...');
+        const quoteLead = await calculateQuoteForTier('lead', days, bridalTrial);
+        const quoteTeam = await calculateQuoteForTier('team', days, bridalTrial);
+
+        const bookingDays: FinalQuote['booking']['days'] = [];
+        const addOnsByDay: Record<number, string[]> = {};
+
+        days.forEach((day, index) => {
+            const service = SERVICES.find((s) => s.id === day.serviceId);
+            if (service && day.date && day.getReadyTime) {
+                const serviceOption = service.askServiceType && day.serviceOption ? SERVICE_OPTION_DETAILS[day.serviceOption] : SERVICE_OPTION_DETAILS['makeup-hair'];
+                addOnsByDay[index] = [];
+                
+                const peopleCount = service.id === 'party' ? (day.partyPeopleCount || 1) : 1;
+                
+                if (day.hairExtensions > 0) {
+                    if (service.id === 'party') {
+                        addOnsByDay[index].push(`Hair Extensions (x${day.hairExtensions} per person × ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`);
+                    } else {
+                        addOnsByDay[index].push(`Bride's Hair Extensions (x${day.hairExtensions})`);
+                    }
+                }
+                if (day.jewellerySetting) {
+                    if (service.id === 'party') {
+                        addOnsByDay[index].push(`Jewellery/Dupatta Setting (× ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`);
+                    } else {
+                        addOnsByDay[index].push("Bride's Jewellery Setting");
+                    }
+                }
+                if ((service.id === 'bridal' || service.id === 'semi-bridal' || service.id === 'party') && day.sareeDraping) {
+                    if (service.id === 'party') {
+                        addOnsByDay[index].push(`Saree Draping (× ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`);
+                    } else {
+                        addOnsByDay[index].push("Bride's Saree Draping");
+                    }
+                }
+                if ((service.id === 'bridal' || service.id === 'semi-bridal' || service.id === 'party') && day.hijabSetting) {
+                    if (service.id === 'party') {
+                        addOnsByDay[index].push(`Hijab Setting (× ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`);
+                    } else {
+                        addOnsByDay[index].push("Bride's Hijab Setting");
+                    }
+                }
+
+                const serviceNameDisplay = service.id === 'party' && day.partyPeopleCount 
+                    ? `${service.name} (${day.partyPeopleCount} ${day.partyPeopleCount === 1 ? 'person' : 'people'})`
+                    : service.name;
+                
+                bookingDays.push({ 
+                    date: format(day.date, "PPP"), 
+                    getReadyTime: day.getReadyTime,
+                    serviceName: serviceNameDisplay,
+                    serviceType: day.serviceType,
+                    location: day.serviceType === 'mobile' && day.mobileLocation ? MOBILE_LOCATION_OPTIONS[day.mobileLocation].label : "Studio",
+                    serviceOption: service.askServiceType ? serviceOption.label : 'Standard',
+                    addOns: addOnsByDay[index]
+                });
+            }
+        });
+
+        // Aggregate party services from all bridal/semi-bridal days
+        const aggregatedPartyServices: BridalPartyServices = {
+            addServices: false,
+            hairAndMakeup: 0,
+            makeupOnly: 0,
+            hairOnly: 0,
+            dupattaSetting: 0,
+            hairExtensionInstallation: 0,
+            partySareeDraping: 0,
+            partyHijabSetting: 0,
+            airbrush: 0,
+        };
+        
+        days.forEach(day => {
+            if (day.partyServices && day.partyServices.addServices) {
+                // If both bridal and semi-bridal are on the same date, only aggregate from bridal
+                if (day.serviceId === 'semi-bridal' && day.date) {
+                    const sameDateDays = days.filter(d => 
+                        d.date && 
+                        d.date.toISOString().split('T')[0] === day.date!.toISOString().split('T')[0]
+                    );
+                    const hasBridalOnSameDate = sameDateDays.some(d => d.serviceId === 'bridal');
+                    if (hasBridalOnSameDate) {
+                        // Skip semi-bridal party services if bridal is on same date
+                        return;
+                    }
+                }
+                
+                aggregatedPartyServices.addServices = true;
+                aggregatedPartyServices.hairAndMakeup += day.partyServices.hairAndMakeup;
+                aggregatedPartyServices.makeupOnly += day.partyServices.makeupOnly;
+                aggregatedPartyServices.hairOnly += day.partyServices.hairOnly;
+                aggregatedPartyServices.dupattaSetting += day.partyServices.dupattaSetting;
+                aggregatedPartyServices.hairExtensionInstallation += day.partyServices.hairExtensionInstallation;
+                aggregatedPartyServices.partySareeDraping += day.partyServices.partySareeDraping;
+                aggregatedPartyServices.partyHijabSetting += day.partyServices.partyHijabSetting;
+                aggregatedPartyServices.airbrush += day.partyServices.airbrush;
+            }
+        });
+        
+        const bridalPartyBookings: FinalQuote['booking']['bridalParty'] | undefined = aggregatedPartyServices.addServices ? { services: [], airbrush: aggregatedPartyServices.airbrush } : undefined;
+        
+        if (aggregatedPartyServices.addServices && bridalPartyBookings) {
+            if(aggregatedPartyServices.hairAndMakeup > 0) bridalPartyBookings.services.push({ service: 'Hair & Makeup', quantity: aggregatedPartyServices.hairAndMakeup });
+            if(aggregatedPartyServices.makeupOnly > 0) bridalPartyBookings.services.push({ service: 'Makeup Only', quantity: aggregatedPartyServices.makeupOnly });
+            if(aggregatedPartyServices.hairOnly > 0) bridalPartyBookings.services.push({ service: 'Hair Only', quantity: aggregatedPartyServices.hairOnly });
+            if(aggregatedPartyServices.dupattaSetting > 0) bridalPartyBookings.services.push({ service: 'Dupatta/Veil Setting', quantity: aggregatedPartyServices.dupattaSetting });
+            if(aggregatedPartyServices.hairExtensionInstallation > 0) bridalPartyBookings.services.push({ service: 'Hair Extension Installation', quantity: aggregatedPartyServices.hairExtensionInstallation });
+            if(aggregatedPartyServices.partySareeDraping > 0) bridalPartyBookings.services.push({ service: 'Saree Draping', quantity: aggregatedPartyServices.partySareeDraping });
+            if(aggregatedPartyServices.partyHijabSetting > 0) bridalPartyBookings.services.push({ service: 'Hijab Setting', quantity: aggregatedPartyServices.partyHijabSetting });
+        }
+        
+        const bookingId = Math.floor(1000 + Math.random() * 9000).toString();
+
+        const booking: FinalQuote['booking'] = {
+            days: bookingDays,
+            hasMobileService: days.some(d => d.serviceType === 'mobile'),
+        };
+
+        if (bridalServiceDay && bridalTrial.addTrial && bridalTrial.date && bridalTrial.time) {
+            booking.trial = { date: format(bridalTrial.date, "PPP"), time: bridalTrial.time };
+        }
+
+        if (bridalPartyBookings) {
+            booking.bridalParty = bridalPartyBookings;
+        }
+
+        const finalQuote: FinalQuote = {
+            id: bookingId,
+            contact: {
+                name: validatedFields.data.name,
+                email: validatedFields.data.email,
+                phone: validatedFields.data.phone,
+            },
+            booking,
+            quotes: {
+                lead: quoteLead,
+                team: quoteTeam,
+            },
+            status: 'quoted'
+        };
+        
+        // Instead of saving here and redirecting, return the quote to the client.
+        // The client component will handle saving and redirection.
+        console.log('generateQuoteAction: Quote generated successfully, ID:', finalQuote.id);
+        return {
+            status: 'success',
+            message: 'Quote generated successfully!',
+            quote: finalQuote,
+            errors: null,
+            fieldValues
+        };
+    } catch (error: any) {
+        console.error('generateQuoteAction: Error generating quote:', error);
+        console.error('generateQuoteAction: Error stack:', error?.stack);
+        return {
+            status: 'error',
+            message: error?.message || 'An unexpected error occurred while generating your quote. Please try again.',
+            quote: null,
+            errors: null,
+            fieldValues: {}
+        };
     }
-    
-    const bookingId = Math.floor(1000 + Math.random() * 9000).toString();
-
-    const booking: FinalQuote['booking'] = {
-        days: bookingDays,
-        hasMobileService: days.some(d => d.serviceType === 'mobile'),
-    };
-
-    if (bridalServiceDay && bridalTrial.addTrial && bridalTrial.date && bridalTrial.time) {
-        booking.trial = { date: format(bridalTrial.date, "PPP"), time: bridalTrial.time };
-    }
-
-    if (bridalPartyBookings) {
-        booking.bridalParty = bridalPartyBookings;
-    }
-
-    const finalQuote: FinalQuote = {
-        id: bookingId,
-        contact: {
-            name: validatedFields.data.name,
-            email: validatedFields.data.email,
-            phone: validatedFields.data.phone,
-        },
-        booking,
-        quotes: {
-            lead: quoteLead,
-            team: quoteTeam,
-        },
-        status: 'quoted'
-    };
-    
-    // Instead of saving here and redirecting, return the quote to the client.
-    // The client component will handle saving and redirection.
-     return {
-        status: 'success',
-        message: 'Quote generated successfully!',
-        quote: finalQuote,
-        errors: null,
-        fieldValues
-    };
 }

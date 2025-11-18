@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { FinalQuote } from '@/lib/types';
 
-interface FollowUp24HEmailProps {
+interface FollowUp3DEmailProps {
   quote: FinalQuote;
   baseUrl: string;
 }
@@ -50,6 +50,16 @@ const section = {
   padding: '30px 0',
 };
 
+const urgencyBox = {
+  background: 'linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(0, 0%, 20%) 100%)',
+  border: '2px solid hsl(0, 0%, 0%)',
+  borderRadius: '12px',
+  padding: '32px',
+  textAlign: 'center' as const,
+  margin: '30px 0',
+  color: '#ffffff',
+};
+
 const instructionBox = {
   background: 'hsl(0, 0%, 90%)',
   border: '1px solid hsl(0, 0%, 85%)',
@@ -60,16 +70,16 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(0, 0%, 0%)',
+  backgroundColor: '#ffffff',
   borderRadius: '8px',
-  color: '#ffffff',
+  color: 'hsl(0, 0%, 0%)',
   fontSize: '18px',
   fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
   display: 'inline-block',
-  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
 };
 
 const footer = {
@@ -87,7 +97,7 @@ const infoBox = {
   marginBottom: '20px',
 };
 
-const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ quote, baseUrl }) => {
+const FollowUp3DEmailTemplate: React.FC<Readonly<FollowUp3DEmailProps>> = ({ quote, baseUrl }) => {
   const quoteLink = `${baseUrl}/book/${quote.id}`;
 
   return (
@@ -96,7 +106,7 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
         <div style={header}>
           <h1 style={heading}>Looks by Anum</h1>
           <p style={{...paragraph, color: '#6c757d', fontSize: '18px', marginBottom: 0}}>
-            Following Up on Your Quote
+            Don't Miss Out on Your Perfect Look
           </p>
         </div>
 
@@ -105,44 +115,53 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
             Hi {quote.contact.name},
           </p>
           <p style={paragraph}>
-            We hope this message finds you well. We wanted to follow up on the makeup quote we prepared for your special occasion. We understand that planning an event involves many decisions, and we're here to help make this one easy for you.
+            We wanted to reach out again because we know how important it is to secure your preferred date and time. Our calendar fills up quickly, especially for special occasions, and we'd hate for you to miss out on the perfect look for your event.
           </p>
           
+          <div style={urgencyBox}>
+            <p style={{...paragraph, marginBottom: '12px', fontWeight: 700, fontSize: '24px', color: '#ffffff'}}>
+              ⚡ Secure Your Spot Today
+            </p>
+            <p style={{...paragraph, marginBottom: '20px', fontSize: '16px', color: '#ffffff'}}>
+              Dates are booking fast, and we want to ensure you get the time slot that works best for you. Don't wait until it's too late!
+            </p>
+          </div>
+
           <div style={infoBox}>
             <p style={{...paragraph, marginBottom: '12px', fontWeight: 600, fontSize: '17px', textAlign: 'center'}}>
-              Your Booking Details
+              Why Book Now?
             </p>
             <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '15px', lineHeight: '1.8', color: 'hsl(240, 10%, 3.9%)' }}>
-              <li>Booking ID: <strong>{quote.id}</strong></li>
-              <li>Two package options available (Lead Artist or Team)</li>
-              <li>Secure your date with a 50% advance payment</li>
-              <li>Flexible payment options available</li>
+              <li>Secure your preferred date and time before it's taken</li>
+              <li>Lock in your booking with just a 50% advance payment</li>
+              <li>Peace of mind knowing your special day is covered</li>
+              <li>Professional service from our experienced team</li>
             </ul>
           </div>
           
           <div style={instructionBox}>
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: 'hsl(240, 5.9%, 10%)', fontSize: '18px', fontWeight: 600 }}>
-              Ready to secure your booking?
+              Complete Your Booking Now
             </p>
             <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              View Quote & Book Now
+              Book Your Appointment
             </a>
             <p style={{ fontSize: '14px', color: '#777', marginTop: '16px', marginBottom: 0 }}>
-              Click the button above to view your personalized quote and complete your booking in just a few minutes.
+              Your personalized quote is ready. Complete your booking in just a few clicks.
             </p>
           </div>
 
           <p style={paragraph}>
-            Our team is committed to delivering exceptional service and ensuring you look and feel your absolute best on your special day. We'd love to be part of making your occasion memorable.
+            We understand that planning an event involves many moving parts. That's why we've made the booking process as simple as possible. With just a few minutes, you can secure your spot and cross one important item off your to-do list.
           </p>
 
           <p style={paragraph}>
-            If you have any questions or would like to discuss your booking further, please don't hesitate to reply to this email. We're here to help!
+            If you have any questions or concerns, please reply to this email. We're here to help make this process as smooth as possible for you.
           </p>
         </div>
         
         <p style={{ ...paragraph, fontSize: '14px', color: '#6c757d', textAlign: 'center', marginBottom: 0, marginTop: '20px' }}>
-          We look forward to working with you!
+          We're excited to help you look and feel your best!
         </p>
         
         <div style={footer}>
@@ -153,4 +172,6 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
   );
 };
 
-export default FollowUp24HEmailTemplate;
+export default FollowUp3DEmailTemplate;
+
+

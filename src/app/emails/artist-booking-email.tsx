@@ -28,20 +28,20 @@ const container = {
   maxWidth: '680px',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
 };
 
 const header = {
   textAlign: 'center' as const,
   paddingBottom: '30px',
-  borderBottom: '2px solid hsl(345, 20%, 90%)',
+  borderBottom: '2px solid hsl(0, 0%, 85%)',
 };
 
 const heading = {
   fontSize: '42px',
   lineHeight: '1.2',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   margin: '0 0 16px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -59,7 +59,7 @@ const section = {
 
 const highlightBox = {
   backgroundColor: 'hsl(345, 60%, 98%)',
-  border: '2px solid hsl(345, 80%, 50%)',
+  border: '2px solid hsl(0, 0%, 0%)',
   borderRadius: '12px',
   padding: '30px',
   margin: '30px 0',
@@ -68,7 +68,7 @@ const highlightBox = {
 
 const bookingCard = {
   padding: '24px',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
   borderRadius: '12px',
   backgroundColor: '#ffffff',
   marginBottom: '20px',
@@ -77,7 +77,7 @@ const bookingCard = {
 const bookingTitle = {
   fontSize: '20px',
   fontWeight: 'bold',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   margin: '0 0 4px 0',
   fontFamily: "'Belleza', sans-serif",
 };
@@ -100,14 +100,14 @@ const bulletPoint = {
   position: 'absolute' as const,
   left: '0px',
   top: '2px',
-  color: 'hsl(345, 80%, 50%)',
+  color: 'hsl(0, 0%, 0%)',
   fontSize: '12px',
 };
 
 const footer = {
   textAlign: 'center' as const,
   paddingTop: '30px',
-  borderTop: '1px solid hsl(345, 20%, 90%)',
+  borderTop: '1px solid hsl(0, 0%, 85%)',
   marginTop: '30px',
   fontSize: '14px',
   color: '#6c757d',
@@ -116,7 +116,7 @@ const footer = {
 const buttonStyle = {
   display: 'inline-block',
   padding: '12px 24px',
-  backgroundColor: 'hsl(345, 80%, 50%)',
+  backgroundColor: 'hsl(0, 0%, 0%)',
   color: '#ffffff',
   textDecoration: 'none',
   borderRadius: '8px',
@@ -132,7 +132,7 @@ const calendarButtonContainer = {
   padding: '24px',
   backgroundColor: 'hsl(345, 60%, 98%)',
   borderRadius: '12px',
-  border: '1px solid hsl(345, 20%, 90%)',
+  border: '1px solid hsl(0, 0%, 85%)',
 };
 
 const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = ({ quote, artistName, baseUrl, calendarLinks }) => {
@@ -141,7 +141,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
       <div style={container}>
         <div style={header}>
           <h1 style={heading}>Looks by Anum</h1>
-          <p style={{...paragraph, color: 'hsl(345, 80%, 50%)', fontSize: '20px', fontWeight: 600, marginBottom: 0}}>
+          <p style={{...paragraph, color: 'hsl(0, 0%, 0%)', fontSize: '20px', fontWeight: 600, marginBottom: 0}}>
             New Booking Assignment 🎨
           </p>
         </div>
@@ -156,7 +156,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
           </p>
 
           <div style={highlightBox}>
-            <p style={{...paragraph, fontSize: '18px', fontWeight: 600, color: 'hsl(345, 80%, 50%)', marginBottom: '12px'}}>
+            <p style={{...paragraph, fontSize: '18px', fontWeight: 600, color: 'hsl(0, 0%, 0%)', marginBottom: '12px'}}>
               Booking Information
             </p>
             <p style={{...paragraph, marginBottom: 0, fontSize: '15px'}}>
@@ -175,7 +175,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
             <div key={index} style={bookingCard}>
               <p style={bookingTitle}>Day {index + 1}: {day.serviceName}</p>
               <p style={bookingSubtitle}>{day.date} at {day.getReadyTime}</p>
-              <hr style={{ border: 'none', borderTop: '1px solid hsl(345, 20%, 92%)', margin: '16px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />
               <p style={bookingDetail}><span style={bulletPoint}>&#9679;</span> Style: {day.serviceOption}</p>
               <p style={bookingDetail}><span style={bulletPoint}>&#9679;</span> Location: {day.location}</p>
               {day.addOns.length > 0 && 
@@ -199,7 +199,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
           {quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0 && (
             <div style={bookingCard}>
               <p style={bookingTitle}>Bridal Party Services</p>
-              <hr style={{ border: 'none', borderTop: '1px solid hsl(345, 20%, 92%)', margin: '16px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />
               {quote.booking.bridalParty.services.map((partySvc, i) => (
                 <p key={i} style={bookingDetail}><span style={bulletPoint}>&#9679;</span> {partySvc.service} (x{partySvc.quantity})</p>
               ))}
@@ -212,7 +212,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
           {quote.booking.address && (
             <div style={bookingCard}>
               <p style={bookingTitle}>Service Address</p>
-              <hr style={{ border: 'none', borderTop: '1px solid hsl(345, 20%, 92%)', margin: '16px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />
               <p style={{...paragraph, margin: 0, fontStyle: 'italic' }}>
                 {quote.booking.address.street},<br/>
                 {quote.booking.address.city}, {quote.booking.address.province}, {quote.booking.address.postalCode}
@@ -223,7 +223,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
           {quote.booking.inspirations && (quote.booking.inspirations.images?.length > 0 || quote.booking.inspirations.links?.length > 0) && (
             <div style={bookingCard}>
               <p style={bookingTitle}>Client Inspirations</p>
-              <hr style={{ border: 'none', borderTop: '1px solid hsl(345, 20%, 92%)', margin: '16px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />
               
               {quote.booking.inspirations.images && quote.booking.inspirations.images.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>
@@ -247,7 +247,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
                             height: '150px',
                             objectFit: 'cover',
                             borderRadius: '8px',
-                            border: '2px solid hsl(345, 20%, 90%)',
+                            border: '2px solid hsl(0, 0%, 85%)',
                             cursor: 'pointer',
                           }}
                         />
@@ -270,7 +270,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{
-                            color: 'hsl(345, 80%, 50%)',
+                            color: 'hsl(0, 0%, 0%)',
                             textDecoration: 'underline',
                           }}
                         >
@@ -323,8 +323,8 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
         )}
         
         <div style={{...section, paddingTop: 0, paddingBottom: 0}}>
-          <div style={{...bookingCard, backgroundColor: 'hsl(345, 60%, 98%)', border: '1px solid hsl(345, 20%, 90%)'}}>
-            <p style={{...paragraph, fontSize: '15px', marginBottom: '12px', fontWeight: 600, color: 'hsl(345, 80%, 50%)'}}>
+          <div style={{...bookingCard, backgroundColor: 'hsl(345, 60%, 98%)', border: '1px solid hsl(0, 0%, 85%)'}}>
+            <p style={{...paragraph, fontSize: '15px', marginBottom: '12px', fontWeight: 600, color: 'hsl(0, 0%, 0%)'}}>
               Important Reminders:
             </p>
             <ul style={{ margin: 0, paddingLeft: '24px', color: 'hsl(240, 10%, 3.9%)' }}>
@@ -343,7 +343,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
         
         <div style={footer}>
           <p style={{margin: '8px 0'}}>
-            © 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(345, 80%, 50%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.
+            © 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a>.
           </p>
         </div>
       </div>

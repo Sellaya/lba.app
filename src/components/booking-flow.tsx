@@ -14,6 +14,7 @@ import { SERVICES, MOBILE_LOCATION_OPTIONS, SERVICE_TYPE_OPTIONS, STUDIO_ADDRESS
 import { SERVICE_OPTION_DETAILS } from '@/lib/types';
 import type { MOBILE_LOCATION_IDS } from '@/lib/services';
 import { saveQuoteAndEmailAction } from '@/app/admin/actions';
+import { trackQuoteGenerated } from '@/lib/facebook-pixel';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +44,8 @@ const getInitialDays = (): Day[] => {
         id: Date.now(), date: new Date(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair',
         hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false,
         serviceType: 'mobile', mobileLocation: 'toronto',
-        partyServices: getDefaultPartyServices()
+        partyServices: getDefaultPartyServices(),
+        partyPeopleCount: 1
     }];
 };
 
@@ -117,34 +119,73 @@ const formatPhoneNumber = (value: string): string => {
   }
 };
 
+// Helper function to check if time is between 9 PM (21:00) and 6 AM (06:00)
+const isLateNightEarlyMorning = (time: string): boolean => {
+  // Parse time string (format: "HH:MM" or "HH:MM:SS")
+  const [hours, minutes] = time.split(':').map(Number);
+  const hour = hours || 0;
+  
+  // Check if time is between 21:00 (9 PM) and 05:59:59 (5:59 AM)
+  // Or exactly 06:00 (6 AM) should not be included
+  return hour >= 21 || hour < 6;
+};
+
 export default function BookingFlow() {
   const [state, formAction] = useActionState(generateQuoteAction, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   
+  // Ensure state is always defined
+  const safeState = state || initialState;
+  
+  // Log formAction to verify it's properly bound (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('BookingFlow: formAction type:', typeof formAction);
+      console.log('BookingFlow: formAction value:', formAction);
+    }
+  }, [formAction]);
+  
+  // Log state changes for debugging (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('BookingFlow: State changed:', {
+        status: safeState.status,
+        hasQuote: !!safeState.quote,
+        message: safeState.message,
+        hasErrors: !!safeState.errors,
+        quoteId: safeState.quote?.id
+      });
+    }
+  }, [safeState]);
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [phoneNumber, setPhoneNumber] = useState<string>(() => {
     // Initialize with formatted value if available
-    const initialPhone = state.fieldValues?.phone as string || '';
+    const initialPhone = safeState.fieldValues?.phone as string || '';
     return initialPhone ? formatPhoneNumber(initialPhone) : '';
   });
 
+  // Start with empty array on both server and client to ensure hydration match
   const [days, setDays] = useState<Day[]>([]);
-  const [bridalTrial, setBridalTrial] = useState<BridalTrial>(() => getInitialBridalTrial(state.fieldValues));
   
+  // Initialize days on client mount only (after hydration) to avoid hydration mismatch
   useEffect(() => {
-    // Initialize state on client to avoid hydration mismatch
-    setDays(getInitialDays());
-  }, []);
+    if (days.length === 0) {
+      setDays(getInitialDays());
+    }
+  }, [days.length]);
+  const [bridalTrial, setBridalTrial] = useState<BridalTrial>(() => getInitialBridalTrial(safeState.fieldValues));
+  const [hasProcessedQuote, setHasProcessedQuote] = useState(false);
 
   // Update phone number when fieldValues change (e.g., after form submission with errors)
   useEffect(() => {
-    if (state.fieldValues?.phone) {
-      const formatted = formatPhoneNumber(state.fieldValues.phone as string);
+    if (safeState.fieldValues?.phone) {
+      const formatted = formatPhoneNumber(safeState.fieldValues.phone as string);
       setPhoneNumber(formatted);
     }
-  }, [state.fieldValues?.phone]);
+  }, [safeState.fieldValues?.phone]);
 
   const hasBridalService = useMemo(() => days.some(day => day.serviceId === 'bridal' || day.serviceId === 'semi-bridal'), [days]);
 
@@ -158,10 +199,12 @@ export default function BookingFlow() {
   }, [hasBridalService]);
 
   useEffect(() => {
-    if (state.status === 'error' && state.message) {
+    console.log('BookingFlow: useEffect triggered, status:', safeState.status, 'hasQuote:', !!safeState.quote, 'hasProcessed:', hasProcessedQuote);
+    
+    if (safeState.status === 'error' && safeState.message) {
       const stepWithError =
-        state.errors?.trialDate ? 2
-        : state.errors?.name || state.errors?.email || state.errors?.phone ? STEPS.find(s => s.name === 'Contact Details')!.id
+        safeState.errors?.trialDate ? 2
+        : safeState.errors?.name || safeState.errors?.email || safeState.errors?.phone ? STEPS.find(s => s.name === 'Contact Details')!.id
         : 1;
       
       setCurrentStep(stepWithError);
@@ -169,26 +212,67 @@ export default function BookingFlow() {
       toast({
           variant: 'destructive',
           title: 'Booking Error',
-          description: state.message,
+          description: safeState.message,
       });
     }
 
-    if (state.status === 'success' && state.quote) {
-      const quote = state.quote;
-      // Save the booking using server action and redirect
-      saveQuoteAndEmailAction(quote).then((result) => {
-        if (result.success) {
-          router.push(`/book/${quote.id}`);
-        } else {
-          toast({ variant: 'destructive', title: 'Save Failed', description: result.message || 'Could not save your booking. Please try again.' });
+    // CRITICAL: Only process quote once to prevent multiple saves/redirects
+    if (safeState.status === 'success' && safeState.quote && !hasProcessedQuote) {
+      console.log('BookingFlow: Processing quote for the first time, ID:', safeState.quote.id);
+      setHasProcessedQuote(true); // Prevent duplicate processing
+      
+      const quote = safeState.quote;
+      // Track quote generation
+      const selectedQuote = quote.selectedQuote || 'lead';
+      const quoteData = quote.quotes?.[selectedQuote];
+      
+      // Track quote generation (non-blocking - wrapped in try-catch)
+      try {
+        if (quoteData) {
+          const serviceTypes = quote.booking?.days?.map(day => day?.serviceName || 'Service').filter(Boolean).join(', ') || 'Makeup Service';
+          
+          trackQuoteGenerated({
+            bookingId: quote.id,
+            totalAmount: quoteData.total || 0,
+            currency: 'CAD',
+            serviceType: serviceTypes,
+          });
         }
-      }).catch(err => {
-        console.error("Failed to save booking or send email:", err);
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save your booking. Please try again.' });
-      });
+      } catch (trackingError) {
+        // Tracking should never block quote generation
+        console.warn('Failed to track quote generation:', trackingError);
+      }
+      
+      // Save the booking using server action and redirect
+      console.log('BookingFlow: Quote generated successfully, ID:', quote.id);
+      console.log('BookingFlow: Saving quote and sending email for booking ID:', quote.id);
+      console.log('BookingFlow: Quote contact email:', quote.contact?.email);
+      
+      // Use async function to properly handle the promise
+      (async () => {
+        try {
+          const result = await saveQuoteAndEmailAction(quote);
+          console.log('BookingFlow: Save result:', result);
+          if (result.success) {
+            console.log('BookingFlow: Quote saved successfully, redirecting to:', `/book/${quote.id}`);
+            router.push(`/book/${quote.id}`);
+          } else {
+            console.error('BookingFlow: Save failed:', result.message);
+            // Even if save failed, try to redirect to show the quote (might have been saved)
+            router.push(`/book/${quote.id}`);
+            toast({ variant: 'default', title: 'Warning', description: result.message || 'Quote generated but there was an issue saving. Please check your booking.' });
+          }
+        } catch (err) {
+          console.error("BookingFlow: Failed to save booking or send email:", err);
+          // Always redirect even on error - quote was generated successfully
+          console.log('BookingFlow: Redirecting despite error');
+          router.push(`/book/${quote.id}`);
+          toast({ variant: 'default', title: 'Quote Generated', description: 'Quote generated successfully. Email may not have been sent - please check your booking.' });
+        }
+      })();
     }
 
-  }, [state, toast, STEPS, router]);
+  }, [safeState, toast, STEPS, router, hasProcessedQuote]);
 
 
   const nextStep = () => {
@@ -237,15 +321,15 @@ export default function BookingFlow() {
   const progress = ((STEPS.findIndex(s => s.id === currentStep) + 1) / STEPS.length) * 100;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 px-2 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="mb-3 sm:mb-4 md:mb-5 px-1 sm:px-2">
             <Progress value={progress} className="h-2" />
-            <div className="flex flex-wrap justify-between gap-2 mt-2">
+            <div className="flex flex-wrap justify-between gap-1 sm:gap-2 mt-2">
                 {STEPS.map((step, index) => (
                     <div key={step.id} className={cn(
                         "text-xs sm:text-sm flex-1 min-w-0",
-                        step.id < currentStep ? "text-primary font-medium" :
-                        step.id === currentStep ? "text-primary font-bold" : "text-muted-foreground",
+                        step.id < currentStep ? "text-black font-medium" :
+                        step.id === currentStep ? "text-black font-bold" : "text-muted-foreground",
                         STEPS.length > 2 && index === 1 ? 'text-center' : '',
                         STEPS.length > 2 && index === 2 ? 'text-right' : '',
                         STEPS.length === 2 && index === 1 ? 'text-right' : '',
@@ -259,38 +343,42 @@ export default function BookingFlow() {
        <form
         ref={formRef}
         action={formAction}
-        className="space-y-8"
+        className="space-y-5 sm:space-y-6 md:space-y-8"
       >
-        {state.status === 'error' && state.message && !state.errors && (
+        {safeState.status === 'error' && safeState.message && !safeState.errors && (
              <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Could not generate quote</AlertTitle>
-                <AlertDescription>{state.message}</AlertDescription>
+                <AlertDescription>{safeState.message}</AlertDescription>
             </Alert>
         )}
 
         <div className={cn(currentStep !== 1 && 'hidden')}>
-            <Card className="shadow-lg animate-in fade-in-50 slide-in-from-top-10 duration-700">
-                <CardHeader>
-                    <CardTitle className="font-headline text-2xl">1. Services & Dates</CardTitle>
-                    <CardDescription>Select services, dates, and times for your booking.</CardDescription>
+            <Card className="shadow-lg">
+                <CardHeader className="px-3 sm:px-6 pb-3 sm:pb-6">
+                    <CardTitle className="font-headline text-xl sm:text-2xl">1. Services & Dates</CardTitle>
+                    <CardDescription className="text-sm sm:text-base">Select services, dates, and times for your booking.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-8">
-                    <div className="space-y-6">
-                      {days.map((day, index) => (
-                          <BookingDayCard
-                              key={day.id}
-                              day={day}
-                              index={index}
-                              updateDay={(id, data) => setDays(days.map(d => d.id === id ? {...d, ...data} : d))}
-                              removeDay={(id) => setDays(days.filter(d => d.id !== id))}
-                              isOnlyDay={days.length <= 1}
-                              errors={state.errors}
-                          />
-                      ))}
-                      <Button type="button" variant="outline" onClick={() => setDays([...days, { id: Date.now(), date: new Date(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair', hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false, serviceType: 'mobile', mobileLocation: 'toronto', partyServices: getDefaultPartyServices() }])} className="w-full">
-                      <Plus className="mr-2 h-4 w-4" /> Add Another Day
-                      </Button>
+                <CardContent className="space-y-3 sm:space-y-4 md:space-y-6 px-3 sm:px-6">
+                    <div className="space-y-3 sm:space-y-4">
+                      {days.length === 0 ? null : (
+                        <>
+                          {days.map((day, index) => (
+                              <BookingDayCard
+                                  key={day.id}
+                                  day={day}
+                                  index={index}
+                                  updateDay={(id, data) => setDays(days.map(d => d.id === id ? {...d, ...data} : d))}
+                                  removeDay={(id) => setDays(days.filter(d => d.id !== id))}
+                                  isOnlyDay={days.length <= 1}
+                                  errors={safeState.errors}
+                              />
+                          ))}
+                          <Button type="button" variant="outline" onClick={() => setDays([...days, { id: Date.now(), date: new Date(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair', hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false, serviceType: 'mobile', mobileLocation: 'toronto', partyServices: getDefaultPartyServices(), partyPeopleCount: 1 }])} className="w-full">
+                          <Plus className="mr-2 h-4 w-4" /> Add Another Day
+                          </Button>
+                        </>
+                      )}
                     </div>
                 </CardContent>
             </Card>
@@ -304,35 +392,34 @@ export default function BookingFlow() {
                 updateBridalTrial={(data) => setBridalTrial(prev => ({...prev, ...data}))}
                 days={days}
                 setDays={setDays}
-                errors={state.errors}
+                errors={safeState.errors}
               />
           </div>
         )}
 
-        <div className={cn(currentStep !== STEPS.find(s => s.name === 'Contact Details')?.id && 'hidden')}>
-            <Card className="shadow-lg animate-in fade-in-50 slide-in-from-top-10 duration-700">
-                <CardHeader>
-                    <CardTitle className="font-headline text-2xl">{STEPS[STEPS.length -1].name}</CardTitle>
-                    <CardDescription>Please provide your contact information to finalize the quote.</CardDescription>
+                <div className={cn(currentStep !== STEPS.find(s => s.name === 'Contact Details')?.id && 'hidden')}>
+                    <Card className="shadow-lg">
+                <CardHeader className="px-3 sm:px-6 pb-3 sm:pb-6">
+                    <CardTitle className="font-headline text-xl sm:text-2xl">{STEPS[STEPS.length -1].name}</CardTitle>
+                    <CardDescription className="text-sm sm:text-base">Please provide your contact information to finalize the quote.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-8">
+                <CardContent className="space-y-4 sm:space-y-6 md:space-y-8 px-3 sm:px-6">
                     <div>
-                        <div className="space-y-4 mt-2">
+                        <div className="space-y-3 sm:space-y-4 mt-2">
                             <div>
                                 <Label htmlFor="name">Full Name *</Label>
-                                <Input id="name" name="name" placeholder="Jane Doe" required defaultValue={state.fieldValues?.name as string || ''} />
-                                {state.errors?.name && <p className="text-sm text-destructive mt-1">{state.errors.name[0]}</p>}
+                                <Input id="name" name="name" placeholder="Jane Doe" required defaultValue={safeState.fieldValues?.name as string || ''} />
+                                {safeState.errors?.name && <p className="text-sm text-destructive mt-1">{safeState.errors.name[0]}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="email">Email Address *</Label>
-                                <Input id="email" name="email" type="email" placeholder="jane.doe@example.com" required defaultValue={state.fieldValues?.email as string || ''} />
-                                {state.errors?.email && <p className="text-sm text-destructive mt-1">{state.errors.email[0]}</p>}
+                                <Input id="email" name="email" type="email" placeholder="jane.doe@example.com" required defaultValue={safeState.fieldValues?.email as string || ''} />
+                                {safeState.errors?.email && <p className="text-sm text-destructive mt-1">{safeState.errors.email[0]}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="phone">Phone Number *</Label>
                                 <Input 
                                     id="phone" 
-                                    name="phone" 
                                     type="tel" 
                                     placeholder="(416) 555-1234" 
                                     required 
@@ -343,7 +430,9 @@ export default function BookingFlow() {
                                     }}
                                     maxLength={14} // (XXX) XXX-XXXX = 14 characters
                                 />
-                                {state.errors?.phone && <p className="text-sm text-destructive mt-1">{state.errors.phone[0]}</p>}
+                                {/* Hidden input to ensure phone value is submitted (controlled component doesn't submit automatically) */}
+                                <input type="hidden" name="phone" value={phoneNumber.replace(/\D/g, '')} />
+                                {safeState.errors?.phone && <p className="text-sm text-destructive mt-1">{safeState.errors.phone[0]}</p>}
                             </div>
                         </div>
                     </div>
@@ -351,14 +440,14 @@ export default function BookingFlow() {
             </Card>
         </div>
 
-        <div className="mt-8 flex flex-col sm:flex-row justify-between gap-4">
-          <Button type="button" variant="outline" onClick={prevStep} className={cn(currentStep === 1 && 'invisible', 'w-full sm:w-auto')}>
+        <div className="mt-3 sm:mt-4 md:mt-6 flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
+          <Button type="button" variant="outline" onClick={prevStep} className={cn(currentStep === 1 && 'invisible', 'w-full sm:w-auto h-10 sm:h-11')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
 
           {currentStep < STEPS[STEPS.length - 1].id ? (
-            <Button type="button" onClick={nextStep} className="w-full sm:w-auto">
+            <Button type="button" onClick={nextStep} className="w-full sm:w-auto h-10 sm:h-11">
               Next
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -389,25 +478,25 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
     const isOutsideToronto = useMemo(() => day.mobileLocation !== 'toronto', [day.mobileLocation]);
 
     return (
-        <div className="space-y-6 p-4 rounded-lg border bg-card/50 relative animate-in fade-in-50">
+        <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 rounded-lg border bg-card/50 relative">
             <input type="hidden" name={`day_id_${index}`} value={day.id} />
              {!isOnlyDay && (
-                <Button type="button" variant="ghost" size="icon" onClick={() => removeDay(day.id)} className="absolute top-2 right-2 hover:bg-destructive/20 hover:text-destructive">
-                    <Trash2 className="h-5 w-5" />
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeDay(day.id)} className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 hover:bg-destructive/20 hover:text-destructive h-7 w-7 sm:h-8 sm:w-8">
+                    <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                    <Label htmlFor={`date-${index}`}>Day {index + 1} - Date *</Label>
+                    <Label htmlFor={`date-${index}`} className="text-sm sm:text-base">Day {index + 1} - Date *</Label>
                     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                         <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal",!day.date && "text-muted-foreground")}>
+                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-9 sm:h-10",!day.date && "text-muted-foreground")}>
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {day.date ? format(day.date, "PPP") : <span>Pick a date</span>}
                         </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={day.date} onSelect={(date) => { updateDay(day.id, { date: date as Date }); setIsPopoverOpen(false); }} disabled={(date) => {
+                        <PopoverContent className="w-auto p-0" align="start" side="bottom"><Calendar mode="single" selected={day.date} onSelect={(date) => { updateDay(day.id, { date: date as Date }); setIsPopoverOpen(false); }} disabled={(date) => {
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
                             return date < today;
@@ -416,35 +505,49 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                     <input type="hidden" name={`date_${index}`} value={day.date?.toISOString() || ''} />
                 </div>
                 <div>
-                    <Label htmlFor={`getReadyTime-${index}`}>Get Ready Time *</Label>
+                    <Label htmlFor={`getReadyTime-${index}`} className="text-sm sm:text-base">Get Ready Time *</Label>
                     <Select name={`getReadyTime_${index}`} value={day.getReadyTime} onValueChange={(value) => updateDay(day.id, { getReadyTime: value })} required>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 sm:h-10"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{format(new Date(`1970-01-01T${slot}`), 'p')}</SelectItem>)}
                         </SelectContent>
                     </Select>
+                    {/* Hidden input for Select value - Radix UI Select doesn't submit automatically */}
+                    <input type="hidden" name={`getReadyTime_${index}`} value={day.getReadyTime || ''} />
+                    {day.getReadyTime && isLateNightEarlyMorning(day.getReadyTime) && (
+                        <Alert className="mt-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                                Services scheduled between 9 PM and 6 AM are subject to an additional surcharge. Price will be shown in your quote.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </div>
                     <div>
-                    <Label htmlFor={`service-${index}`}>Service *</Label>
+                    <Label htmlFor={`service-${index}`} className="text-sm sm:text-base">Service *</Label>
                     <Select name={`service_${index}`} value={day.serviceId || ''} onValueChange={(serviceId) => {
                         const isBridalOrSemiBridal = serviceId === 'bridal' || serviceId === 'semi-bridal';
+                        const isParty = serviceId === 'party';
                         updateDay(day.id, { 
                             serviceId: serviceId || null,
-                            partyServices: isBridalOrSemiBridal ? (day.partyServices || getDefaultPartyServices()) : undefined
+                            partyServices: isBridalOrSemiBridal ? (day.partyServices || getDefaultPartyServices()) : undefined,
+                            partyPeopleCount: isParty ? (day.partyPeopleCount || 1) : undefined
                         });
                     }} required>
-                        <SelectTrigger><SelectValue placeholder="Select a service" /></SelectTrigger>
+                        <SelectTrigger className="h-9 sm:h-10"><SelectValue placeholder="Select a service" /></SelectTrigger>
                         <SelectContent>{SERVICES.map((s) => (<SelectItem key={s.id} value={s.id}><div className="flex items-center gap-2"><s.icon className="h-4 w-4 text-muted-foreground" /><span>{s.name}</span></div></SelectItem>))}</SelectContent>
                     </Select>
+                    {/* Hidden input for Select value - Radix UI Select doesn't submit automatically */}
+                    <input type="hidden" name={`service_${index}`} value={day.serviceId || ''} />
                 </div>
             </div>
 
             <Separator />
             <div>
-                <Label className="text-md font-medium">Service Type *</Label>
-                <RadioGroup name={`serviceType_${index}`} value={day.serviceType} onValueChange={(value) => updateDay(day.id, { serviceType: value as ServiceType })} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2" required>
+                <Label className="text-sm sm:text-base font-medium">Service Type *</Label>
+                <RadioGroup name={`serviceType_${index}`} value={day.serviceType} onValueChange={(value) => updateDay(day.id, { serviceType: value as ServiceType })} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-2" required>
                     {Object.values(SERVICE_TYPE_OPTIONS).map(opt => (
-                        <Label key={opt.id} className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground has-[[data-state=checked]]:border-primary transition-colors">
+                        <Label key={opt.id} className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground has-[[data-state=checked]]:border-black transition-colors">
                             <RadioGroupItem value={opt.id} id={`${day.id}-${opt.id}`} />
                             <div className='flex flex-col'>
                                 <span className="font-semibold">{opt.label}</span>
@@ -453,25 +556,27 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                         </Label>
                     ))}
                 </RadioGroup>
+                {/* Hidden input for RadioGroup value - Radix UI RadioGroup doesn't submit automatically */}
+                <input type="hidden" name={`serviceType_${index}`} value={day.serviceType || ''} />
                 {errors?.serviceType && <p className="text-sm text-destructive mt-2">{errors.serviceType[0]}</p>}
             </div>
             
             {day.serviceType === 'studio' && (
-                 <div className="p-4 border rounded-lg bg-accent/50 animate-in fade-in-0 slide-in-from-top-5 duration-300">
+                 <div className="p-4 border rounded-lg bg-accent/50">
                     <h3 className="font-medium text-sm mb-2">Studio Location</h3>
                     <a href={STUDIO_ADDRESS.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-sm space-y-1 group">
                         <p>{STUDIO_ADDRESS.street}</p>
                         <p className='text-muted-foreground'>{STUDIO_ADDRESS.city}, {STUDIO_ADDRESS.province} {STUDIO_ADDRESS.postalCode}</p>
                         <div className='flex items-center gap-2 pt-1'>
-                            <MapPin className='w-4 h-4 text-primary'/>
-                            <span className='text-primary font-medium group-hover:underline'>View on Google Maps</span>
+                            <MapPin className='w-4 h-4 text-black'/>
+                            <span className='text-black font-medium group-hover:underline'>View on Google Maps</span>
                         </div>
                     </a>
                 </div>
             )}
 
             {day.serviceType === 'mobile' && (
-                <div className="animate-in fade-in-0 slide-in-from-top-5 duration-300 space-y-4">
+                <div className="space-y-4">
                     <div>
                         <Label className="text-md font-medium">Mobile Service Location *</Label>
                          <RadioGroup
@@ -501,11 +606,11 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                     <input type="hidden" name={`mobileLocation_${index}`} value={day.mobileLocation} />
 
                     {isOutsideToronto && (
-                        <div className='animate-in fade-in-0 slide-in-from-top-2 duration-300 pl-4 border-l-2 border-primary/20'>
+                        <div className='pl-4 border-l-2 border-gray-300'>
                             <Label className="text-md font-medium">Approximate Drive Distance</Label>
                              <RadioGroup value={day.mobileLocation} onValueChange={(value) => updateDay(day.id, { mobileLocation: value as MOBILE_LOCATION_IDS })} className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2" required>
                                 {Object.values(MOBILE_LOCATION_OPTIONS).filter(opt => opt.id !== 'toronto').map(opt => (
-                                    <Label key={opt.id} className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground has-[[data-state=checked]]:border-primary transition-colors">
+                                    <Label key={opt.id} className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground has-[[data-state=checked]]:border-black transition-colors">
                                         <RadioGroupItem value={opt.id} id={`${day.id}-mobile-${opt.id}`} />
                                         <span>{opt.label}</span>
                                     </Label>
@@ -527,26 +632,66 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                                 <RadioGroupItem value={id} id={`${day.id}-${id}`} />
                                 <span>{label}</span>
                             </Label>
-                            ))}
+                        ))}
                     </RadioGroup>
+                    {/* Hidden input for RadioGroup value - Radix UI RadioGroup doesn't submit automatically */}
+                    <input type="hidden" name={`serviceOption_${index}`} value={day.serviceOption || 'makeup-hair'} />
                 </div>
             )}
             
             {service && (
-                <Card className='mt-4 bg-background/50'>
-                    <CardHeader className='p-4'>
-                        <CardTitle className='text-lg'>{shouldUseGenericTitle ? 'Add-ons' : "Bride's Add-ons"}</CardTitle>
+                <Card className='mt-3 sm:mt-4 bg-background/50'>
+                    <CardHeader className='p-3 sm:p-4'>
+                        <CardTitle className='text-base sm:text-lg'>{shouldUseGenericTitle ? 'Add-ons' : "Bride's Add-ons"}</CardTitle>
                     </CardHeader>
-                    <CardContent className='p-4 pt-0 space-y-4'>
+                    <CardContent className='p-3 sm:p-4 pt-0 space-y-3 sm:space-y-4'>
+                        {/* Party Glam - People Count */}
+                        {service.id === 'party' && (
+                            <>
+                                <div>
+                                    <Label htmlFor={`partyPeopleCount-${index}`}>Number of People *</Label>
+                                    <p className="text-xs text-muted-foreground mb-2">How many people need services?</p>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                                            const currentCount = (day as any).partyPeopleCount || 1;
+                                            updateDay(day.id, { ...day, partyPeopleCount: Math.max(1, currentCount - 1) } as any);
+                                        }}><Minus className="h-4 w-4" /></Button>
+                                        <Input 
+                                            id={`partyPeopleCount-${index}`} 
+                                            name={`partyPeopleCount_${index}`} 
+                                            type="number" 
+                                            min="1" 
+                                            max="100" 
+                                            className="w-20 text-center" 
+                                            value={(day as any).partyPeopleCount || 1} 
+                                            onChange={(e) => {
+                                                const value = parseInt(e.target.value, 10) || 1;
+                                                updateDay(day.id, { ...day, partyPeopleCount: Math.max(1, Math.min(100, value)) } as any);
+                                            }} 
+                                            required
+                                        />
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                                            const currentCount = (day as any).partyPeopleCount || 1;
+                                            updateDay(day.id, { ...day, partyPeopleCount: currentCount + 1 } as any);
+                                        }}><Plus className="h-4 w-4" /></Button>
+                                    </div>
+                                    <input type="hidden" name={`partyPeopleCount_${index}`} value={(day as any).partyPeopleCount || 1} />
+                                </div>
+                                <Separator />
+                            </>
+                        )}
+
                             <div className="flex items-center justify-between">
                             <Label htmlFor={`jewellerySetting-${index}`} className="flex flex-col gap-1 cursor-pointer">
                                 <span>Jewellery/Dupatta Setting</span>
                                 <span className='text-xs text-muted-foreground'>Price revealed in quote</span>
                             </Label>
                             <Switch id={`jewellerySetting-${index}`} name={`jewellerySetting_${index}`} checked={day.jewellerySetting} onCheckedChange={(checked) => updateDay(day.id, { jewellerySetting: checked })} />
+                            {/* Hidden input for Switch value - Radix UI Switch doesn't submit automatically */}
+                            <input type="hidden" name={`jewellerySetting_${index}`} value={day.jewellerySetting ? 'on' : ''} />
                         </div>
                         
-                        {showAddons && <>
+                        {(showAddons || service.id === 'party') && <>
                             <Separator />
                             <div className="flex items-center justify-between">
                                 <Label htmlFor={`sareeDraping-${index}`} className="flex flex-col gap-1 cursor-pointer">
@@ -554,6 +699,8 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                                 <span className='text-xs text-muted-foreground'>Price revealed in quote</span>
                             </Label>
                                 <Switch id={`sareeDraping-${index}`} name={`sareeDraping_${index}`} checked={day.sareeDraping} onCheckedChange={(checked) => updateDay(day.id, { sareeDraping: checked })} />
+                                {/* Hidden input for Switch value - Radix UI Switch doesn't submit automatically */}
+                                <input type="hidden" name={`sareeDraping_${index}`} value={day.sareeDraping ? 'on' : ''} />
                             </div>
                             <Separator />
                             <div className="flex items-center justify-between">
@@ -562,6 +709,8 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                                 <span className='text-xs text-muted-foreground'>Price revealed in quote</span>
                             </Label>
                                 <Switch id={`hijabSetting-${index}`} name={`hijabSetting_${index}`} checked={day.hijabSetting} onCheckedChange={(checked) => updateDay(day.id, { hijabSetting: checked })} />
+                                {/* Hidden input for Switch value - Radix UI Switch doesn't submit automatically */}
+                                <input type="hidden" name={`hijabSetting_${index}`} value={day.hijabSetting ? 'on' : ''} />
                             </div>
                         </>}
                         <Separator />
@@ -596,31 +745,33 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
   const hasBridalOnly = days.some(day => day.serviceId === 'bridal');
 
   return (
-    <div className="space-y-8 animate-in fade-in-50 slide-in-from-top-10 duration-700">
+    <div className="space-y-8">
       {hasBridalOnly && (
       <Card className="shadow-lg">
-        <CardHeader>
-            <div className="flex items-center justify-between">
+        <CardHeader className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                 <div>
-                    <CardTitle className="font-headline text-2xl">Bridal Trial</CardTitle>
-                    <CardDescription>Add a trial session before your big day. Price revealed in quote.</CardDescription>
+                    <CardTitle className="font-headline text-xl sm:text-2xl">Bridal Trial</CardTitle>
+                    <CardDescription className="text-sm sm:text-base">Add a trial session before your big day. Price revealed in quote.</CardDescription>
                 </div>
                 <Switch name="addTrial" checked={bridalTrial.addTrial} onCheckedChange={(checked) => updateBridalTrial({ addTrial: checked })} />
+                {/* Hidden input for Switch value - Radix UI Switch doesn't submit automatically */}
+                <input type="hidden" name="addTrial" value={bridalTrial.addTrial ? 'on' : ''} />
             </div>
         </CardHeader>
         {bridalTrial.addTrial && (
-            <CardContent className="space-y-4 animate-in fade-in-0 slide-in-from-top-5 duration-300">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                        <Label htmlFor="trialDate">Trial Date *</Label>
+                        <Label htmlFor="trialDate" className="text-sm sm:text-base">Trial Date *</Label>
                         <Popover open={isTrialPopoverOpen} onOpenChange={setIsTrialPopoverOpen}>
                             <PopoverTrigger asChild>
-                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !bridalTrial.date && "text-muted-foreground")}>
+                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-9 sm:h-10", !bridalTrial.date && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {bridalTrial.date ? format(bridalTrial.date, "PPP") : <span>Pick a date</span>}
                             </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto p-0" align="start" side="bottom">
                             <Calendar mode="single" selected={bridalTrial.date} onSelect={(date) => { updateBridalTrial({ date: date as Date }); setIsTrialPopoverOpen(false); }} disabled={(date) => {
                                 const bridalDay = days.find(d=>d.serviceId === 'bridal')?.date;
                                 const today = new Date();
@@ -633,13 +784,15 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
                         <input type="hidden" name="trialDate" value={bridalTrial.date?.toISOString() || ''} />
                     </div>
                     <div>
-                        <Label htmlFor="trialTime">Trial Time *</Label>
+                        <Label htmlFor="trialTime" className="text-sm sm:text-base">Trial Time *</Label>
                         <Select name="trialTime" value={bridalTrial.time} onValueChange={(value) => updateBridalTrial({ time: value })} required={bridalTrial.addTrial}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 sm:h-10"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{format(new Date(`1970-01-01T${slot}`), 'p')}</SelectItem>)}
                         </SelectContent>
                         </Select>
+                        {/* Hidden input for Select value - Radix UI Select doesn't submit automatically */}
+                        <input type="hidden" name="trialTime" value={bridalTrial.time || ''} />
                     </div>
                 </div>
                 {errors?.trialDate && <p className="text-sm text-destructive mt-1">{errors.trialDate[0]}</p>}
@@ -689,7 +842,7 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
               <CardHeader>
                   <div className="flex items-center justify-between">
                       <div className='flex items-center gap-4'>
-                          <Users className='w-6 h-6 text-primary'/>
+                          <Users className='w-6 h-6 text-black'/>
                           <div>
                               <CardTitle className="font-headline text-2xl">{serviceName} Party Services - Day {dayNumber}</CardTitle>
                               <CardDescription>Aside from the {day.serviceId === 'bridal' ? 'bride' : 'client'}, are there other members requiring services for this day?</CardDescription>
@@ -707,10 +860,12 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
                           setDays(updatedDays);
                         }} 
                       />
+                      {/* Hidden input for Switch value - Radix UI Switch doesn't submit automatically */}
+                      <input type="hidden" name={`addPartyServices_${day.id}`} value={partyServices.addServices ? 'on' : ''} />
                   </div>
               </CardHeader>
             {partyServices.addServices && (
-                <CardContent className="space-y-6 pt-2 animate-in fade-in-0 slide-in-from-top-5 duration-300">
+                <CardContent className="space-y-6 pt-2">
                     <PartyServiceInput
                         name="hairAndMakeup"
                         label="Both Hair & Makeup"
@@ -943,7 +1098,17 @@ function SubmitButton() {
     const { pending } = useFormStatus();
 
     return (
-        <Button type="submit" size="lg" className="font-bold" disabled={pending}>
+        <Button 
+          type="submit" 
+          size="lg" 
+          className="font-bold" 
+          disabled={pending}
+          onClick={(e) => {
+            console.log('BookingFlow: SubmitButton clicked, pending:', pending);
+            console.log('BookingFlow: Form:', e.currentTarget.form);
+            console.log('BookingFlow: Form action:', e.currentTarget.form?.action);
+          }}
+        >
             {pending ? <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Generating...

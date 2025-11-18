@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AdminSettings } from '@/components/admin-settings';
+import Image from 'next/image';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,12 @@ export interface MakeupArtist {
   name: string;
   email: string;
   whatsapp: string;
+  address?: {
+    street?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+  };
   created_at?: string;
   updated_at?: string;
 }
@@ -49,6 +56,12 @@ export default function ArtistsPage() {
     name: '',
     email: '',
     whatsapp: '',
+    address: {
+      street: '',
+      city: '',
+      province: '',
+      postalCode: '',
+    },
   });
 
   // Format phone number as user types (US/Canada format)
@@ -133,7 +146,12 @@ export default function ArtistsPage() {
       
       // Success - clear any previous errors
       setError(null);
-      setArtists(data.artists || []);
+      // Normalize address data to ensure it's always an object or undefined
+      const normalizedArtists = (data.artists || []).map((artist: any) => ({
+        ...artist,
+        address: artist.address && typeof artist.address === 'object' ? artist.address : undefined,
+      }));
+      setArtists(normalizedArtists);
     } catch (err: any) {
       setError(err.message);
       toast({
@@ -163,10 +181,26 @@ export default function ArtistsPage() {
       }
       // Format with +1
       const formattedWhatsApp = formatPhoneInput(digits);
+      // Normalize address to ensure it's always an object with all fields
+      const normalizedAddress = artist.address && typeof artist.address === 'object' 
+        ? {
+            street: artist.address.street || '',
+            city: artist.address.city || '',
+            province: artist.address.province || '',
+            postalCode: artist.address.postalCode || '',
+          }
+        : {
+            street: '',
+            city: '',
+            province: '',
+            postalCode: '',
+          };
+      
       setFormData({
         name: artist.name,
         email: artist.email,
         whatsapp: formattedWhatsApp || '+1',
+        address: normalizedAddress,
       });
     } else {
       setEditingArtist(null);
@@ -174,6 +208,12 @@ export default function ArtistsPage() {
         name: '',
         email: '',
         whatsapp: '',
+        address: {
+          street: '',
+          city: '',
+          province: '',
+          postalCode: '',
+        },
       });
     }
     setIsDialogOpen(true);
@@ -186,6 +226,12 @@ export default function ArtistsPage() {
       name: '',
       email: '',
       whatsapp: '',
+      address: {
+        street: '',
+        city: '',
+        province: '',
+        postalCode: '',
+      },
     });
   };
 
@@ -204,9 +250,29 @@ export default function ArtistsPage() {
     try {
       const url = editingArtist ? '/api/artists' : '/api/artists';
       const method = editingArtist ? 'PUT' : 'POST';
+      
+      // Clean up address - only include if at least one field has data
+      const hasAddressData = formData.address && typeof formData.address === 'object' && (
+        (formData.address.street && formData.address.street.trim()) ||
+        (formData.address.city && formData.address.city.trim()) ||
+        (formData.address.province && formData.address.province.trim()) ||
+        (formData.address.postalCode && formData.address.postalCode.trim())
+      );
+      
+      // Only include address if it has data, otherwise omit it (API will set to null)
+      const cleanedFormData: any = {
+        name: formData.name,
+        email: formData.email,
+        whatsapp: formData.whatsapp,
+      };
+      
+      if (hasAddressData) {
+        cleanedFormData.address = formData.address;
+      }
+      
       const body = editingArtist
-        ? { id: editingArtist.id, ...formData }
-        : formData;
+        ? { id: editingArtist.id, ...cleanedFormData }
+        : cleanedFormData;
 
       const res = await fetch(url, {
         method,
@@ -291,7 +357,7 @@ export default function ArtistsPage() {
     return (
       <div className="flex flex-col min-h-screen w-full bg-muted/40">
         <div className="flex flex-1 flex-col items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <Loader2 className="h-12 w-12 animate-spin text-black" />
           <p className="mt-4 text-muted-foreground">Loading Artists...</p>
         </div>
       </div>
@@ -302,8 +368,17 @@ export default function ArtistsPage() {
     <div className="flex min-h-screen w-full bg-muted/40">
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-        <div className="flex h-16 items-center border-b px-6">
-          <h1 className="font-headline text-2xl font-bold text-primary tracking-wider">Looks by Anum</h1>
+        <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <Image
+              src="/LBA.png"
+              alt="Looks by Anum Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+          <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
@@ -322,7 +397,7 @@ export default function ArtistsPage() {
                   type="button"
                   className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-black text-white'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
@@ -421,8 +496,8 @@ export default function ArtistsPage() {
                         <Label htmlFor="street">Street Address</Label>
                         <Input
                           id="street"
-                          value={formData.address.street}
-                          onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })}
+                          value={formData.address?.street || ''}
+                          onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), street: e.target.value } })}
                           placeholder="123 Main Street"
                         />
                       </div>
@@ -431,8 +506,8 @@ export default function ArtistsPage() {
                           <Label htmlFor="city">City</Label>
                           <Input
                             id="city"
-                            value={formData.address.city}
-                            onChange={(e) => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })}
+                            value={formData.address?.city || ''}
+                            onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), city: e.target.value } })}
                             placeholder="Toronto"
                           />
                         </div>
@@ -440,8 +515,8 @@ export default function ArtistsPage() {
                           <Label htmlFor="province">Province</Label>
                           <Input
                             id="province"
-                            value={formData.address.province}
-                            onChange={(e) => setFormData({ ...formData, address: { ...formData.address, province: e.target.value } })}
+                            value={formData.address?.province || ''}
+                            onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), province: e.target.value } })}
                             placeholder="ON"
                             maxLength={2}
                           />
@@ -451,8 +526,8 @@ export default function ArtistsPage() {
                         <Label htmlFor="postalCode">Postal Code</Label>
                         <Input
                           id="postalCode"
-                          value={formData.address.postalCode}
-                          onChange={(e) => setFormData({ ...formData, address: { ...formData.address, postalCode: e.target.value.toUpperCase() } })}
+                          value={formData.address?.postalCode || ''}
+                          onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), postalCode: e.target.value.toUpperCase() } })}
                           placeholder="M5H 2N2"
                           maxLength={7}
                         />
@@ -640,12 +715,16 @@ ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`;
                         </div>
                       </TableCell>
                       <TableCell>
-                        {artist.address ? (
+                        {artist.address && typeof artist.address === 'object' && (artist.address?.street || artist.address?.city) ? (
                           <div className="text-sm">
-                            <p className="font-medium">{artist.address.street}</p>
-                            <p className="text-muted-foreground">
-                              {artist.address.city}, {artist.address.province} {artist.address.postalCode}
-                            </p>
+                            {artist.address?.street && (
+                              <p className="font-medium">{artist.address.street}</p>
+                            )}
+                            {(artist.address?.city || artist.address?.province || artist.address?.postalCode) && (
+                              <p className="text-muted-foreground">
+                                {[artist.address?.city, artist.address?.province, artist.address?.postalCode].filter(Boolean).join(', ')}
+                              </p>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">—</span>

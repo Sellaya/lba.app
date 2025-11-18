@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AdminSettings } from '@/components/admin-settings';
+import Image from 'next/image';
 
 export default function AccountingPage() {
   const [bookings, setBookings] = useState<BookingDocument[] | null>(null);
@@ -242,8 +243,17 @@ export default function AccountingPage() {
     return (
       <div className="flex min-h-screen w-full bg-muted/40">
         <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-          <div className="flex h-16 items-center border-b px-6">
-            <h1 className="font-headline text-2xl font-bold text-primary tracking-wider">Looks by Anum</h1>
+          <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
+            <div className="relative w-10 h-10 flex-shrink-0">
+              <Image
+                src="/LBA.png"
+                alt="Looks by Anum Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
           </div>
           <nav className="flex-1 space-y-1 p-4">
             {navItems.map((item) => {
@@ -262,7 +272,7 @@ export default function AccountingPage() {
                     type="button"
                     className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-black text-white'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                     }`}
                   >
@@ -292,7 +302,7 @@ export default function AccountingPage() {
           <main className="flex-1 p-6">
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
                 <p className="mt-4 text-muted-foreground">Loading accounting data...</p>
               </div>
             </div>
@@ -306,8 +316,17 @@ export default function AccountingPage() {
     return (
       <div className="flex min-h-screen w-full bg-muted/40">
         <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-          <div className="flex h-16 items-center border-b px-6">
-            <h1 className="font-headline text-2xl font-bold text-primary tracking-wider">Looks by Anum</h1>
+          <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
+            <div className="relative w-10 h-10 flex-shrink-0">
+              <Image
+                src="/LBA.png"
+                alt="Looks by Anum Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
           </div>
           <nav className="flex-1 space-y-1 p-4">
             {navItems.map((item) => {
@@ -326,7 +345,7 @@ export default function AccountingPage() {
                     type="button"
                     className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-black text-white'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                     }`}
                   >

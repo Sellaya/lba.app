@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -60,8 +61,19 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Lock className="h-6 w-6 text-primary" />
+            <div className={`mx-auto mb-6 flex items-center justify-center rounded-2xl bg-gradient-to-br from-white to-gray-50 p-6 shadow-lg border-2 border-gray-200 transition-all duration-500 ${
+              isLoading ? 'animate-pulse scale-105 shadow-xl border-black/20' : 'hover:shadow-xl hover:scale-105'
+            }`}>
+              <div className="relative w-32 h-32 md:w-40 md:h-40">
+                <Image
+                  src="/LBA.png"
+                  alt="Looks by Anum Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                  sizes="(max-width: 768px) 128px, 160px"
+                />
+              </div>
             </div>
             <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
             <CardDescription>
