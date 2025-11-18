@@ -8,8 +8,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2 } from 'lucide-react';
 import { AdminSettings } from '@/components/admin-settings';
 import { format, differenceInDays, parse } from 'date-fns';
 import { BookingDetails } from '@/components/booking-details';
@@ -19,6 +31,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Image from 'next/image';
+import { useToast } from '@/hooks/use-toast';
 
 function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' | 'interac'): { text: string; variant: 'secondary' | 'destructive' | 'default' } {
     switch (status) {
@@ -79,8 +92,12 @@ export default function AdminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [showWelcome, setShowWelcome] = useState(false);
+  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { toast } = useToast();
 
   // Check if welcome message should be shown (only once after login)
   useEffect(() => {
@@ -436,9 +453,82 @@ export default function AdminDashboard() {
   const handleBookingDeleted = (bookingId: string) => {
     // Close the dialog and refresh the list
     setSelectedBooking(null);
+    // Remove from selected bookings if it was selected
+    setSelectedBookings(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(bookingId);
+      return newSet;
+    });
     fetchBookings(false);
   };
 
+  // Handle individual booking selection
+  const handleBookingSelect = (bookingId: string, checked: boolean) => {
+    setSelectedBookings(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(bookingId);
+      } else {
+        newSet.delete(bookingId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle select all bookings
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(filteredBookings.map(b => b.id));
+      setSelectedBookings(allIds);
+    } else {
+      setSelectedBookings(new Set());
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedBookings.size === 0) return;
+
+    setIsDeleting(true);
+    try {
+      const deletePromises = Array.from(selectedBookings).map(bookingId =>
+        fetch(`/api/bookings/${bookingId}`, {
+          method: 'DELETE',
+        })
+      );
+
+      const results = await Promise.allSettled(deletePromises);
+      
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
+      const failed = results.length - successful;
+
+      if (failed === 0) {
+        toast({
+          title: 'Success',
+          description: `Successfully deleted ${successful} booking(s).`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Partial Success',
+          description: `Deleted ${successful} booking(s), but ${failed} failed.`,
+        });
+      }
+
+      // Clear selection and refresh
+      setSelectedBookings(new Set());
+      setShowDeleteDialog(false);
+      fetchBookings(false);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to delete bookings',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -595,6 +685,59 @@ export default function AdminDashboard() {
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
           <h2 className="text-xl font-semibold text-foreground">Bookings Management</h2>
           <div className="ml-auto flex items-center gap-2">
+            {selectedBookings.size > 0 && (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  {selectedBookings.size} selected
+                </span>
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Selected ({selectedBookings.size})
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete {selectedBookings.size} booking(s). This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleBulkDelete}
+                        disabled={isDeleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          'Delete'
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
             <Button
               variant="outline"
               size="icon"
@@ -686,6 +829,9 @@ export default function AdminDashboard() {
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
                   format={format}
+                  selectedBookings={selectedBookings}
+                  handleBookingSelect={handleBookingSelect}
+                  handleSelectAll={handleSelectAll}
                 />
               </TabsContent>
 
@@ -701,6 +847,9 @@ export default function AdminDashboard() {
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
                   format={format}
+                  selectedBookings={selectedBookings}
+                  handleBookingSelect={handleBookingSelect}
+                  handleSelectAll={handleSelectAll}
                 />
               </TabsContent>
 
@@ -716,6 +865,9 @@ export default function AdminDashboard() {
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
                   format={format}
+                  selectedBookings={selectedBookings}
+                  handleBookingSelect={handleBookingSelect}
+                  handleSelectAll={handleSelectAll}
                 />
               </TabsContent>
 
@@ -731,6 +883,9 @@ export default function AdminDashboard() {
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
                   format={format}
+                  selectedBookings={selectedBookings}
+                  handleBookingSelect={handleBookingSelect}
+                  handleSelectAll={handleSelectAll}
                 />
               </TabsContent>
 
@@ -746,6 +901,9 @@ export default function AdminDashboard() {
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
                   format={format}
+                  selectedBookings={selectedBookings}
+                  handleBookingSelect={handleBookingSelect}
+                  handleSelectAll={handleSelectAll}
                 />
               </TabsContent>
 
@@ -761,6 +919,9 @@ export default function AdminDashboard() {
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
                   format={format}
+                  selectedBookings={selectedBookings}
+                  handleBookingSelect={handleBookingSelect}
+                  handleSelectAll={handleSelectAll}
                 />
               </TabsContent>
             </Tabs>
@@ -784,6 +945,9 @@ function BookingsTable({
   getStatusVariant,
   getTimeToEvent,
   format,
+  selectedBookings,
+  handleBookingSelect,
+  handleSelectAll,
 }: {
   bookings: BookingDocument[];
   selectedBooking: BookingDocument | null;
@@ -795,13 +959,25 @@ function BookingsTable({
   getStatusVariant: (status: BookingDocument['finalQuote']['status']) => 'default' | 'destructive' | 'secondary';
   getTimeToEvent: (eventDateStr: string) => string;
   format: (date: Date | number, formatStr: string) => string;
+  selectedBookings: Set<string>;
+  handleBookingSelect: (bookingId: string, checked: boolean) => void;
+  handleSelectAll: (checked: boolean) => void;
 }) {
+  const allSelected = bookings.length > 0 && bookings.every(b => selectedBookings.has(b.id));
+  const someSelected = bookings.some(b => selectedBookings.has(b.id));
   return (
     <>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                  aria-label="Select all bookings"
+                />
+              </TableHead>
               <TableHead className="w-[60px]">Sr. No.</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Advance Payment</TableHead>
@@ -823,7 +999,14 @@ function BookingsTable({
                const finalPaymentStatus = getFinalPaymentStatus(booking.finalQuote.paymentDetails?.finalPayment);
                const finalPaymentMethod = booking.finalQuote.paymentDetails?.finalPayment?.method;
                return (
-                  <TableRow key={booking.id}>
+                  <TableRow key={booking.id} className={selectedBookings.has(booking.id) ? 'bg-muted/50' : ''}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedBookings.has(booking.id)}
+                        onCheckedChange={(checked) => handleBookingSelect(booking.id, checked === true)}
+                        aria-label={`Select booking ${booking.id}`}
+                      />
+                    </TableCell>
                      <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>
                       <div className="font-medium">{booking.finalQuote.contact.name}</div>
