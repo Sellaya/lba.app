@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Plus, Edit, Trash2, Mail, Phone, User, FileText, Users, TrendingUp, DollarSign } from 'lucide-react';
+import { Loader2, AlertTriangle, Plus, Edit, Trash2, Mail, Phone, User, FileText, Users, TrendingUp, DollarSign, Menu } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -25,6 +25,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 export interface MakeupArtist {
   id?: string;
@@ -50,6 +57,7 @@ export default function ArtistsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [editingArtist, setEditingArtist] = useState<MakeupArtist | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -353,6 +361,59 @@ export default function ArtistsPage() {
     { href: '/admin/pricing', label: 'Pricing', icon: DollarSign },
   ];
 
+  // Reusable Navigation Component
+  const NavigationMenu = ({ onNavigate }: { onNavigate?: () => void }) => {
+    return (
+      <nav className="flex-1 space-y-1 p-4">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          const handleClick = () => {
+            if (onNavigate) onNavigate();
+          };
+          
+          if (item.href === '/admin/pricing') {
+            return (
+              <button
+                key={item.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  router.push(item.href);
+                  handleClick();
+                }}
+                type="button"
+                className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-black text-white'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={handleClick}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen w-full bg-muted/40">
@@ -366,7 +427,7 @@ export default function ArtistsPage() {
 
   return (
     <div className="flex min-h-screen w-full bg-muted/40">
-      {/* Sidebar */}
+      {/* Sidebar - Desktop Only */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-background">
         <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
           <div className="relative w-10 h-10 flex-shrink-0">
@@ -380,72 +441,66 @@ export default function ArtistsPage() {
           </div>
           <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            // Use button for pricing to avoid prefetch errors, Link for others
-            if (item.href === '/admin/pricing') {
-              return (
-                <button
-                  key={item.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    router.push(item.href);
-                  }}
-                  type="button"
-                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-black text-white'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.label}
-                </button>
-              );
-            }
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <NavigationMenu />
       </aside>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
-          <h2 className="text-xl font-semibold text-foreground">Team Management</h2>
-          <div className="ml-auto">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 md:px-6">
+          {/* Mobile Menu Button */}
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden h-9 w-9"
+                aria-label="Open menu"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0">
+              <SheetHeader className="border-b px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 flex-shrink-0">
+                    <Image
+                      src="/LBA.png"
+                      alt="Looks by Anum Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                  <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
+                    Looks by Anum
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
+            </SheetContent>
+          </Sheet>
+
+          <h2 className="text-base sm:text-xl font-semibold text-foreground truncate flex-1 min-w-0">
+            Team Management
+          </h2>
+          <div className="ml-auto flex-shrink-0">
             <AdminSettings />
           </div>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 sm:px-6 sm:py-4 md:gap-6">
-        <div className="flex items-center justify-between">
+        <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 sm:px-6 sm:py-4 md:gap-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Manage your team members and their contact information</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Manage your team members and their contact information</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => handleOpenDialog()}>
+                <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Artist
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingArtist ? 'Edit Artist' : 'Add New Artist'}</DialogTitle>
                   <DialogDescription>
@@ -688,30 +743,33 @@ ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`;
                 <p className="text-sm text-muted-foreground mt-2">Click "Add Artist" to get started.</p>
               </div>
             ) : (
-              <Table>
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <div className="overflow-hidden">
+                    <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>WhatsApp</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-xs sm:text-sm min-w-[120px]">Name</TableHead>
+                    <TableHead className="text-xs sm:text-sm min-w-[180px]">Email</TableHead>
+                    <TableHead className="text-xs sm:text-sm min-w-[140px]">WhatsApp</TableHead>
+                    <TableHead className="text-xs sm:text-sm min-w-[150px]">Address</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {artists.map((artist) => (
                     <TableRow key={artist.id}>
-                      <TableCell className="font-medium">{artist.name}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium text-xs sm:text-sm">{artist.name}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">
                         <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          {artist.email}
+                          <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{artist.email}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs sm:text-sm">
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          {formatWhatsApp(artist.whatsapp)}
+                          <Phone className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{formatWhatsApp(artist.whatsapp)}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -776,7 +834,10 @@ ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`;
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                    </Table>
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

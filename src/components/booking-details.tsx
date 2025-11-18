@@ -6,7 +6,7 @@ import { STUDIO_ADDRESS } from '@/lib/services';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Users, MapPin, CalendarClock, Link as LinkIcon, MessageSquare, Loader2, Mail, Trash2, CheckCircle2, XCircle, Send, Calendar } from 'lucide-react';
+import { User, Users, MapPin, CalendarClock, Link as LinkIcon, MessageSquare, Loader2, Mail, Trash2, CheckCircle2, XCircle, Send, Calendar, Download, FileText } from 'lucide-react';
 import { differenceInDays, parse, format, formatDistanceToNow, isPast, isFuture } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -16,6 +16,8 @@ import type { BookingDocument } from '@/firebase/firestore/bookings';
 import { sendConfirmationEmailAction, approvePaymentAction, rejectScreenshotAction, approveFinalPaymentAction, rejectFinalPaymentAction } from '@/app/admin/actions';
 import { trackPaymentComplete } from '@/lib/facebook-pixel';
 import { Label } from '@/components/ui/label';
+import { ContractDisplay } from '@/components/contract-display';
+import { generateContractPDFFromElement, generateContractPDFFromData } from '@/lib/pdf-generator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -102,6 +104,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
   const [isSendingTest3D, setIsSendingTest3D] = useState(false);
   const [isSendingTest6D, setIsSendingTest6D] = useState(false);
   const [isSendingTest30D, setIsSendingTest30D] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { toast } = useToast();
 
   // Determine selected quote data - use quote.selectedQuote or infer from payment details
@@ -471,6 +474,51 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       });
     } finally {
       setIsSendingTest30D(false);
+    }
+  };
+
+  // Handler to download contract PDF
+  const handleDownloadContractPDF = async () => {
+    if (!quote.selectedQuote || !quote.contractSignedDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Contract information is not available. Contract must be signed to download PDF.',
+      });
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+    try {
+      // Try to generate from element first (better quality)
+      const contractElementId = `contract-display-${quote.id}`;
+      const contractElement = document.getElementById(contractElementId);
+      
+      if (contractElement) {
+        await generateContractPDFFromElement(contractElementId, `Service-Agreement-${quote.id}.pdf`);
+      } else {
+        // Fallback to data-based generation
+        await generateContractPDFFromData(
+          quote,
+          quote.selectedQuote,
+          quote.contractSignedDate,
+          `Service-Agreement-${quote.id}.pdf`
+        );
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Contract PDF downloaded successfully.',
+      });
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to generate PDF. Please try again.',
+      });
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -873,6 +921,34 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       {quote.selectedQuote === 'lead' ? 'Anum - Lead Artist' : 'Team'}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {quote.contractSignedDate && quote.selectedQuote && (
+                <div className="pt-4 border-t">
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Contract</Label>
+                  <Button
+                    onClick={handleDownloadContractPDF}
+                    disabled={isGeneratingPDF}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Contract PDF
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Signed on {format(new Date(quote.contractSignedDate), 'PPP')}
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -2833,6 +2909,17 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 </AlertDialogContent>
             </AlertDialog>
         </div>
+
+        {/* Hidden contract display for PDF generation */}
+        {quote.contractSignedDate && quote.selectedQuote && (
+          <div id={`contract-display-${quote.id}`} className="hidden">
+            <ContractDisplay 
+              quote={quote} 
+              selectedTier={quote.selectedQuote} 
+              signedDate={quote.contractSignedDate}
+            />
+          </div>
+        )}
     </div>
   );
 }

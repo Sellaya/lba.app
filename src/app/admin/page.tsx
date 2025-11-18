@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2, Menu } from 'lucide-react';
 import { AdminSettings } from '@/components/admin-settings';
 import { format, differenceInDays, parse } from 'date-fns';
 import { BookingDetails } from '@/components/booking-details';
@@ -32,6 +32,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' | 'interac'): { text: string; variant: 'secondary' | 'destructive' | 'default' } {
     switch (status) {
@@ -95,6 +102,7 @@ export default function AdminDashboard() {
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -557,6 +565,59 @@ export default function AdminDashboard() {
     { href: '/admin/pricing', label: 'Pricing', icon: DollarSign },
   ];
 
+  // Reusable Navigation Component
+  const NavigationMenu = ({ onNavigate }: { onNavigate?: () => void }) => {
+    return (
+      <nav className="flex-1 space-y-1 p-4">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          const handleClick = () => {
+            if (onNavigate) onNavigate();
+          };
+          
+          if (item.href === '/admin/pricing') {
+            return (
+              <button
+                key={item.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  router.push(item.href);
+                  handleClick();
+                }}
+                type="button"
+                className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-black text-white'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={handleClick}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  };
+
   // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-CA', {
@@ -622,7 +683,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      {/* Sidebar */}
+      {/* Sidebar - Desktop Only */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-background">
         <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
           <div className="relative w-10 h-10 flex-shrink-0">
@@ -636,58 +697,52 @@ export default function AdminDashboard() {
           </div>
           <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            // Use button for pricing to avoid prefetch errors, Link for others
-            if (item.href === '/admin/pricing') {
-              return (
-                <button
-                  key={item.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    router.push(item.href);
-                  }}
-                  type="button"
-                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-black text-white'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.label}
-                </button>
-              );
-            }
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <NavigationMenu />
       </aside>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
-          <h2 className="text-xl font-semibold text-foreground">Bookings Management</h2>
-          <div className="ml-auto flex items-center gap-2">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 md:px-6">
+          {/* Mobile Menu Button */}
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden h-9 w-9"
+                aria-label="Open menu"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0">
+              <SheetHeader className="border-b px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 flex-shrink-0">
+                    <Image
+                      src="/LBA.png"
+                      alt="Looks by Anum Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                  <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
+                    Looks by Anum
+                  </SheetTitle>
+                </div>
+              </SheetHeader>
+              <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
+            </SheetContent>
+          </Sheet>
+
+          <h2 className="text-base sm:text-xl font-semibold text-foreground truncate flex-1 min-w-0">
+            Bookings Management
+          </h2>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {selectedBookings.size > 0 && (
               <>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
                   {selectedBookings.size} selected
                 </span>
                 <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -696,33 +751,35 @@ export default function AdminDashboard() {
                       variant="destructive"
                       size="sm"
                       disabled={isDeleting}
+                      className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
                     >
                       {isDeleting ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deleting...
+                          <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                          <span className="hidden sm:inline">Deleting...</span>
                         </>
                       ) : (
                         <>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Selected ({selectedBookings.size})
+                          <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">Delete Selected ({selectedBookings.size})</span>
+                          <span className="sm:hidden">{selectedBookings.size}</span>
                         </>
                       )}
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This will permanently delete {selectedBookings.size} booking(s). This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                      <AlertDialogCancel disabled={isDeleting} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={handleBulkDelete}
                         disabled={isDeleting}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
                       >
                         {isDeleting ? (
                           <>
@@ -744,13 +801,14 @@ export default function AdminDashboard() {
               onClick={() => fetchBookings(true)}
               disabled={isRefreshing}
               title="Refresh bookings"
+              className="h-8 w-8 sm:h-10 sm:w-10"
             >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
             <AdminSettings />
           </div>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 sm:px-6 sm:py-4 md:gap-6">
+        <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 sm:px-6 sm:py-4 md:gap-6">
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -772,46 +830,46 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6 mb-6">
-                <TabsTrigger value="all" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-4 sm:mb-6 h-auto gap-1 sm:gap-0">
+                <TabsTrigger value="all" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">All</span>
-                  <Badge variant="secondary" className="ml-1">
+                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
                     {categorizedBookings.all.length}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="quoted" className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+                <TabsTrigger value="quoted" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Quoted</span>
-                  <Badge variant="secondary" className="ml-1">
+                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
                     {categorizedBookings.quoted.length}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="pendingPayment" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
+                <TabsTrigger value="pendingPayment" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
+                  <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Pending</span>
-                  <Badge variant="secondary" className="ml-1">
+                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
                     {categorizedBookings.pendingPayment.length}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="confirmed" className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
+                <TabsTrigger value="confirmed" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
+                  <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Confirmed</span>
-                  <Badge variant="secondary" className="ml-1">
+                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
                     {categorizedBookings.confirmed.length}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="completed" className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4" />
+                <TabsTrigger value="completed" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
+                  <CalendarClock className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Completed</span>
-                  <Badge variant="secondary" className="ml-1">
+                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
                     {categorizedBookings.completed.length}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="cancelled" className="flex items-center gap-2">
-                  <XCircle className="h-4 w-4" />
+                <TabsTrigger value="cancelled" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
+                  <XCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Cancelled</span>
-                  <Badge variant="secondary" className="ml-1">
+                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
                     {categorizedBookings.cancelled.length}
                   </Badge>
                 </TabsTrigger>
@@ -967,26 +1025,28 @@ function BookingsTable({
   const someSelected = bookings.some(b => selectedBookings.has(b.id));
   return (
     <>
-      <div className="overflow-x-auto">
-        <Table>
+      <div className="overflow-x-auto -mx-2 sm:mx-0">
+        <div className="inline-block min-w-full align-middle">
+          <div className="overflow-hidden">
+            <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50px]">
+              <TableHead className="w-[40px] sm:w-[50px]">
                 <Checkbox
                   checked={allSelected}
                   onCheckedChange={(checked) => handleSelectAll(checked === true)}
                   aria-label="Select all bookings"
                 />
               </TableHead>
-              <TableHead className="w-[60px]">Sr. No.</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Advance Payment</TableHead>
-              <TableHead>Final Payment</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Booking Date</TableHead>
-              <TableHead className="hidden md:table-cell">Event</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>
+              <TableHead className="w-[50px] sm:w-[60px] text-xs sm:text-sm">Sr. No.</TableHead>
+              <TableHead className="min-w-[120px] text-xs sm:text-sm">Customer</TableHead>
+              <TableHead className="min-w-[100px] text-xs sm:text-sm">Advance Payment</TableHead>
+              <TableHead className="min-w-[100px] text-xs sm:text-sm">Final Payment</TableHead>
+              <TableHead className="min-w-[80px] text-xs sm:text-sm">Status</TableHead>
+              <TableHead className="hidden md:table-cell text-xs sm:text-sm">Booking Date</TableHead>
+              <TableHead className="hidden md:table-cell text-xs sm:text-sm">Event</TableHead>
+              <TableHead className="text-right min-w-[80px] text-xs sm:text-sm">Total</TableHead>
+              <TableHead className="w-[50px]">
                 <span className="sr-only">Actions</span>
               </TableHead>
             </TableRow>
@@ -1007,10 +1067,10 @@ function BookingsTable({
                         aria-label={`Select booking ${booking.id}`}
                       />
                     </TableCell>
-                     <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{booking.finalQuote.contact.name}</div>
-                      <div className="text-sm text-muted-foreground">{booking.id}</div>
+                     <TableCell className="font-medium text-xs sm:text-sm">{index + 1}</TableCell>
+                    <TableCell className="min-w-[120px]">
+                      <div className="font-medium text-xs sm:text-sm">{booking.finalQuote.contact.name}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[100px] sm:max-w-none">{booking.id}</div>
                     </TableCell>
                      <TableCell>
                           <div className="flex flex-col gap-1">
@@ -1081,7 +1141,7 @@ function BookingsTable({
                               <span>{getTimeToEvent(booking.finalQuote.booking.days[0].date)}</span>
                           </div>
                     </TableCell>
-                     <TableCell className="text-right">
+                     <TableCell className="text-right text-xs sm:text-sm font-medium">
                       ${booking.finalQuote.selectedQuote 
                           ? booking.finalQuote.quotes[booking.finalQuote.selectedQuote].total.toFixed(2)
                           : 'N/A'
@@ -1095,7 +1155,7 @@ function BookingsTable({
                                   <span className="sr-only">View Details</span>
                               </Button>
                           </DialogTrigger>
-                           <DialogContent className="sm:max-w-5xl lg:max-w-6xl max-h-[90vh] flex flex-col">
+                           <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-5xl lg:max-w-6xl max-h-[95vh] sm:max-h-[90vh] flex flex-col p-2 sm:p-6">
                               <DialogHeader className="flex-shrink-0">
                                   <DialogTitle className="text-xl">Booking Details (ID: {booking.id})</DialogTitle>
                               </DialogHeader>
@@ -1109,7 +1169,9 @@ function BookingsTable({
                )
             })}
           </TableBody>
-        </Table>
+            </Table>
+          </div>
+        </div>
       </div>
       {bookings.length === 0 && (
         <div className="py-20 text-center text-muted-foreground">

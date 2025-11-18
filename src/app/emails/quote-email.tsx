@@ -1,6 +1,7 @@
 import * as React from 'react';
 import type { FinalQuote, Quote } from '@/lib/types';
 import { GST_RATE } from '@/lib/services';
+import ContractEmailTemplate from '@/app/emails/contract-email';
 
 interface QuoteEmailTemplateProps {
   quote: FinalQuote;
@@ -320,6 +321,22 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
               </table>
             </div>
           </div>
+
+          {quote.contractSignedDate && quote.selectedQuote && (
+            <div style={{...section, marginTop: '40px', padding: '30px', backgroundColor: '#f9f9f9', border: '1px solid #ddd', borderRadius: '8px'}}>
+              <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' as const}}>Your Signed Contract</h2>
+              <p style={{...paragraph, marginBottom: '20px'}}>
+                Please find your signed service agreement below. This contract outlines all terms and conditions of our service agreement.
+              </p>
+              <div style={{marginTop: '20px', padding: '20px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px'}}>
+                <ContractEmailTemplate 
+                  quote={quote} 
+                  selectedTier={quote.selectedQuote} 
+                  signedDate={quote.contractSignedDate}
+                />
+              </div>
+            </div>
+          )}
           
           <p style={{ ...paragraph, fontSize: '14px', color: '#6c757d', textAlign: 'center', marginBottom: 0, marginTop: '20px' }}>
             We look forward to seeing you!

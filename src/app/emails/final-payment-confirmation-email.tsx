@@ -1,5 +1,6 @@
 import * as React from 'react';
 import type { FinalQuote } from '@/lib/types';
+import ContractEmailTemplate from '@/app/emails/contract-email';
 
 interface FinalPaymentConfirmationEmailProps {
   quote: FinalQuote;
@@ -127,6 +128,22 @@ const FinalPaymentConfirmationEmailTemplate: React.FC<Readonly<FinalPaymentConfi
           <p style={paragraph}>
             Whether it's another special occasion, a photoshoot, or simply a day when you want to feel extra beautiful, we would be honored to be your makeup artists again. Your journey with us doesn't end here – it's just the beginning of a beautiful relationship.
           </p>
+
+          {quote.contractSignedDate && quote.selectedQuote && (
+            <div style={{...section, marginTop: '40px', padding: '30px', backgroundColor: '#f9f9f9', border: '1px solid #ddd', borderRadius: '8px'}}>
+              <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' as const}}>Your Signed Contract</h2>
+              <p style={{...paragraph, marginBottom: '20px'}}>
+                Please find your signed service agreement below. This contract outlines all terms and conditions of our service agreement.
+              </p>
+              <div style={{marginTop: '20px', padding: '20px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px'}}>
+                <ContractEmailTemplate 
+                  quote={quote} 
+                  selectedTier={quote.selectedQuote} 
+                  signedDate={quote.contractSignedDate}
+                />
+              </div>
+            </div>
+          )}
 
           <div style={{...section, paddingTop: 0, textAlign: 'center' as const}}>
             <a href={quoteLink} style={{

@@ -622,6 +622,8 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
             ...quote,
             selectedQuote: selectedTier,
             paymentDetails: paymentDetails,
+            // Ensure contract date is saved if not already saved
+            contractSignedDate: quote.contractSignedDate || new Date().toISOString(),
         };
 
         const updateRes = await fetch(`/api/bookings/${quote.id}`, {
@@ -662,7 +664,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
     }
 };
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (currentStep === 'select-tier') {
       if (requiresAddress) {
         setCurrentStep('address');
@@ -672,6 +674,28 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
     } else if (currentStep === 'address') {
         handleSaveAddress();
     } else if (currentStep === 'sign-contract') {
+        // Save contract signed date when proceeding to payment
+        if (contractSigned && !quote.contractSignedDate) {
+          try {
+            const updatedQuote: FinalQuote = {
+              ...quote,
+              contractSignedDate: new Date().toISOString(),
+            };
+
+            const res = await fetch(`/api/bookings/${quote.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ finalQuote: updatedQuote }),
+            });
+
+            if (res.ok) {
+              setQuote(updatedQuote);
+            }
+          } catch (err) {
+            console.error('Failed to save contract date:', err);
+            // Continue anyway - don't block user from proceeding
+          }
+        }
         setCurrentStep('payment');
     }
   };
@@ -1275,7 +1299,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
 
           <div className={cn('space-y-6 px-6', currentStep !== 'sign-contract' && 'hidden')}>
             <h3 className="font-headline text-2xl text-center">Service Agreement</h3>
-            {selectedTier && <ContractDisplay quote={quote} selectedTier={selectedTier} />}
+            {selectedTier && <ContractDisplay quote={quote} selectedTier={selectedTier} signedDate={quote.contractSignedDate || new Date().toISOString()} />}
             {/* Digital Signature Section */}
             <div className="space-y-2 sm:space-y-3 p-3 sm:p-4 bg-muted rounded-md">
               <Label className="text-xs sm:text-sm font-medium">Digital Signature *</Label>

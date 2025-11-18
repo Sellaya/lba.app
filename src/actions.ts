@@ -158,7 +158,14 @@ const calculateQuoteForTier = async (tier: PriceTier, days: Omit<Day, 'id'>[], b
               subtotal += jewelleryTotalPrice;
           }
           if ((service.id === 'bridal' || service.id === 'semi-bridal' || service.id === 'party') && day.sareeDraping) {
-              const sareePrice = await resolveAddonPrice('sareeDraping', 'sareeDraping');
+              // If bridal/semi-bridal with party services, use $30 for saree draping
+              let sareePrice: number;
+              if ((service.id === 'bridal' || service.id === 'semi-bridal') && day.partyServices && day.partyServices.addServices) {
+                  // Use $30 for both lead and team when party services are present
+                  sareePrice = 30;
+              } else {
+                  sareePrice = await resolveAddonPrice('sareeDraping', 'sareeDraping');
+              }
               const sareeTotalPrice = sareePrice * peopleCount;
               const sareeDescription = service.id === 'party'
                 ? `  - Saree Draping (× ${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`

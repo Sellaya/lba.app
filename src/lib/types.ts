@@ -138,6 +138,7 @@ export type FinalQuote = {
   selectedQuote?: PriceTier;
   paymentDetails?: PaymentDetails;
   status: 'quoted' | 'confirmed' | 'cancelled';
+  contractSignedDate?: string; // ISO date string when contract was signed
 };
 
 export type ActionState = {
