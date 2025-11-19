@@ -179,7 +179,7 @@ export async function GET(request: Request) {
           }
 
           // Send the appropriate follow-up email
-          let emailSent = false;
+          emailSent = false;
           switch (scheduledEmail.email_type) {
             case 'followup-3h':
               await sendFollowUp3HEmail(booking.finalQuote);
