@@ -6,14 +6,14 @@ import { logEmailEvent } from '@/lib/email-log';
 import type { ScheduledEmail } from '@/lib/scheduled-emails';
 import type { BookingDocument } from '@/firebase/firestore/bookings';
 
-// Vercel runtime configuration - REQUIRED for cron jobs with longer execution
+// Vercel runtime configuration - REQUIRED for cron jobs
 export const runtime = 'nodejs';
 export const maxDuration = 10; // Maximum execution time in seconds (Vercel free plan limit)
 
 // Configuration
-const MAX_EXECUTION_TIME_MS = 9000; // 9 seconds (Vercel free plan limit is 10s, leave 1s buffer)
 const MAX_CONCURRENT_EMAILS = 5; // Process max 5 emails in parallel
-// No limit on total emails - processes ALL due emails in one cron execution
+// No execution time limits - processes ALL emails, Vercel will timeout at 10s if needed
+// Remaining emails will be processed in next hourly run
 
 /**
  * Helper function to send email based on type
@@ -54,21 +54,12 @@ async function sendEmailByType(
 
 /**
  * Process a single scheduled email
+ * No time limits - processes email and lets Vercel handle timeout naturally
  */
 async function processScheduledEmail(
   scheduledEmail: ScheduledEmail,
-  booking: BookingDocument | null,
-  startTime: number
+  booking: BookingDocument | null
 ): Promise<{ success: boolean; shouldMarkAsSent: boolean; error?: string; skipped?: boolean }> {
-  // Check execution time limit
-  if (Date.now() - startTime > MAX_EXECUTION_TIME_MS) {
-    return {
-      success: false,
-      shouldMarkAsSent: false,
-      error: 'Execution time limit reached',
-    };
-  }
-
   try {
     // Log processing start
     await logEmailEvent({
@@ -236,12 +227,12 @@ async function processScheduledEmail(
 
 /**
  * Process emails in batches with concurrency limit
- * Processes ALL emails, stops gracefully if time limit approaches
+ * Processes ALL emails without time limits - Vercel will timeout at 10s if needed
+ * Remaining emails will be processed in next hourly run
  */
 async function processEmailsInBatches(
   emails: ScheduledEmail[],
-  bookingsMap: Map<string, BookingDocument | null>,
-  startTime: number
+  bookingsMap: Map<string, BookingDocument | null>
 ): Promise<{ processed: number; failed: number; skipped: number; errors: string[] }> {
   const results = {
     processed: 0,
@@ -251,27 +242,17 @@ async function processEmailsInBatches(
   };
 
   const emailsToMarkAsSent: string[] = [];
-  const emailsProcessed: Array<{ email: ScheduledEmail; result: any }> = [];
 
-  // Process ALL emails in batches to respect concurrency limit (no limit on total emails)
+  // Process ALL emails in batches (no time limit - process until done or Vercel timeout)
   for (let i = 0; i < emails.length; i += MAX_CONCURRENT_EMAILS) {
-    // Check execution time limit before processing next batch
-    const elapsed = Date.now() - startTime;
-    if (elapsed > MAX_EXECUTION_TIME_MS) {
-      console.log(`[EMAIL PROCESSOR] Execution time limit reached. Processed ${i} of ${emails.length} emails. Remaining will be processed next hour.`);
-      results.errors.push(`Execution time limit reached after ${i} emails (${elapsed}ms)`);
-      break;
-    }
-
     const batch = emails.slice(i, i + MAX_CONCURRENT_EMAILS);
     const batchPromises = batch.map(async (scheduledEmail) => {
       const booking = bookingsMap.get(scheduledEmail.booking_id) || null;
-      const result = await processScheduledEmail(scheduledEmail, booking, startTime);
+      const result = await processScheduledEmail(scheduledEmail, booking);
       return { email: scheduledEmail, result };
     });
 
     const batchResults = await Promise.all(batchPromises);
-    emailsProcessed.push(...batchResults);
 
     // Update results based on batch outcomes
     for (const { email, result } of batchResults) {
@@ -299,15 +280,15 @@ async function processEmailsInBatches(
   if (emailsToMarkAsSent.length > 0) {
     try {
       await markScheduledEmailsAsSentBatch(emailsToMarkAsSent);
-      console.log(`Marked ${emailsToMarkAsSent.length} emails as sent in batch`);
+      console.log(`[EMAIL PROCESSOR] Marked ${emailsToMarkAsSent.length} emails as sent in batch`);
     } catch (error: any) {
-      console.error('Error batch marking emails as sent:', error);
+      console.error('[EMAIL PROCESSOR] Error batch marking emails as sent:', error);
       // Fallback to individual marking
       for (const emailId of emailsToMarkAsSent) {
         try {
           await markScheduledEmailAsSent(emailId);
         } catch (e) {
-          console.error(`Failed to mark email ${emailId} as sent:`, e);
+          console.error(`[EMAIL PROCESSOR] Failed to mark email ${emailId} as sent:`, e);
         }
       }
     }
@@ -323,14 +304,16 @@ async function processEmailsInBatches(
  * - Processes ALL due emails in one execution (no limit)
  * - Batch database queries for better performance
  * - Parallel email processing with concurrency limits
- * - Execution time monitoring (stops gracefully if timeout approaches)
+ * - No execution time limits - processes all emails, Vercel will timeout at 10s if needed
  * - Single hourly cron job to avoid CORS and rate limiting issues
  * - Batch marking of emails as sent for better performance
  * 
  * Scheduled to run hourly via Vercel Cron:
  * - Schedule: "0 * * * *" (every hour at minute 0)
+ * - Checks all emails that haven't been sent (scheduled_for <= now() AND sent = false)
  * - Processes ALL due emails in one execution
  * - Emails sent at their scheduled time (with up to ~1 hour delay)
+ * - Remaining emails (if timeout) processed in next hourly run
  * - Avoids multiple API calls and CORS issues
  */
 export async function GET(request: Request) {
@@ -370,8 +353,8 @@ export async function GET(request: Request) {
     const bookingsMap = await getBookingsBatch(bookingIds);
     console.log(`[EMAIL PROCESSOR] Retrieved ${bookingsMap.size} bookings`);
 
-    // Process ALL emails with concurrency limits and time monitoring
-    const results = await processEmailsInBatches(dueEmails, bookingsMap, startTime);
+    // Process ALL emails with concurrency limits (no time monitoring - let Vercel handle timeout)
+    const results = await processEmailsInBatches(dueEmails, bookingsMap);
 
     const executionTime = Date.now() - startTime;
     const totalProcessed = results.processed + results.failed + results.skipped;
@@ -383,7 +366,7 @@ export async function GET(request: Request) {
       skipped: results.skipped,
       errors: results.errors.slice(0, 10), // Limit error details in response
       executionTimeMs: executionTime,
-      remainingDue: Math.max(0, dueEmails.length - totalProcessed), // Emails that couldn't be processed due to timeout
+      remainingDue: Math.max(0, dueEmails.length - totalProcessed), // Emails not processed (will be processed next hour if timeout)
     };
 
     console.log(`[EMAIL PROCESSOR] Completed: ${summary.message} (execution: ${executionTime}ms)`);
