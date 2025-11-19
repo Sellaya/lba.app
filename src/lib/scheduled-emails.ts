@@ -48,7 +48,8 @@ export async function scheduleFollowUpEmails(quote: FinalQuote, bookingCreatedAt
   const now = new Date();
 
   // Schedule all follow-up emails relative to base time
-  const scheduled3H = new Date(baseTime.getTime() + 3 * 60 * 60 * 1000); // 3 hours
+  // TESTING: Changed from 3 hours to 5 minutes for testing
+  const scheduled3H = new Date(baseTime.getTime() + 5 * 60 * 1000); // 5 minutes (TESTING - change back to 3 * 60 * 60 * 1000)
   const scheduled6H = new Date(baseTime.getTime() + 6 * 60 * 60 * 1000); // 6 hours
   const scheduled24H = new Date(baseTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
   const scheduled3D = new Date(baseTime.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
