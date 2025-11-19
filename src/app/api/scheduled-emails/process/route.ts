@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDueScheduledEmails, markScheduledEmailAsSent } from '@/lib/scheduled-emails';
 import { getBooking } from '@/firebase/server-actions';
-import { sendFollowUp3HEmail, sendFollowUp6HEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail, sendFollowUp30DEmail, sendEventReminder24HEmail } from '@/lib/email';
+import { sendFollowUp3HEmail, sendFollowUp6HEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail, sendFollowUp30DEmail, sendEventReminder24HEmail, sendAppointmentDayReminderEmail } from '@/lib/email';
 
 /**
  * API route to process scheduled emails
@@ -79,6 +79,26 @@ export async function GET(request: Request) {
           }
 
           await sendEventReminder24HEmail(booking.finalQuote);
+        } else if (scheduledEmail.email_type === 'appointment-day-reminder') {
+          // For appointment day reminders, only send if booking is confirmed
+          if (booking.finalQuote.status !== 'confirmed') {
+            console.log(`Skipping appointment day reminder email for non-confirmed booking ${scheduledEmail.booking_id}`);
+            await markScheduledEmailAsSent(scheduledEmail.id!);
+            continue;
+          }
+          
+          // Check if advance payment has been made
+          const hasAdvancePayment = booking.finalQuote.paymentDetails && 
+            (booking.finalQuote.paymentDetails.status === 'deposit-paid' || 
+             booking.finalQuote.paymentDetails.status === 'payment-approved');
+          
+          if (!hasAdvancePayment) {
+            console.log(`Skipping appointment day reminder email for booking ${scheduledEmail.booking_id} - no advance payment`);
+            await markScheduledEmailAsSent(scheduledEmail.id!);
+            continue;
+          }
+
+          await sendAppointmentDayReminderEmail(booking.finalQuote);
         } else {
           // For follow-up emails, only send if status is 'quoted' and no advance payment has been made
           if (booking.finalQuote.status !== 'quoted') {

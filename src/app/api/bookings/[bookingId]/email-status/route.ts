@@ -34,6 +34,7 @@ export async function GET(
 					'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
 					'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 					'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
+					'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
 				}
 			});
 		}
@@ -77,6 +78,7 @@ export async function GET(
 			'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
 			'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 			'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
+			'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
 		};
 
 		// Check if initial email was sent (we can infer this from booking creation)

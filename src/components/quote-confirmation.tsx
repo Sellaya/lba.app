@@ -1554,6 +1554,13 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                   </Label>
               </RadioGroup>
 
+              <div className="p-4 border rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground text-center">
+                  <strong>Note:</strong> Promotional codes and coupons can be applied when using card payment (Stripe). 
+                  The discount will be applied during the checkout process.
+                </p>
+              </div>
+
               {paymentMethod === 'interac' && (
                   <div className="p-4 border rounded-lg bg-background/50 space-y-4 animate-in fade-in-0">
                       {quote.paymentDetails?.status === 'screenshot-rejected' && (
@@ -1661,6 +1668,13 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                     <p className="text-sm text-muted-foreground mt-4">Send an e-Transfer and upload a screenshot for verification.</p>
                   </Label>
                 </RadioGroup>
+
+                <div className="p-4 border rounded-lg bg-muted/30 mb-6">
+                  <p className="text-sm text-muted-foreground text-center">
+                    <strong>Note:</strong> Promotional codes and coupons can be applied when using card payment (Stripe). 
+                    The discount will be applied during the checkout process.
+                  </p>
+                </div>
 
                 {finalPaymentMethod === 'interac' && (
                   <div className="p-4 border rounded-lg bg-background/50 space-y-4 mb-6">

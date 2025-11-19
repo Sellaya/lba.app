@@ -84,6 +84,7 @@ interface EmailStatusData {
   'followup-6d': EmailStatus;
   'followup-30d': EmailStatus;
   'event-reminder-24h': EmailStatus;
+  'appointment-day-reminder': EmailStatus;
 }
 
 export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }: { quote: FinalQuote; onUpdate: (updatedQuote: FinalQuote) => void; bookingDoc: BookingDocument | undefined; onBookingDeleted: (bookingId: string) => void; }) {
@@ -99,6 +100,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
   const [isSendingToArtist, setIsSendingToArtist] = useState<string | null>(null);
   const [showSendToArtistDialog, setShowSendToArtistDialog] = useState(false);
   const [isSendingTestEventReminder, setIsSendingTestEventReminder] = useState(false);
+  const [isSendingTestAppointmentDayReminder, setIsSendingTestAppointmentDayReminder] = useState(false);
   const [isSendingTest3H, setIsSendingTest3H] = useState(false);
   const [isSendingTest6H, setIsSendingTest6H] = useState(false);
   const [isSendingTest24H, setIsSendingTest24H] = useState(false);
@@ -194,6 +196,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       { type: 'followup-30d', scheduledFor: emailStatus['followup-30d']?.scheduledFor, sent: emailStatus['followup-30d']?.sent },
       // Event reminder only shows if booking is confirmed and payment is made
       ...(isConfirmed && hasAdvancePayment && emailStatus['event-reminder-24h'] ? [{ type: 'event-reminder-24h', scheduledFor: emailStatus['event-reminder-24h'].scheduledFor, sent: emailStatus['event-reminder-24h'].sent }] : []),
+      // Appointment day reminder only shows if booking is confirmed and payment is made
+      ...(isConfirmed && hasAdvancePayment && emailStatus['appointment-day-reminder'] ? [{ type: 'appointment-day-reminder', scheduledFor: emailStatus['appointment-day-reminder'].scheduledFor, sent: emailStatus['appointment-day-reminder'].sent }] : []),
     ].filter(e => e.scheduledFor && !e.sent && isFuture(new Date(e.scheduledFor)));
     
     if (emails.length === 0) return null;
@@ -234,6 +238,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
               'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
               'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
+              'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
             });
           } catch (e) {
             // If we can't parse error, still set default status
@@ -246,6 +251,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
               'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
               'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
+              'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
             });
           }
         }
@@ -552,6 +558,38 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       });
     } finally {
       setIsSendingTestEventReminder(false);
+    }
+  };
+
+  // Handler to send test appointment day reminder email
+  const handleSendTestAppointmentDayReminder = async () => {
+    setIsSendingTestAppointmentDayReminder(true);
+    try {
+      const res = await fetch(`/api/bookings/${quote.id}/test-appointment-day-reminder-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+
+      toast({
+        title: "Test Email Sent",
+        description: "Appointment day reminder email has been sent successfully!",
+      });
+
+      await refreshEmailStatus();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to send test email',
+      });
+    } finally {
+      setIsSendingTestAppointmentDayReminder(false);
     }
   };
   
@@ -2660,6 +2698,84 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       }>
                         {emailStatus['event-reminder-24h']?.sent ? 'Sent' : 
                          emailStatus['event-reminder-24h']?.scheduledFor ? 'Scheduled' : 
+                         'Not Scheduled'}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })()}
+              
+              {/* Appointment Day Reminder Email - Only show if booking is confirmed and has advance payment */}
+              {(() => {
+                const hasAdvancePayment = quote.paymentDetails && 
+                  (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+                const isConfirmed = quote.status === 'confirmed';
+                
+                if (!isConfirmed || !hasAdvancePayment || !emailStatus) return null;
+                
+                return (
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'appointment-day-reminder' ? 'border-black bg-gray-50' : ''}`}>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex-shrink-0">
+                        {emailStatus['appointment-day-reminder']?.sent ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : emailStatus['appointment-day-reminder']?.scheduledFor && isFuture(new Date(emailStatus['appointment-day-reminder'].scheduledFor)) ? (
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Email 6 - Appointment Day Reminder (2.5 Hours Before Appointment)</p>
+                          {nextEmail?.type === 'appointment-day-reminder' && (
+                            <Badge variant="outline" className="text-xs">Next</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {emailStatus['appointment-day-reminder']?.sent 
+                            ? emailStatus['appointment-day-reminder']?.sentAt 
+                              ? `Sent on ${format(new Date(emailStatus['appointment-day-reminder'].sentAt), 'PPp')}`
+                              : 'Sent'
+                            : emailStatus['appointment-day-reminder']?.scheduledFor
+                              ? (() => {
+                                  const scheduledDate = new Date(emailStatus['appointment-day-reminder'].scheduledFor);
+                                  const isInFuture = isFuture(scheduledDate);
+                                  return isInFuture
+                                    ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
+                                    : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                })()
+                              : 'Not scheduled'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendTestAppointmentDayReminder}
+                        disabled={isSendingTestAppointmentDayReminder}
+                        className="text-xs"
+                      >
+                        {isSendingTestAppointmentDayReminder ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-1 h-3 w-3" />
+                            Test Send
+                          </>
+                        )}
+                      </Button>
+                      <Badge variant={
+                        emailStatus['appointment-day-reminder']?.sent ? 'default' : 
+                        emailStatus['appointment-day-reminder']?.scheduledFor ? 'secondary' : 
+                        'outline'
+                      }>
+                        {emailStatus['appointment-day-reminder']?.sent ? 'Sent' : 
+                         emailStatus['appointment-day-reminder']?.scheduledFor ? 'Scheduled' : 
                          'Not Scheduled'}
                       </Badge>
                     </div>

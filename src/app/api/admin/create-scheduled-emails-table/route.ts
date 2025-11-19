@@ -68,3 +68,4 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_emails_booking ON scheduled_emails(book
 
 
 
+

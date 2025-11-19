@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS scheduled_emails (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   booking_id TEXT NOT NULL,
-  email_type TEXT NOT NULL CHECK (email_type IN ('followup-3h', 'followup-6h', 'followup-24h')),
+  email_type TEXT NOT NULL CHECK (email_type IN ('followup-3h', 'followup-6h', 'followup-24h', 'followup-3d', 'followup-6d', 'followup-30d', 'event-reminder-24h', 'appointment-day-reminder')),
   scheduled_for TIMESTAMPTZ NOT NULL,
   sent BOOLEAN DEFAULT FALSE NOT NULL,
   sent_at TIMESTAMPTZ,
@@ -17,6 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_emails_booking ON scheduled_emails(book
 
 -- Add comment
 COMMENT ON TABLE scheduled_emails IS 'Tracks scheduled follow-up emails to be sent after quote generation';
+
 
 
 

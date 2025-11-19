@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
+      allow_promotion_codes: true, // Enable promotional codes/coupons in checkout
       success_url: `${request.headers.get('origin')}/book/${bookingId}/success?session_id={CHECKOUT_SESSION_ID}${isFinalPayment ? '&isFinalPayment=true' : ''}`,
       cancel_url: `${request.headers.get('origin')}/book/${bookingId}/cancel`,
       metadata: {

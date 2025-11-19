@@ -7,7 +7,7 @@ import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Minus, AlertTriangle, Users, ArrowLeft, ArrowRight, Send, MapPin } from 'lucide-react';
-import { MakeupBrushVector, CalendarVector, SparkleVector } from '@/components/beauty-vectors';
+import { CalendarVector, SparkleVector } from '@/components/beauty-vectors';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuoteAction } from '@/actions';
 import type { ActionState, Day, ServiceOption, BridalTrial, BridalPartyServices, ServiceType } from '@/lib/types';
@@ -374,7 +374,7 @@ export default function BookingFlow() {
             <Card className="shadow-lg animate-fade-in-scale">
                 <CardHeader className="px-3 sm:px-6 pb-3 sm:pb-6">
                     <div className="flex items-center gap-3 mb-2">
-                        <MakeupBrushVector size={28} className="text-black/40 animate-float" />
+                        <CalendarVector size={28} className="text-black/40 animate-float" />
                         <CardTitle className="font-headline text-xl sm:text-2xl">1. Services & Dates</CardTitle>
                     </div>
                     <CardDescription className="text-sm sm:text-base">Select services, dates, and times for your booking.</CardDescription>

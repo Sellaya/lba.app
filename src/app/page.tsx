@@ -94,8 +94,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="py-2 sm:py-3 px-4 md:px-8">
-        <div className="flex flex-col items-center justify-center space-y-2 sm:space-y-3 animate-in fade-in slide-in-from-top-4 duration-1000">
+      <header className="py-1 sm:py-1.5 px-4 md:px-8">
+        <div className="flex flex-col items-center justify-center space-y-1 sm:space-y-1.5 animate-in fade-in slide-in-from-top-4 duration-1000">
           <a href="https://looksbyanum.com" target="_blank" rel="noopener noreferrer" className="relative w-48 h-48 sm:w-52 sm:h-52 md:w-56 md:h-56 hover:opacity-80 transition-opacity cursor-pointer">
             <Image
               src="/LBA.png"

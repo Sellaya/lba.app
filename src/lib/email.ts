@@ -12,6 +12,7 @@ import FollowUp3DEmailTemplate from '@/app/emails/follow-up-3d-email';
 import FollowUp6DEmailTemplate from '@/app/emails/follow-up-6d-email';
 import FollowUp30DEmailTemplate from '@/app/emails/follow-up-30d-email';
 import EventReminder24HEmailTemplate from '@/app/emails/event-reminder-24h-email';
+import AppointmentDayReminderEmailTemplate from '@/app/emails/appointment-day-reminder-email';
 import AdminNotificationEmailTemplate from '@/app/emails/admin-notification-email';
 import RejectionEmailTemplate from '@/app/emails/rejection-email';
 import BookCallAdminEmailTemplate from '@/app/emails/book-call-admin-email';
@@ -503,6 +504,46 @@ export async function sendEventReminder24HEmail(quote: FinalQuote) {
     
   } catch (error: any) {
     console.error('Error in sendEventReminder24HEmail:', error.message);
+    throw error;
+  }
+}
+
+export async function sendAppointmentDayReminderEmail(quote: FinalQuote) {
+  const baseUrl = getBaseUrl();
+  const resend = getResend();
+  
+  if (!resend) {
+    console.warn('Resend not configured; skipping sendAppointmentDayReminderEmail for booking ID:', quote.id);
+    return;
+  }
+
+  // Validate booking days exist
+  if (!quote.booking.days || quote.booking.days.length === 0 || !quote.booking.days[0]) {
+    console.error('Cannot send appointment day reminder email - no booking days found for booking ID:', quote.id);
+    throw new Error('Booking has no service days');
+  }
+
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
+  const firstDay = quote.booking.days[0];
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [quote.contact.email],
+      subject: `Your Appointment is Today! ✨ Reminder for ${firstDay.date || 'your appointment'} (ID: ${quote.id})`,
+      react: AppointmentDayReminderEmailTemplate({ quote, baseUrl }),
+    });
+
+    if (error) {
+      console.error('Appointment day reminder email sending error:', error);
+      throw new Error(`Failed to send appointment day reminder email: ${error.message}`);
+    }
+
+    console.log('Appointment day reminder email sent successfully for booking ID:', quote.id, 'to:', quote.contact.email);
+    return data;
+    
+  } catch (error: any) {
+    console.error('Error in sendAppointmentDayReminderEmail:', error.message);
     throw error;
   }
 }

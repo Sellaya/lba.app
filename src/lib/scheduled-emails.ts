@@ -3,7 +3,7 @@
 import { supabaseAdmin } from './supabase/server';
 import type { FinalQuote } from './types';
 
-export type ScheduledEmailType = 'followup-3h' | 'followup-6h' | 'followup-24h' | 'followup-3d' | 'followup-6d' | 'followup-30d' | 'event-reminder-24h';
+export type ScheduledEmailType = 'followup-3h' | 'followup-6h' | 'followup-24h' | 'followup-3d' | 'followup-6d' | 'followup-30d' | 'event-reminder-24h' | 'appointment-day-reminder';
 
 export interface ScheduledEmail {
   id?: string;
@@ -227,6 +227,86 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
     }
   } catch (e: any) {
     console.warn('Error scheduling event reminder email:', e.message);
+  }
+}
+
+/**
+ * Schedule appointment day reminder email 2.5 hours before the appointment time
+ * Only schedules if booking is confirmed and advance payment has been made
+ */
+export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Promise<void> {
+  // Only schedule for confirmed bookings with payment
+  if (quote.status !== 'confirmed') {
+    console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} is not confirmed`);
+    return;
+  }
+
+  // Only schedule if advance payment has been made
+  const hasAdvancePayment = quote.paymentDetails && 
+    (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+  
+  if (!hasAdvancePayment) {
+    console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} has no advance payment`);
+    return;
+  }
+
+  // Get the first event date and time
+  const firstDay = quote.booking.days[0];
+  if (!firstDay || !firstDay.date) {
+    console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} has no event date`);
+    return;
+  }
+
+  // Parse the event date
+  let eventDate: Date;
+  if (typeof firstDay.date === 'string') {
+    const { parse } = await import('date-fns');
+    const parsedDate = parse(firstDay.date, 'PPP', new Date());
+    eventDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+  } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
+    eventDate = new Date(firstDay.date as Date);
+  } else {
+    console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} has invalid date format`);
+    return;
+  }
+
+  // Parse the appointment time (format: "HH:MM")
+  const timeString = firstDay.getReadyTime || '10:00';
+  const [hours, minutes] = timeString.split(':').map(Number);
+  
+  // Set the appointment date and time
+  const appointmentDateTime = new Date(eventDate);
+  appointmentDateTime.setHours(hours || 10, minutes || 0, 0, 0);
+
+  // Schedule email 2.5 hours before the appointment time
+  const reminderTime = new Date(appointmentDateTime.getTime() - 2.5 * 60 * 60 * 1000);
+  
+  // Don't schedule if the reminder time is in the past
+  if (reminderTime < new Date()) {
+    console.log(`Skipping appointment day reminder email scheduling - reminder time is in the past for booking ${quote.id}`);
+    return;
+  }
+
+  const scheduledEmail: Omit<ScheduledEmail, 'id' | 'created_at'> = {
+    booking_id: quote.id,
+    email_type: 'appointment-day-reminder',
+    scheduled_for: reminderTime.toISOString(),
+    sent: false,
+  };
+
+  try {
+    const { error } = await supabaseAdmin
+      .from('scheduled_emails')
+      .insert(scheduledEmail);
+
+    if (error) {
+      console.warn('Could not schedule appointment day reminder email (table may not exist):', error.message);
+      console.log('Appointment day reminder email would be scheduled for:', scheduledEmail);
+    } else {
+      console.log(`Scheduled appointment day reminder email for booking ${quote.id} at ${reminderTime.toISOString()}`);
+    }
+  } catch (e: any) {
+    console.warn('Error scheduling appointment day reminder email:', e.message);
   }
 }
 

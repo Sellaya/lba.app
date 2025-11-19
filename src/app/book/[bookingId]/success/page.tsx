@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { sendConfirmationEmailAction, sendFinalPaymentConfirmationEmailAction } from '@/app/admin/actions';
-import { scheduleEventReminder24HEmail } from '@/lib/scheduled-emails';
+import { scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail } from '@/lib/scheduled-emails';
 import { trackPaymentComplete } from '@/lib/facebook-pixel';
 
 export default function StripeSuccessPage() {
@@ -178,6 +178,9 @@ export default function StripeSuccessPage() {
               
               // Schedule event reminder email 24 hours before the event
               await scheduleEventReminder24HEmail(updatedQuote);
+              
+              // Schedule appointment day reminder email 2.5 hours before appointment time
+              await scheduleAppointmentDayReminderEmail(updatedQuote);
             }
           }
         } catch (error: any) {
