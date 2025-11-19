@@ -308,13 +308,17 @@ async function processEmailsInBatches(
  * - Single hourly cron job to avoid CORS and rate limiting issues
  * - Batch marking of emails as sent for better performance
  * 
- * Scheduled to run hourly via Vercel Cron:
- * - Schedule: "0 * * * *" (every hour at minute 0)
+ * Scheduled to run via external cron service (hourly) or Vercel Cron (daily):
+ * - External Cron (Recommended): "0 * * * *" (every hour) - Use cron-job.org (free)
+ * - Vercel Cron (Free Plan): "0 0 * * *" (once per day) - Backup only
  * - Checks all emails that haven't been sent (scheduled_for <= now() AND sent = false)
  * - Processes ALL due emails in one execution
- * - Emails sent at their scheduled time (with up to ~1 hour delay)
- * - Remaining emails (if timeout) processed in next hourly run
+ * - Emails sent at their scheduled time (with up to ~1 hour delay if hourly cron)
+ * - Remaining emails (if timeout) processed in next run
  * - Avoids multiple API calls and CORS issues
+ * 
+ * NOTE: Vercel Hobby plan only allows once-per-day cron. For hourly execution,
+ * use external cron service. See EXTERNAL_CRON_SETUP.md for setup instructions.
  */
 export async function GET(request: Request) {
   const startTime = Date.now();
