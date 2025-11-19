@@ -1,0 +1,46 @@
+name: Process Scheduled Emails
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual triggering from GitHub Actions UI
+
+jobs:
+  process-emails:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Scheduled Emails API
+        env:
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$PRODUCTION_URL" ]; then
+            echo "Error: PRODUCTION_URL secret is not set"
+            exit 1
+          fi
+          
+          # Build the curl command
+          CURL_CMD="curl -X GET \"${PRODUCTION_URL}/api/scheduled-emails/process\" -H \"Content-Type: application/json\""
+          
+          # Add authorization header if CRON_SECRET is set
+          if [ -n "$CRON_SECRET" ]; then
+            CURL_CMD="${CURL_CMD} -H \"Authorization: Bearer ${CRON_SECRET}\""
+          fi
+          
+          echo "Calling scheduled emails API..."
+          echo "URL: ${PRODUCTION_URL}/api/scheduled-emails/process"
+          
+          # Execute the curl command
+          RESPONSE=$(eval $CURL_CMD)
+          EXIT_CODE=$?
+          
+          echo "Response: $RESPONSE"
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "Error: API call failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          
+          echo "API call completed successfully"
+
