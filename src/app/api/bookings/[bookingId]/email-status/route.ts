@@ -101,6 +101,57 @@ export async function GET(
 			});
 		}
 
+		// Auto-schedule emails if none exist and booking is eligible
+		// This ensures existing bookings get their emails scheduled when viewed
+		if (scheduledEmailsData.length === 0) {
+			try {
+				// Fetch the full booking to check status
+				const { data: fullBooking } = await supabaseAdmin
+					.from('bookings')
+					.select('final_quote, created_at')
+					.eq('id', bookingId)
+					.single();
+
+				if (fullBooking?.final_quote) {
+					const { scheduleFollowUpEmails, scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail } = await import('@/lib/scheduled-emails');
+					
+					// Schedule follow-up emails if booking is quoted and no payment
+					await scheduleFollowUpEmails(
+						fullBooking.final_quote,
+						fullBooking.created_at ? new Date(fullBooking.created_at) : undefined
+					);
+
+					// Schedule event reminders if booking is confirmed with payment
+					if (fullBooking.final_quote.status === 'confirmed') {
+						await scheduleEventReminder24HEmail(fullBooking.final_quote);
+						await scheduleAppointmentDayReminderEmail(fullBooking.final_quote);
+					}
+
+					// Re-fetch scheduled emails after scheduling
+					const { data: newScheduledEmails } = await supabaseAdmin
+						.from('scheduled_emails')
+						.select('*')
+						.eq('booking_id', bookingId)
+						.order('scheduled_for', { ascending: true });
+
+					if (newScheduledEmails && newScheduledEmails.length > 0) {
+						newScheduledEmails.forEach((email) => {
+							if (email.email_type in emailStatus) {
+								emailStatus[email.email_type as keyof typeof emailStatus] = {
+									sent: email.sent,
+									sentAt: email.sent_at,
+									scheduledFor: email.scheduled_for,
+								};
+							}
+						});
+					}
+				}
+			} catch (autoScheduleError: any) {
+				// Don't fail the request if auto-scheduling fails, just log it
+				console.warn(`[AUTO-SCHEDULE] Failed to auto-schedule emails for booking ${bookingId}:`, autoScheduleError.message);
+			}
+		}
+
 		return NextResponse.json({ emailStatus });
 	} catch (e: any) {
 		console.error('Error in GET /api/bookings/[bookingId]/email-status:', e);

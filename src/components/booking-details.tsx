@@ -99,14 +99,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
   const [artists, setArtists] = useState<Array<{ id: string; name: string; email: string; whatsapp: string }>>([]);
   const [isSendingToArtist, setIsSendingToArtist] = useState<string | null>(null);
   const [showSendToArtistDialog, setShowSendToArtistDialog] = useState(false);
-  const [isSendingTestEventReminder, setIsSendingTestEventReminder] = useState(false);
-  const [isSendingTestAppointmentDayReminder, setIsSendingTestAppointmentDayReminder] = useState(false);
-  const [isSendingTest3H, setIsSendingTest3H] = useState(false);
-  const [isSendingTest6H, setIsSendingTest6H] = useState(false);
-  const [isSendingTest24H, setIsSendingTest24H] = useState(false);
-  const [isSendingTest3D, setIsSendingTest3D] = useState(false);
-  const [isSendingTest6D, setIsSendingTest6D] = useState(false);
-  const [isSendingTest30D, setIsSendingTest30D] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { toast } = useToast();
 
@@ -178,6 +170,21 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
     };
     fetchArtists();
   }, []);
+
+  // Helper function to check if any emails are scheduled
+  const hasAnyScheduledEmails = () => {
+    if (!emailStatus) return false;
+    return !!(
+      emailStatus['followup-3h']?.scheduledFor ||
+      emailStatus['followup-6h']?.scheduledFor ||
+      emailStatus['followup-24h']?.scheduledFor ||
+      emailStatus['followup-3d']?.scheduledFor ||
+      emailStatus['followup-6d']?.scheduledFor ||
+      emailStatus['followup-30d']?.scheduledFor ||
+      emailStatus['event-reminder-24h']?.scheduledFor ||
+      emailStatus['appointment-day-reminder']?.scheduledFor
+    );
+  };
 
   // Helper function to get next email to be sent
   const getNextEmail = () => {
@@ -267,6 +274,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
           'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
           'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
           'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
+          'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
         });
       } finally {
         setIsLoadingEmailStatus(false);
@@ -274,7 +282,14 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
     };
 
     fetchEmailStatus();
-    // Email status will only refresh when page is manually refreshed or booking ID changes
+    
+    // Add automatic polling every 10 minutes to check for status updates
+    const pollInterval = setInterval(() => {
+      fetchEmailStatus();
+    }, 600000); // Poll every 10 minutes (600000 ms)
+
+    // Cleanup interval on unmount
+    return () => clearInterval(pollInterval);
   }, [quote.id]); // Only fetch when booking ID changes or on mount
 
   // Helper function to refresh email status
@@ -292,197 +307,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
     }
   };
 
-  // Handler to send test 3H follow-up email
-  const handleSendTest3H = async () => {
-    setIsSendingTest3H(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-followup-3h-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "3-hour follow-up email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTest3H(false);
-    }
-  };
-
-  // Handler to send test 6H follow-up email
-  const handleSendTest6H = async () => {
-    setIsSendingTest6H(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-followup-6h-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "6-hour follow-up email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTest6H(false);
-    }
-  };
-
-  // Handler to send test 24H follow-up email
-  const handleSendTest24H = async () => {
-    setIsSendingTest24H(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-followup-24h-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "24-hour follow-up email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTest24H(false);
-    }
-  };
-
-  // Handler to send test 3D follow-up email
-  const handleSendTest3D = async () => {
-    setIsSendingTest3D(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-followup-3d-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "3-day follow-up email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTest3D(false);
-    }
-  };
-
-  // Handler to send test 6D follow-up email
-  const handleSendTest6D = async () => {
-    setIsSendingTest6D(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-followup-6d-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "6-day follow-up email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTest6D(false);
-    }
-  };
-
-  // Handler to send test 30D follow-up email
-  const handleSendTest30D = async () => {
-    setIsSendingTest30D(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-followup-30d-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "30-day follow-up email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTest30D(false);
-    }
-  };
 
   // Handler to download contract PDF
   const handleDownloadContractPDF = async () => {
@@ -529,70 +353,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
     }
   };
 
-  // Handler to send test event reminder email
-  const handleSendTestEventReminder = async () => {
-    setIsSendingTestEventReminder(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-event-reminder-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "Event reminder email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTestEventReminder(false);
-    }
-  };
-
-  // Handler to send test appointment day reminder email
-  const handleSendTestAppointmentDayReminder = async () => {
-    setIsSendingTestAppointmentDayReminder(true);
-    try {
-      const res = await fetch(`/api/bookings/${quote.id}/test-appointment-day-reminder-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast({
-        title: "Test Email Sent",
-        description: "Appointment day reminder email has been sent successfully!",
-      });
-
-      await refreshEmailStatus();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to send test email',
-      });
-    } finally {
-      setIsSendingTestAppointmentDayReminder(false);
-    }
-  };
-  
   const handleStatusChange = async (newStatus: FinalQuote['status']) => {
       if (!bookingDoc) {
           toast({ variant: "destructive", title: "Error", description: "Booking data not available." });
@@ -2156,25 +1916,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTest3H}
-                        disabled={isSendingTest3H}
-                        className="text-xs"
-                      >
-                        {isSendingTest3H ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['followup-3h']?.sent ? 'default' : 
                         willNotSend ? 'destructive' :
@@ -2243,25 +1984,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTest6H}
-                        disabled={isSendingTest6H}
-                        className="text-xs"
-                      >
-                        {isSendingTest6H ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['followup-6h']?.sent ? 'default' : 
                         willNotSend ? 'destructive' :
@@ -2294,6 +2016,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <XCircle className="h-5 w-5 text-orange-500" />
                         ) : emailStatus['followup-24h']?.scheduledFor && isFuture(new Date(emailStatus['followup-24h'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : emailStatus['followup-24h']?.scheduledFor && !isFuture(new Date(emailStatus['followup-24h'].scheduledFor)) && !emailStatus['followup-24h']?.sent ? (
+                          <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -2330,25 +2054,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTest24H}
-                        disabled={isSendingTest24H}
-                        className="text-xs"
-                      >
-                        {isSendingTest24H ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['followup-24h']?.sent ? 'default' : 
                         willNotSend ? 'destructive' :
@@ -2381,6 +2086,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <XCircle className="h-5 w-5 text-orange-500" />
                         ) : emailStatus['followup-3d']?.scheduledFor && isFuture(new Date(emailStatus['followup-3d'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : emailStatus['followup-3d']?.scheduledFor && !isFuture(new Date(emailStatus['followup-3d'].scheduledFor)) && !emailStatus['followup-3d']?.sent ? (
+                          <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -2417,25 +2124,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTest3D}
-                        disabled={isSendingTest3D}
-                        className="text-xs"
-                      >
-                        {isSendingTest3D ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['followup-3d']?.sent ? 'default' : 
                         willNotSend ? 'destructive' :
@@ -2468,6 +2156,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <XCircle className="h-5 w-5 text-orange-500" />
                         ) : emailStatus['followup-6d']?.scheduledFor && isFuture(new Date(emailStatus['followup-6d'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : emailStatus['followup-6d']?.scheduledFor && !isFuture(new Date(emailStatus['followup-6d'].scheduledFor)) && !emailStatus['followup-6d']?.sent ? (
+                          <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -2504,25 +2194,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTest6D}
-                        disabled={isSendingTest6D}
-                        className="text-xs"
-                      >
-                        {isSendingTest6D ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['followup-6d']?.sent ? 'default' : 
                         willNotSend ? 'destructive' :
@@ -2555,6 +2226,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <XCircle className="h-5 w-5 text-orange-500" />
                         ) : emailStatus['followup-30d']?.scheduledFor && isFuture(new Date(emailStatus['followup-30d'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : emailStatus['followup-30d']?.scheduledFor && !isFuture(new Date(emailStatus['followup-30d'].scheduledFor)) && !emailStatus['followup-30d']?.sent ? (
+                          <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -2591,25 +2264,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTest30D}
-                        disabled={isSendingTest30D}
-                        className="text-xs"
-                      >
-                        {isSendingTest30D ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['followup-30d']?.sent ? 'default' : 
                         willNotSend ? 'destructive' :
@@ -2672,25 +2326,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTestEventReminder}
-                        disabled={isSendingTestEventReminder}
-                        className="text-xs"
-                      >
-                        {isSendingTestEventReminder ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['event-reminder-24h']?.sent ? 'default' : 
                         emailStatus['event-reminder-24h']?.scheduledFor ? 'secondary' : 
@@ -2750,25 +2385,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSendTestAppointmentDayReminder}
-                        disabled={isSendingTestAppointmentDayReminder}
-                        className="text-xs"
-                      >
-                        {isSendingTestAppointmentDayReminder ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="mr-1 h-3 w-3" />
-                            Test Send
-                          </>
-                        )}
-                      </Button>
                       <Badge variant={
                         emailStatus['appointment-day-reminder']?.sent ? 'default' : 
                         emailStatus['appointment-day-reminder']?.scheduledFor ? 'secondary' : 

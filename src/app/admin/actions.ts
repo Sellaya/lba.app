@@ -57,9 +57,11 @@ export async function saveQuoteAndEmailAction(quote: FinalQuote): Promise<Action
     }
     
     // Schedule follow-up emails (non-blocking)
+    // Use the created_at timestamp we just set for consistent scheduling
     console.log('saveQuoteAndEmailAction: Attempting to schedule follow-up emails...');
     try {
-    await scheduleFollowUpEmails(quote);
+      const bookingCreatedAt = new Date(payload.created_at);
+      await scheduleFollowUpEmails(quote, bookingCreatedAt);
       console.log('saveQuoteAndEmailAction: Follow-up emails scheduled successfully');
     } catch (scheduleError: any) {
       console.error('saveQuoteAndEmailAction: Failed to schedule follow-up emails:', scheduleError);

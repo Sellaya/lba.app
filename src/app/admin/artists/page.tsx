@@ -841,6 +841,124 @@ ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`;
             )}
           </CardContent>
         </Card>
+
+        {/* Access Management Dialog */}
+        <Dialog open={!!editingAccess} onOpenChange={(open) => !open && setEditingAccess(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Manage Artist Access</DialogTitle>
+              <DialogDescription>
+                Control timeline access and service permissions for this artist
+              </DialogDescription>
+            </DialogHeader>
+            {accessFormData && (
+              <div className="space-y-6 py-4">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="timeline-access"
+                      checked={accessFormData.has_timeline_access}
+                      onCheckedChange={(checked) =>
+                        setAccessFormData({
+                          ...accessFormData,
+                          has_timeline_access: checked === true,
+                        })
+                      }
+                    />
+                    <Label htmlFor="timeline-access" className="font-medium">
+                      Enable Timeline Access
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-6">
+                    Allow this artist to view and apply for jobs
+                  </p>
+                </div>
+
+                {accessFormData.has_timeline_access && (
+                  <div className="space-y-3">
+                    <Label>Allowed Services</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="all-services"
+                          checked={accessFormData.allowed_services.includes('all')}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setAccessFormData({
+                                ...accessFormData,
+                                allowed_services: ['all'],
+                              });
+                            } else {
+                              setAccessFormData({
+                                ...accessFormData,
+                                allowed_services: [],
+                              });
+                            }
+                          }}
+                        />
+                        <Label htmlFor="all-services">All Services (Full Access)</Label>
+                      </div>
+                      {!accessFormData.allowed_services.includes('all') && (
+                        <div className="ml-6 space-y-2">
+                          {['bridal', 'semi-bridal', 'party', 'photoshoot'].map((service) => (
+                            <div key={service} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={service}
+                                checked={accessFormData.allowed_services.includes(service)}
+                                onCheckedChange={(checked) => {
+                                  const current = accessFormData.allowed_services;
+                                  if (checked) {
+                                    setAccessFormData({
+                                      ...accessFormData,
+                                      allowed_services: [...current, service],
+                                    });
+                                  } else {
+                                    setAccessFormData({
+                                      ...accessFormData,
+                                      allowed_services: current.filter((s) => s !== service),
+                                    });
+                                  }
+                                }}
+                              />
+                              <Label htmlFor={service} className="capitalize">
+                                {service.replace('-', ' ')}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={accessFormData.status}
+                    onValueChange={(value: 'active' | 'inactive' | 'suspended') =>
+                      setAccessFormData({ ...accessFormData, status: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingAccess(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateAccess}>Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         </main>
       </div>
     </div>

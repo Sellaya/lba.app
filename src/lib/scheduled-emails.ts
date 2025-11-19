@@ -20,8 +20,11 @@ export interface ScheduledEmail {
  * Only schedules if:
  * - Status is 'quoted' (not confirmed)
  * - Advance payment has NOT been made (no paymentDetails or status is not 'deposit-paid' or 'payment-approved')
+ * 
+ * @param quote - The quote/booking to schedule emails for
+ * @param bookingCreatedAt - Optional: The booking creation timestamp. If provided, emails are scheduled relative to this time. If not provided, uses current time.
  */
-export async function scheduleFollowUpEmails(quote: FinalQuote): Promise<void> {
+export async function scheduleFollowUpEmails(quote: FinalQuote, bookingCreatedAt?: Date | string): Promise<void> {
   // Don't schedule follow-up emails if booking is confirmed
   if (quote.status === 'confirmed') {
     console.log(`Skipping follow-up email scheduling for confirmed booking ${quote.id}`);
@@ -37,18 +40,24 @@ export async function scheduleFollowUpEmails(quote: FinalQuote): Promise<void> {
     return;
   }
 
-  // Use Toronto timezone for all scheduling
-  const now = new Date();
+  // Use booking creation time if provided, otherwise use current time
+  const baseTime = bookingCreatedAt 
+    ? (typeof bookingCreatedAt === 'string' ? new Date(bookingCreatedAt) : bookingCreatedAt)
+    : new Date();
   const bookingId = quote.id;
+  const now = new Date();
 
-  // Schedule all follow-up emails
-  const scheduled3H = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours
-  const scheduled6H = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours
-  const scheduled24H = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
-  const scheduled3D = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
-  const scheduled6D = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000); // 6 days
-  const scheduled30D = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  // Schedule all follow-up emails relative to base time
+  const scheduled3H = new Date(baseTime.getTime() + 3 * 60 * 60 * 1000); // 3 hours
+  const scheduled6H = new Date(baseTime.getTime() + 6 * 60 * 60 * 1000); // 6 hours
+  const scheduled24H = new Date(baseTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+  const scheduled3D = new Date(baseTime.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
+  const scheduled6D = new Date(baseTime.getTime() + 6 * 24 * 60 * 60 * 1000); // 6 days
+  const scheduled30D = new Date(baseTime.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
+  // Schedule all follow-up emails relative to booking creation time
+  // We schedule ALL emails regardless of whether they're in the past or future
+  // This ensures the UI can display them, and the processing endpoint will handle them appropriately
   const scheduledEmails: Omit<ScheduledEmail, 'id' | 'created_at'>[] = [
     {
       booking_id: bookingId,
@@ -89,25 +98,59 @@ export async function scheduleFollowUpEmails(quote: FinalQuote): Promise<void> {
   ];
 
   // Insert scheduled emails into database
-  // Note: We'll create a scheduled_emails table in Supabase
-  // For now, we'll use a simple approach with the bookings table metadata
-  // or create a separate table
-  
+  // First, check if emails already exist for this booking to avoid duplicates
   try {
-    // Check if scheduled_emails table exists, if not, we'll handle it gracefully
-    const { error } = await supabaseAdmin
+    // Check for existing scheduled emails for this booking
+    const { data: existingEmails, error: fetchError } = await supabaseAdmin
       .from('scheduled_emails')
-      .insert(scheduledEmails);
+      .select('email_type')
+      .eq('booking_id', bookingId);
 
-    if (error) {
-      // If table doesn't exist, log and continue (we'll create it separately)
-      console.warn('Could not schedule emails (table may not exist):', error.message);
-      console.log('Scheduled emails would be:', scheduledEmails);
+    if (fetchError) {
+      // If table doesn't exist, log error with details
+      if (fetchError.code === '42P01' || fetchError.message?.includes('does not exist')) {
+        console.error(`[SCHEDULING ERROR] scheduled_emails table does not exist for booking ${bookingId}. Please create the table in Supabase.`);
+        console.error('Error details:', fetchError);
+        return;
+      }
+      console.error(`[SCHEDULING ERROR] Error checking existing scheduled emails for booking ${bookingId}:`, fetchError);
+      return;
+    }
+
+    // Filter out emails that already exist
+    const existingTypes = new Set((existingEmails || []).map((e: any) => e.email_type));
+    const emailsToInsert = scheduledEmails.filter(
+      (email) => !existingTypes.has(email.email_type)
+    );
+
+    if (emailsToInsert.length === 0) {
+      console.log(`[SCHEDULING] All follow-up emails already scheduled for booking ${bookingId}`);
+      return;
+    }
+
+    // Insert only new emails
+    const { error: insertError, data: insertedData } = await supabaseAdmin
+      .from('scheduled_emails')
+      .insert(emailsToInsert)
+      .select();
+
+    if (insertError) {
+      console.error(`[SCHEDULING ERROR] Error inserting scheduled emails for booking ${bookingId}:`, insertError);
+      // Check if it's a duplicate key error (shouldn't happen now, but just in case)
+      if (insertError.code === '23505') {
+        console.warn(`[SCHEDULING] Duplicate email entries detected for booking ${bookingId}, skipping...`);
+      } else {
+        console.error(`[SCHEDULING ERROR] Failed to schedule emails. Error code: ${insertError.code}, Message: ${insertError.message}`);
+      }
     } else {
-      console.log(`Scheduled ${scheduledEmails.length} follow-up emails for booking ${bookingId}`);
+      console.log(`[SCHEDULING SUCCESS] Scheduled ${emailsToInsert.length} new follow-up emails for booking ${bookingId} (${existingTypes.size} already existed)`);
+      if (insertedData) {
+        console.log(`[SCHEDULING] Inserted email IDs:`, insertedData.map((e: any) => ({ id: e.id, type: e.email_type, scheduled_for: e.scheduled_for })));
+      }
     }
   } catch (e: any) {
-    console.warn('Error scheduling emails:', e.message);
+    console.error(`[SCHEDULING ERROR] Unexpected error scheduling emails for booking ${bookingId}:`, e.message);
+    console.error('Error stack:', e.stack);
     // Don't throw - scheduling emails shouldn't break quote generation
   }
 }
@@ -215,18 +258,42 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
   };
 
   try {
+    // Check if this email type already exists for this booking
+    const { data: existingEmails, error: fetchError } = await supabaseAdmin
+      .from('scheduled_emails')
+      .select('email_type')
+      .eq('booking_id', quote.id)
+      .eq('email_type', 'event-reminder-24h');
+
+    if (fetchError) {
+      if (fetchError.code === '42P01' || fetchError.message?.includes('does not exist')) {
+        console.error(`[SCHEDULING ERROR] scheduled_emails table does not exist for booking ${quote.id}`);
+        return;
+      }
+      console.error(`[SCHEDULING ERROR] Error checking existing event reminder email for booking ${quote.id}:`, fetchError);
+      return;
+    }
+
+    if (existingEmails && existingEmails.length > 0) {
+      console.log(`[SCHEDULING] Event reminder email already scheduled for booking ${quote.id}`);
+      return;
+    }
+
     const { error } = await supabaseAdmin
       .from('scheduled_emails')
       .insert(scheduledEmail);
 
     if (error) {
-      console.warn('Could not schedule event reminder email (table may not exist):', error.message);
-      console.log('Event reminder email would be scheduled for:', scheduledEmail);
+      if (error.code === '23505') {
+        console.warn(`[SCHEDULING] Duplicate event reminder email detected for booking ${quote.id}, skipping...`);
+      } else {
+        console.error(`[SCHEDULING ERROR] Error scheduling event reminder email for booking ${quote.id}:`, error);
+      }
     } else {
-      console.log(`Scheduled event reminder email for booking ${quote.id} at ${reminderTime.toISOString()}`);
+      console.log(`[SCHEDULING SUCCESS] Scheduled event reminder email for booking ${quote.id} at ${reminderTime.toISOString()}`);
     }
   } catch (e: any) {
-    console.warn('Error scheduling event reminder email:', e.message);
+    console.error(`[SCHEDULING ERROR] Unexpected error scheduling event reminder email for booking ${quote.id}:`, e.message);
   }
 }
 
@@ -295,18 +362,42 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
   };
 
   try {
+    // Check if this email type already exists for this booking
+    const { data: existingEmails, error: fetchError } = await supabaseAdmin
+      .from('scheduled_emails')
+      .select('email_type')
+      .eq('booking_id', quote.id)
+      .eq('email_type', 'appointment-day-reminder');
+
+    if (fetchError) {
+      if (fetchError.code === '42P01' || fetchError.message?.includes('does not exist')) {
+        console.error(`[SCHEDULING ERROR] scheduled_emails table does not exist for booking ${quote.id}`);
+        return;
+      }
+      console.error(`[SCHEDULING ERROR] Error checking existing appointment day reminder email for booking ${quote.id}:`, fetchError);
+      return;
+    }
+
+    if (existingEmails && existingEmails.length > 0) {
+      console.log(`[SCHEDULING] Appointment day reminder email already scheduled for booking ${quote.id}`);
+      return;
+    }
+
     const { error } = await supabaseAdmin
       .from('scheduled_emails')
       .insert(scheduledEmail);
 
     if (error) {
-      console.warn('Could not schedule appointment day reminder email (table may not exist):', error.message);
-      console.log('Appointment day reminder email would be scheduled for:', scheduledEmail);
+      if (error.code === '23505') {
+        console.warn(`[SCHEDULING] Duplicate appointment day reminder email detected for booking ${quote.id}, skipping...`);
+      } else {
+        console.error(`[SCHEDULING ERROR] Error scheduling appointment day reminder email for booking ${quote.id}:`, error);
+      }
     } else {
-      console.log(`Scheduled appointment day reminder email for booking ${quote.id} at ${reminderTime.toISOString()}`);
+      console.log(`[SCHEDULING SUCCESS] Scheduled appointment day reminder email for booking ${quote.id} at ${reminderTime.toISOString()}`);
     }
   } catch (e: any) {
-    console.warn('Error scheduling appointment day reminder email:', e.message);
+    console.error(`[SCHEDULING ERROR] Unexpected error scheduling appointment day reminder email for booking ${quote.id}:`, e.message);
   }
 }
 
