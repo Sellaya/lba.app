@@ -46,26 +46,31 @@ export async function saveQuoteAndEmailAction(quote: FinalQuote): Promise<Action
     console.log('saveQuoteAndEmailAction: Successfully saved to Supabase');
     
     // Send the quote email (non-blocking - don't fail the save if email fails)
-    console.log('saveQuoteAndEmailAction: Attempting to send quote email...');
-    try {
-    await sendQuoteEmail(quote);
-      console.log('saveQuoteAndEmailAction: Quote email sent successfully');
-    } catch (emailError: any) {
-      console.error('saveQuoteAndEmailAction: Failed to send quote email:', emailError);
-      console.error('saveQuoteAndEmailAction: Email error details:', JSON.stringify(emailError, null, 2));
-      // Continue even if email fails - booking is saved
-    }
-    
-    // Schedule follow-up emails (non-blocking)
-    // Use the created_at timestamp we just set for consistent scheduling
-    console.log('saveQuoteAndEmailAction: Attempting to schedule follow-up emails...');
-    try {
-      const bookingCreatedAt = new Date(payload.created_at);
-      await scheduleFollowUpEmails(quote, bookingCreatedAt);
-      console.log('saveQuoteAndEmailAction: Follow-up emails scheduled successfully');
-    } catch (scheduleError: any) {
-      console.error('saveQuoteAndEmailAction: Failed to schedule follow-up emails:', scheduleError);
-      // Continue even if scheduling fails
+    // Skip if booking is cancelled
+    if (quote.status !== 'cancelled') {
+      console.log('saveQuoteAndEmailAction: Attempting to send quote email...');
+      try {
+        await sendQuoteEmail(quote);
+        console.log('saveQuoteAndEmailAction: Quote email sent successfully');
+      } catch (emailError: any) {
+        console.error('saveQuoteAndEmailAction: Failed to send quote email:', emailError);
+        console.error('saveQuoteAndEmailAction: Email error details:', JSON.stringify(emailError, null, 2));
+        // Continue even if email fails - booking is saved
+      }
+      
+      // Schedule follow-up emails (non-blocking)
+      // Use the created_at timestamp we just set for consistent scheduling
+      console.log('saveQuoteAndEmailAction: Attempting to schedule follow-up emails...');
+      try {
+        const bookingCreatedAt = new Date(payload.created_at);
+        await scheduleFollowUpEmails(quote, bookingCreatedAt);
+        console.log('saveQuoteAndEmailAction: Follow-up emails scheduled successfully');
+      } catch (scheduleError: any) {
+        console.error('saveQuoteAndEmailAction: Failed to schedule follow-up emails:', scheduleError);
+        // Continue even if scheduling fails
+      }
+    } else {
+      console.log('saveQuoteAndEmailAction: Skipping email and scheduling for cancelled booking');
     }
     
     console.log('saveQuoteAndEmailAction: Completed successfully');
@@ -88,6 +93,11 @@ export async function sendFinalPaymentConfirmationEmailAction(bookingId: string)
 
     if (!bookingDoc) {
       return { success: false, message: `Booking with ID ${bookingId} not found.` };
+    }
+
+    // Don't send emails for cancelled bookings
+    if (bookingDoc.finalQuote.status === 'cancelled') {
+      return { success: false, message: 'Cannot send emails for cancelled bookings.' };
     }
 
     await sendFinalPaymentConfirmationEmail(bookingDoc.finalQuote);
@@ -114,6 +124,11 @@ export async function sendConfirmationEmailAction(bookingId: string): Promise<Ac
 
     if (!bookingDoc) {
       return { success: false, message: `Booking with ID ${bookingId} not found.` };
+    }
+    
+    // Don't send emails for cancelled bookings
+    if (bookingDoc.finalQuote.status === 'cancelled') {
+      return { success: false, message: 'Cannot send emails for cancelled bookings.' };
     }
     
      // We only send the email if the booking is actually confirmed.

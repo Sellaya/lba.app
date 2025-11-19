@@ -32,6 +32,7 @@ import { format } from 'date-fns';
 import { BrandingFooter } from '@/components/branding-footer';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
+import { trackEvent } from '@/lib/facebook-pixel';
 
 type ConfirmationStep = 'select-tier' | 'address' | 'sign-contract' | 'payment' | 'confirmed';
 
@@ -469,6 +470,19 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
             }
             const stripe = await stripePromise;
             if (stripe) {
+                // Track payment initiation
+                if (selectedTier) {
+                  trackEvent('InitiateCheckout', {
+                    content_name: 'Advance Payment - Stripe',
+                    content_category: 'Payment',
+                    value: depositAmount,
+                    currency: 'CAD',
+                    booking_id: quote.id,
+                    payment_method: 'stripe',
+                    tier: selectedTier,
+                  });
+                }
+                
                 const { error } = await stripe.redirectToCheckout({ sessionId });
                 if (error) {
                     throw new Error(error.message);
@@ -498,6 +512,18 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
             const { url } = await uploadRes.json();
             screenshotUrl = url;
         }
+
+        // Track final Interac payment submission
+        trackEvent('InitiateCheckout', {
+          content_name: 'Final Payment - Interac',
+          content_category: 'Payment',
+          value: finalAmount,
+          currency: 'CAD',
+          booking_id: quote.id,
+          payment_method: 'interac',
+          payment_type: 'final',
+          tier: paymentSelectedQuote,
+        });
 
         const updatedPaymentDetails: PaymentDetails = {
             ...quote.paymentDetails!,
@@ -636,6 +662,17 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
             const { url } = await uploadRes.json();
             screenshotUrl = url;
         }
+
+        // Track Interac payment submission
+        trackEvent('InitiateCheckout', {
+          content_name: 'Advance Payment - Interac',
+          content_category: 'Payment',
+          value: depositAmount,
+          currency: 'CAD',
+          booking_id: quote.id,
+          payment_method: 'interac',
+          tier: selectedTier,
+        });
 
         const paymentDetails: PaymentDetails = {
             method: paymentMethod,
@@ -1009,7 +1046,20 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
           <div className={cn(currentStep !== 'select-tier' && 'hidden')}>
               <RadioGroup 
                   value={selectedTier} 
-                  onValueChange={(val) => setSelectedTier(val as PriceTier)} 
+                  onValueChange={(val) => {
+                    const tier = val as PriceTier;
+                    setSelectedTier(tier);
+                    // Track tier selection
+                    const selectedQuote = quote.quotes[tier];
+                    trackEvent('SelectQuoteTier', {
+                      content_name: `Quote Tier: ${tier === 'lead' ? 'Lead Artist' : 'Team'}`,
+                      content_category: 'Quote',
+                      value: selectedQuote?.total || 0,
+                      currency: 'CAD',
+                      booking_id: quote.id,
+                      tier: tier,
+                    });
+                  }} 
                   className={cn("grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-4", showLeadArtistOption && showTeamOption ? "sm:grid-cols-2" : "max-w-md mx-auto")}
               >
                   {showLeadArtistOption && (
@@ -1423,6 +1473,12 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       setSignature(dataURL);
                       setHasSignature(true);
                       setContractSigned(true);
+                      // Track contract signing
+                      trackEvent('SignContract', {
+                        content_name: 'Contract Signed',
+                        content_category: 'Contract',
+                        booking_id: quote.id,
+                      });
                     }
                   }}
                   onMouseLeave={() => {
@@ -1475,6 +1531,12 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       setSignature(dataURL);
                       setHasSignature(true);
                       setContractSigned(true);
+                      // Track contract signing
+                      trackEvent('SignContract', {
+                        content_name: 'Contract Signed',
+                        content_category: 'Contract',
+                        booking_id: quote.id,
+                      });
                     }
                   }}
                 />

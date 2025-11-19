@@ -89,6 +89,12 @@ export async function sendQuoteEmail(quote: FinalQuote) {
   console.log('sendQuoteEmail: Starting for booking ID:', quote.id);
   console.log('sendQuoteEmail: Contact email:', quote.contact?.email);
   
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendQuoteEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -166,6 +172,12 @@ export async function sendQuoteEmail(quote: FinalQuote) {
 
 
 export async function sendFollowUpEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFollowUpEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -238,6 +250,12 @@ export async function sendAdminScreenshotNotification(quote: FinalQuote) {
 }
 
 export async function sendRejectionEmail(quote: FinalQuote, isFinalPayment: boolean = false) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendRejectionEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -271,6 +289,12 @@ export async function sendRejectionEmail(quote: FinalQuote, isFinalPayment: bool
 }
 
 export async function sendFollowUp3HEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFollowUp3HEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -305,6 +329,12 @@ export async function sendFollowUp3HEmail(quote: FinalQuote) {
 }
 
 export async function sendFollowUp6HEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFollowUp6HEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -339,6 +369,12 @@ export async function sendFollowUp6HEmail(quote: FinalQuote) {
 }
 
 export async function sendFollowUp24HEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFollowUp24HEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -373,6 +409,12 @@ export async function sendFollowUp24HEmail(quote: FinalQuote) {
 }
 
 export async function sendFollowUp3DEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFollowUp3DEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -407,6 +449,12 @@ export async function sendFollowUp3DEmail(quote: FinalQuote) {
 }
 
 export async function sendFollowUp6DEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFollowUp6DEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -441,6 +489,12 @@ export async function sendFollowUp6DEmail(quote: FinalQuote) {
 }
 
 export async function sendFollowUp30DEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFollowUp30DEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -475,6 +529,12 @@ export async function sendFollowUp30DEmail(quote: FinalQuote) {
 }
 
 export async function sendEventReminder24HEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendEventReminder24HEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -516,6 +576,12 @@ export async function sendEventReminder24HEmail(quote: FinalQuote) {
 }
 
 export async function sendAppointmentDayReminderEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendAppointmentDayReminderEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   
@@ -624,6 +690,12 @@ export async function sendBookCallEmails(data: {
 
 // Send final payment confirmation email
 export async function sendFinalPaymentConfirmationEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendFinalPaymentConfirmationEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
   const baseUrl = getBaseUrl();
   const resend = getResend();
   

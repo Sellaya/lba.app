@@ -31,6 +31,12 @@ export async function scheduleFollowUpEmails(quote: FinalQuote, bookingCreatedAt
     return;
   }
 
+  // Don't schedule follow-up emails if booking is cancelled
+  if (quote.status === 'cancelled') {
+    console.log(`Skipping follow-up email scheduling for cancelled booking ${quote.id}`);
+    return;
+  }
+
   // Don't schedule follow-up emails if advance payment has been made
   const hasAdvancePayment = quote.paymentDetails && 
     (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
@@ -203,10 +209,48 @@ export async function markScheduledEmailAsSent(scheduledEmailId: string): Promis
 }
 
 /**
+ * Mark multiple scheduled emails as sent in batch (optimized for performance)
+ */
+export async function markScheduledEmailsAsSentBatch(scheduledEmailIds: string[]): Promise<void> {
+  if (!scheduledEmailIds || scheduledEmailIds.length === 0) {
+    return;
+  }
+
+  try {
+    const sentAt = new Date().toISOString();
+    
+    // Update all emails in batch
+    const { error } = await supabaseAdmin
+      .from('scheduled_emails')
+      .update({
+        sent: true,
+        sent_at: sentAt,
+      })
+      .in('id', scheduledEmailIds);
+
+    if (error) {
+      console.error('Error batch marking scheduled emails as sent:', error);
+      throw error;
+    }
+    
+    console.log(`Successfully marked ${scheduledEmailIds.length} emails as sent in batch`);
+  } catch (e: any) {
+    console.error('Error in markScheduledEmailsAsSentBatch:', e.message);
+    throw e;
+  }
+}
+
+/**
  * Schedule event reminder email 24 hours before the event
  * Only schedules if booking is confirmed and payment has been made
  */
 export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<void> {
+  // Don't schedule for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`Skipping event reminder email scheduling - booking ${quote.id} is cancelled`);
+    return;
+  }
+
   // Only schedule for confirmed bookings with payment
   if (quote.status !== 'confirmed') {
     console.log(`Skipping event reminder email scheduling - booking ${quote.id} is not confirmed`);
@@ -303,6 +347,12 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
  * Only schedules if booking is confirmed and advance payment has been made
  */
 export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Promise<void> {
+  // Don't schedule for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} is cancelled`);
+    return;
+  }
+
   // Only schedule for confirmed bookings with payment
   if (quote.status !== 'confirmed') {
     console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} is not confirmed`);

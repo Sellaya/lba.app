@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { QuoteConfirmation } from '@/components/quote-confirmation';
 import { Loader2, AlertTriangle } from 'lucide-react';
+import { trackPageView, trackEvent } from '@/lib/facebook-pixel';
 
 export default function BookPage() {
   const params = useParams();
@@ -38,6 +39,21 @@ export default function BookPage() {
     load();
     return () => { mounted = false; };
   }, [bookingId]);
+
+  // Track page view when booking page loads
+  useEffect(() => {
+    if (!isLoading && bookingId) {
+      // Track page view
+      trackPageView();
+      
+      // Track quote view event
+      trackEvent('ViewQuote', {
+        content_name: 'Quote View',
+        content_category: 'Quote',
+        booking_id: bookingId,
+      });
+    }
+  }, [isLoading, bookingId]);
 
   if (isLoading) {
     return (
