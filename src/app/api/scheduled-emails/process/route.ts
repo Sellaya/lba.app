@@ -74,6 +74,7 @@ export async function GET(request: Request) {
         }
 
         // Handle event reminder emails differently - they should only be sent for confirmed bookings
+        let emailSent = false;
         if (scheduledEmail.email_type === 'event-reminder-24h') {
           // For event reminders, only send if booking is confirmed
           if (booking.finalQuote.status !== 'confirmed') {
@@ -108,6 +109,7 @@ export async function GET(request: Request) {
           }
 
           await sendEventReminder24HEmail(booking.finalQuote);
+          emailSent = true;
         } else if (scheduledEmail.email_type === 'appointment-day-reminder') {
           // For appointment day reminders, only send if booking is confirmed
           if (booking.finalQuote.status !== 'confirmed') {
@@ -142,6 +144,7 @@ export async function GET(request: Request) {
           }
 
           await sendAppointmentDayReminderEmail(booking.finalQuote);
+          emailSent = true;
         } else {
           // For follow-up emails, only send if status is 'quoted' and no advance payment has been made
           if (booking.finalQuote.status !== 'quoted') {
@@ -176,42 +179,68 @@ export async function GET(request: Request) {
           }
 
           // Send the appropriate follow-up email
+          let emailSent = false;
           switch (scheduledEmail.email_type) {
             case 'followup-3h':
               await sendFollowUp3HEmail(booking.finalQuote);
+              emailSent = true;
               break;
             case 'followup-6h':
               await sendFollowUp6HEmail(booking.finalQuote);
+              emailSent = true;
               break;
             case 'followup-24h':
               await sendFollowUp24HEmail(booking.finalQuote);
+              emailSent = true;
               break;
             case 'followup-3d':
               await sendFollowUp3DEmail(booking.finalQuote);
+              emailSent = true;
               break;
             case 'followup-6d':
               await sendFollowUp6DEmail(booking.finalQuote);
+              emailSent = true;
               break;
             case 'followup-30d':
               await sendFollowUp30DEmail(booking.finalQuote);
+              emailSent = true;
               break;
             default:
               console.warn(`Unknown email type: ${scheduledEmail.email_type}`);
               results.failed++;
+              await logEmailEvent({
+                scheduledEmailId: scheduledEmail.id,
+                bookingId: scheduledEmail.booking_id,
+                emailType: scheduledEmail.email_type,
+                status: 'failed',
+                detail: `Unknown email type: ${scheduledEmail.email_type}`,
+              });
               continue;
           }
-        }
 
-        // Mark as sent
-        await markScheduledEmailAsSent(scheduledEmail.id!);
-        await logEmailEvent({
-          scheduledEmailId: scheduledEmail.id,
-          bookingId: scheduledEmail.booking_id,
-          emailType: scheduledEmail.email_type,
-          status: 'sent',
-          detail: 'Email sent successfully',
-        });
-        results.processed++;
+          // Only mark as sent if email was actually sent
+          if (emailSent) {
+            // Mark as sent - do this even if logging fails
+            try {
+              await markScheduledEmailAsSent(scheduledEmail.id!);
+            } catch (markError: any) {
+              console.error(`Failed to mark email ${scheduledEmail.id} as sent:`, markError);
+              // Still log the success since email was sent
+            }
+            
+            // Log success
+            await logEmailEvent({
+              scheduledEmailId: scheduledEmail.id,
+              bookingId: scheduledEmail.booking_id,
+              emailType: scheduledEmail.email_type,
+              status: 'sent',
+              detail: 'Email sent successfully',
+            });
+            results.processed++;
+          } else {
+            // Email was not sent (e.g., Resend not configured)
+            throw new Error('Email function returned without sending (Resend may not be configured)');
+          }
         
       } catch (error: any) {
         console.error(`Error processing scheduled email ${scheduledEmail.id}:`, error);

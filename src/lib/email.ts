@@ -275,8 +275,9 @@ export async function sendFollowUp3HEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendFollowUp3HEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send follow-up 3H email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const fromEmail = getFromEmail('orders@looksbyanum.com');
@@ -308,8 +309,9 @@ export async function sendFollowUp6HEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendFollowUp6HEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send follow-up 6H email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const fromEmail = getFromEmail('orders@looksbyanum.com');
@@ -341,8 +343,9 @@ export async function sendFollowUp24HEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendFollowUp24HEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send follow-up 24H email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const fromEmail = getFromEmail('orders@looksbyanum.com');
@@ -374,8 +377,9 @@ export async function sendFollowUp3DEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendFollowUp3DEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send follow-up 3D email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const fromEmail = getFromEmail('orders@looksbyanum.com');
@@ -407,8 +411,9 @@ export async function sendFollowUp6DEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendFollowUp6DEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send follow-up 6D email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const fromEmail = getFromEmail('orders@looksbyanum.com');
@@ -440,8 +445,9 @@ export async function sendFollowUp30DEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendFollowUp30DEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send follow-up 30D email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const fromEmail = getFromEmail('orders@looksbyanum.com');
@@ -473,8 +479,9 @@ export async function sendEventReminder24HEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendEventReminder24HEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send event reminder 24H email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   // Validate booking days exist
@@ -513,8 +520,9 @@ export async function sendAppointmentDayReminderEmail(quote: FinalQuote) {
   const resend = getResend();
   
   if (!resend) {
-    console.warn('Resend not configured; skipping sendAppointmentDayReminderEmail for booking ID:', quote.id);
-    return;
+    const errorMsg = `Resend not configured; cannot send appointment day reminder email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   // Validate booking days exist
