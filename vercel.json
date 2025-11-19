@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/scheduled-emails/process",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
+

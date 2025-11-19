@@ -11,7 +11,7 @@ This document explains how to set up the automated follow-up email system that s
 
 ## Setup Steps
 
-### 1. Create the Database Table
+### 1. Create the Database Tables
 
 Run the SQL script in your Supabase SQL editor:
 
@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS scheduled_emails (
 CREATE INDEX IF NOT EXISTS idx_scheduled_emails_due ON scheduled_emails(scheduled_for, sent) WHERE sent = FALSE;
 CREATE INDEX IF NOT EXISTS idx_scheduled_emails_booking ON scheduled_emails(booking_id);
 ```
+
+Additionally, create the log table so admins can audit every send attempt:
+
+```sql
+-- File: supabase-email-send-logs-table.sql
+```
+
+This log table stores a record for each attempt, including skips/failures, so you can confirm that the processor actually executed.
 
 ### 2. Set Up Environment Variables
 
@@ -152,6 +160,7 @@ Check the `scheduled_emails` table to monitor:
 - Emails are not sent if the booking is already confirmed
 - The system gracefully handles missing tables (logs warning, doesn't break quote generation)
 - All email sending is idempotent - safe to retry
+
 
 
 

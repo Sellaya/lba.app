@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDueScheduledEmails, markScheduledEmailAsSent } from '@/lib/scheduled-emails';
 import { getBooking } from '@/firebase/server-actions';
 import { sendFollowUp3HEmail, sendFollowUp6HEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail, sendFollowUp30DEmail, sendEventReminder24HEmail, sendAppointmentDayReminderEmail } from '@/lib/email';
+import { logEmailEvent } from '@/lib/email-log';
 
 /**
  * API route to process scheduled emails
@@ -46,6 +47,13 @@ export async function GET(request: Request) {
 
     for (const scheduledEmail of dueEmails) {
       try {
+        await logEmailEvent({
+          scheduledEmailId: scheduledEmail.id,
+          bookingId: scheduledEmail.booking_id,
+          emailType: scheduledEmail.email_type,
+          status: 'processing',
+          detail: 'Attempting to send scheduled email',
+        });
         // Fetch the booking
         const booking = await getBooking(scheduledEmail.booking_id);
         
@@ -55,6 +63,13 @@ export async function GET(request: Request) {
           results.errors.push(`Booking ${scheduledEmail.booking_id} not found`);
           // Mark as sent to avoid retrying
           await markScheduledEmailAsSent(scheduledEmail.id!);
+          await logEmailEvent({
+            scheduledEmailId: scheduledEmail.id,
+            bookingId: scheduledEmail.booking_id,
+            emailType: scheduledEmail.email_type,
+            status: 'skipped',
+            detail: 'Booking not found; marking as sent to prevent retries',
+          });
           continue;
         }
 
@@ -64,6 +79,13 @@ export async function GET(request: Request) {
           if (booking.finalQuote.status !== 'confirmed') {
             console.log(`Skipping event reminder email for non-confirmed booking ${scheduledEmail.booking_id}`);
             await markScheduledEmailAsSent(scheduledEmail.id!);
+            await logEmailEvent({
+              scheduledEmailId: scheduledEmail.id,
+              bookingId: scheduledEmail.booking_id,
+              emailType: scheduledEmail.email_type,
+              status: 'skipped',
+              detail: 'Booking not confirmed; event reminder not sent',
+            });
             continue;
           }
           
@@ -75,6 +97,13 @@ export async function GET(request: Request) {
           if (!hasAdvancePayment) {
             console.log(`Skipping event reminder email for booking ${scheduledEmail.booking_id} - no advance payment`);
             await markScheduledEmailAsSent(scheduledEmail.id!);
+            await logEmailEvent({
+              scheduledEmailId: scheduledEmail.id,
+              bookingId: scheduledEmail.booking_id,
+              emailType: scheduledEmail.email_type,
+              status: 'skipped',
+              detail: 'No advance payment; event reminder not sent',
+            });
             continue;
           }
 
@@ -84,6 +113,13 @@ export async function GET(request: Request) {
           if (booking.finalQuote.status !== 'confirmed') {
             console.log(`Skipping appointment day reminder email for non-confirmed booking ${scheduledEmail.booking_id}`);
             await markScheduledEmailAsSent(scheduledEmail.id!);
+            await logEmailEvent({
+              scheduledEmailId: scheduledEmail.id,
+              bookingId: scheduledEmail.booking_id,
+              emailType: scheduledEmail.email_type,
+              status: 'skipped',
+              detail: 'Booking not confirmed; appointment reminder not sent',
+            });
             continue;
           }
           
@@ -95,6 +131,13 @@ export async function GET(request: Request) {
           if (!hasAdvancePayment) {
             console.log(`Skipping appointment day reminder email for booking ${scheduledEmail.booking_id} - no advance payment`);
             await markScheduledEmailAsSent(scheduledEmail.id!);
+            await logEmailEvent({
+              scheduledEmailId: scheduledEmail.id,
+              bookingId: scheduledEmail.booking_id,
+              emailType: scheduledEmail.email_type,
+              status: 'skipped',
+              detail: 'No advance payment; appointment reminder not sent',
+            });
             continue;
           }
 
@@ -104,6 +147,13 @@ export async function GET(request: Request) {
           if (booking.finalQuote.status !== 'quoted') {
             console.log(`Skipping scheduled email for booking ${scheduledEmail.booking_id} - status is not 'quoted' (current: ${booking.finalQuote.status})`);
             await markScheduledEmailAsSent(scheduledEmail.id!);
+            await logEmailEvent({
+              scheduledEmailId: scheduledEmail.id,
+              bookingId: scheduledEmail.booking_id,
+              emailType: scheduledEmail.email_type,
+              status: 'skipped',
+              detail: `Booking status is ${booking.finalQuote.status}; follow-ups only send for quoted bookings`,
+            });
             continue;
           }
 
@@ -115,6 +165,13 @@ export async function GET(request: Request) {
           if (hasAdvancePayment) {
             console.log(`Skipping scheduled email for booking ${scheduledEmail.booking_id} - advance payment already made`);
             await markScheduledEmailAsSent(scheduledEmail.id!);
+            await logEmailEvent({
+              scheduledEmailId: scheduledEmail.id,
+              bookingId: scheduledEmail.booking_id,
+              emailType: scheduledEmail.email_type,
+              status: 'skipped',
+              detail: 'Advance payment already made; follow-up skipped',
+            });
             continue;
           }
 
@@ -147,12 +204,26 @@ export async function GET(request: Request) {
 
         // Mark as sent
         await markScheduledEmailAsSent(scheduledEmail.id!);
+        await logEmailEvent({
+          scheduledEmailId: scheduledEmail.id,
+          bookingId: scheduledEmail.booking_id,
+          emailType: scheduledEmail.email_type,
+          status: 'sent',
+          detail: 'Email sent successfully',
+        });
         results.processed++;
         
       } catch (error: any) {
         console.error(`Error processing scheduled email ${scheduledEmail.id}:`, error);
         results.failed++;
         results.errors.push(`Email ${scheduledEmail.id}: ${error.message}`);
+        await logEmailEvent({
+          scheduledEmailId: scheduledEmail.id,
+          bookingId: scheduledEmail.booking_id,
+          emailType: scheduledEmail.email_type,
+          status: 'failed',
+          detail: error?.message || 'Unknown error while sending email',
+        });
       }
     }
 
