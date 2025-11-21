@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { getBooking } from '@/firebase/server-actions';
-import { scheduleFollowUpEmails, scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail } from '@/lib/scheduled-emails';
+import { scheduleFollowUpEmails, scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail, schedulePostAppointmentFollowupEmail } from '@/lib/scheduled-emails';
 
 /**
  * API endpoint to schedule emails for all existing bookings
@@ -84,10 +84,11 @@ export async function POST(request: Request) {
         const bookingCreatedAt = booking.created_at ? new Date(booking.created_at) : undefined;
         await scheduleFollowUpEmails(finalQuote, bookingCreatedAt);
 
-        // Schedule event reminder and appointment day reminder (only if confirmed with payment)
+        // Schedule event reminder, appointment day reminder, and post-appointment followup (only if confirmed with payment)
         if (finalQuote.status === 'confirmed') {
           await scheduleEventReminder24HEmail(finalQuote);
           await scheduleAppointmentDayReminderEmail(finalQuote);
+          await schedulePostAppointmentFollowupEmail(finalQuote);
         }
 
         results.processed++;

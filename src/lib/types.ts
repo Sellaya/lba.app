@@ -130,6 +130,7 @@ export type FinalQuote = {
         images?: string[]; // Array of image URLs
         links?: string[]; // Array of Instagram/TikTok links
     };
+    makeupImages?: string[]; // Array of makeup photo URLs uploaded by client after appointment
   };
   quotes: {
     lead: Quote;

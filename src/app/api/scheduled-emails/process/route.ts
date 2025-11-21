@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDueScheduledEmails, markScheduledEmailAsSent, markScheduledEmailsAsSentBatch } from '@/lib/scheduled-emails';
 import { getBookingsBatch } from '@/firebase/server-actions';
-import { sendFollowUp3HEmail, sendFollowUp6HEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail, sendFollowUp30DEmail, sendEventReminder24HEmail, sendAppointmentDayReminderEmail } from '@/lib/email';
+import { sendFollowUp3HEmail, sendFollowUp6HEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail, sendFollowUp30DEmail, sendEventReminder24HEmail, sendAppointmentDayReminderEmail, sendPostAppointmentFollowupEmail } from '@/lib/email';
 import { logEmailEvent } from '@/lib/email-log';
 import type { ScheduledEmail } from '@/lib/scheduled-emails';
 import type { BookingDocument } from '@/firebase/firestore/bookings';
@@ -46,6 +46,9 @@ async function sendEmailByType(
       break;
     case 'appointment-day-reminder':
       await sendAppointmentDayReminderEmail(quote);
+      break;
+    case 'post-appointment-followup':
+      await sendPostAppointmentFollowupEmail(quote);
       break;
     default:
       throw new Error(`Unknown email type: ${emailType}`);
@@ -104,8 +107,8 @@ async function processScheduledEmail(
       };
     }
 
-    // Handle event reminder emails
-    if (scheduledEmail.email_type === 'event-reminder-24h' || scheduledEmail.email_type === 'appointment-day-reminder') {
+    // Handle event reminder emails and post-appointment follow-up
+    if (scheduledEmail.email_type === 'event-reminder-24h' || scheduledEmail.email_type === 'appointment-day-reminder' || scheduledEmail.email_type === 'post-appointment-followup') {
       // Only send for confirmed bookings with payment
       if (booking.finalQuote.status !== 'confirmed') {
         await logEmailEvent({
@@ -323,12 +326,17 @@ async function processEmailsInBatches(
 export async function GET(request: Request) {
   const startTime = Date.now();
   
-  // Optional: Add authentication/authorization here
-  const authHeader = request.headers.get('authorization');
-  const expectedToken = process.env.CRON_SECRET;
+  // Allow Vercel cron jobs to bypass authentication (they include x-vercel-signature header)
+  const isVercelCron = request.headers.get('x-vercel-signature') !== null;
   
-  if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // For external cron services, require authentication if CRON_SECRET is set
+  if (!isVercelCron) {
+    const authHeader = request.headers.get('authorization');
+    const expectedToken = process.env.CRON_SECRET;
+    
+    if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   try {

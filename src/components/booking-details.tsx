@@ -85,6 +85,7 @@ interface EmailStatusData {
   'followup-30d': EmailStatus;
   'event-reminder-24h': EmailStatus;
   'appointment-day-reminder': EmailStatus;
+  'post-appointment-followup': EmailStatus;
 }
 
 export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }: { quote: FinalQuote; onUpdate: (updatedQuote: FinalQuote) => void; bookingDoc: BookingDocument | undefined; onBookingDeleted: (bookingId: string) => void; }) {
@@ -182,7 +183,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       emailStatus['followup-6d']?.scheduledFor ||
       emailStatus['followup-30d']?.scheduledFor ||
       emailStatus['event-reminder-24h']?.scheduledFor ||
-      emailStatus['appointment-day-reminder']?.scheduledFor
+      emailStatus['appointment-day-reminder']?.scheduledFor ||
+      emailStatus['post-appointment-followup']?.scheduledFor
     );
   };
 
@@ -205,6 +207,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       ...(isConfirmed && hasAdvancePayment && emailStatus['event-reminder-24h'] ? [{ type: 'event-reminder-24h', scheduledFor: emailStatus['event-reminder-24h'].scheduledFor, sent: emailStatus['event-reminder-24h'].sent }] : []),
       // Appointment day reminder only shows if booking is confirmed and payment is made
       ...(isConfirmed && hasAdvancePayment && emailStatus['appointment-day-reminder'] ? [{ type: 'appointment-day-reminder', scheduledFor: emailStatus['appointment-day-reminder'].scheduledFor, sent: emailStatus['appointment-day-reminder'].sent }] : []),
+      // Post-appointment followup only shows if booking is confirmed and payment is made
+      ...(isConfirmed && hasAdvancePayment && emailStatus['post-appointment-followup'] ? [{ type: 'post-appointment-followup', scheduledFor: emailStatus['post-appointment-followup'].scheduledFor, sent: emailStatus['post-appointment-followup'].sent }] : []),
     ].filter(e => e.scheduledFor && !e.sent && isFuture(new Date(e.scheduledFor)));
     
     if (emails.length === 0) return null;
@@ -246,6 +250,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
               'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
               'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
+              'post-appointment-followup': { sent: false, sentAt: null, scheduledFor: null },
             });
           } catch (e) {
             // If we can't parse error, still set default status
@@ -259,6 +264,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
               'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
               'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
+              'post-appointment-followup': { sent: false, sentAt: null, scheduledFor: null },
             });
           }
         }
@@ -274,6 +280,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
           'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
           'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
           'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
+          'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
+          'post-appointment-followup': { sent: false, sentAt: null, scheduledFor: null },
           'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
         });
       } finally {
@@ -683,6 +691,40 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       </div>
                     </div>
                   )}
+                </div>
+              );
+            })()}
+            
+            {/* Makeup Images Section */}
+            {(() => {
+              const hasMakeupImages = quote.booking.makeupImages && quote.booking.makeupImages.length > 0;
+              
+              if (!hasMakeupImages) {
+                return null;
+              }
+              
+              return (
+                <div className="pt-4 border-t mt-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Makeup Photos (Client Uploaded)</p>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                    {quote.booking.makeupImages?.map((imageUrl, index) => (
+                      <a
+                        key={index}
+                        href={imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block group"
+                      >
+                        <div className="relative aspect-square rounded-lg border-2 border-border overflow-hidden hover:border-black transition-colors">
+                          <img
+                            src={imageUrl}
+                            alt={`Makeup photo ${index + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
                 </div>
               );
             })()}
@@ -2392,6 +2434,65 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       }>
                         {emailStatus['appointment-day-reminder']?.sent ? 'Sent' : 
                          emailStatus['appointment-day-reminder']?.scheduledFor ? 'Scheduled' : 
+                         'Not Scheduled'}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })()}
+              
+              {/* Post-Appointment Follow-up Email - Only show if booking is confirmed and has advance payment */}
+              {(() => {
+                const hasAdvancePayment = quote.paymentDetails && 
+                  (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+                const isConfirmed = quote.status === 'confirmed';
+                
+                if (!isConfirmed || !hasAdvancePayment || !emailStatus) return null;
+                
+                return (
+                  <div className={`flex items-center justify-between p-3 border rounded-lg ${nextEmail?.type === 'post-appointment-followup' ? 'border-black bg-gray-50' : ''}`}>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex-shrink-0">
+                        {emailStatus['post-appointment-followup']?.sent ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : emailStatus['post-appointment-followup']?.scheduledFor && isFuture(new Date(emailStatus['post-appointment-followup'].scheduledFor)) ? (
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Email 7 - Post-Appointment Follow-up (6 Hours After Appointment)</p>
+                          {nextEmail?.type === 'post-appointment-followup' && (
+                            <Badge variant="outline" className="text-xs">Next</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {emailStatus['post-appointment-followup']?.sent 
+                            ? emailStatus['post-appointment-followup']?.sentAt 
+                              ? `Sent on ${format(new Date(emailStatus['post-appointment-followup'].sentAt), 'PPp')}`
+                              : 'Sent'
+                            : emailStatus['post-appointment-followup']?.scheduledFor
+                              ? (() => {
+                                  const scheduledDate = new Date(emailStatus['post-appointment-followup'].scheduledFor);
+                                  const isInFuture = isFuture(scheduledDate);
+                                  return isInFuture
+                                    ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
+                                    : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                })()
+                              : 'Not scheduled'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        emailStatus['post-appointment-followup']?.sent ? 'default' : 
+                        emailStatus['post-appointment-followup']?.scheduledFor ? 'secondary' : 
+                        'outline'
+                      }>
+                        {emailStatus['post-appointment-followup']?.sent ? 'Sent' : 
+                         emailStatus['post-appointment-followup']?.scheduledFor ? 'Scheduled' : 
                          'Not Scheduled'}
                       </Badge>
                     </div>

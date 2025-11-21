@@ -181,6 +181,10 @@ export default function StripeSuccessPage() {
               
               // Schedule appointment day reminder email 2.5 hours before appointment time
               await scheduleAppointmentDayReminderEmail(updatedQuote);
+              
+              // Schedule post-appointment follow-up email 6 hours after appointment time
+              const { schedulePostAppointmentFollowupEmail } = await import('@/lib/scheduled-emails');
+              await schedulePostAppointmentFollowupEmail(updatedQuote);
             }
           }
         } catch (error: any) {

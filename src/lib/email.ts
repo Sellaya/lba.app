@@ -13,6 +13,7 @@ import FollowUp6DEmailTemplate from '@/app/emails/follow-up-6d-email';
 import FollowUp30DEmailTemplate from '@/app/emails/follow-up-30d-email';
 import EventReminder24HEmailTemplate from '@/app/emails/event-reminder-24h-email';
 import AppointmentDayReminderEmailTemplate from '@/app/emails/appointment-day-reminder-email';
+import PostAppointmentFollowupEmailTemplate from '@/app/emails/post-appointment-followup-email';
 import AdminNotificationEmailTemplate from '@/app/emails/admin-notification-email';
 import RejectionEmailTemplate from '@/app/emails/rejection-email';
 import BookCallAdminEmailTemplate from '@/app/emails/book-call-admin-email';
@@ -618,6 +619,47 @@ export async function sendAppointmentDayReminderEmail(quote: FinalQuote) {
     
   } catch (error: any) {
     console.error('Error in sendAppointmentDayReminderEmail:', error.message);
+    throw error;
+  }
+}
+
+// Send post-appointment follow-up email asking for photos
+export async function sendPostAppointmentFollowupEmail(quote: FinalQuote) {
+  // Don't send emails for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`sendPostAppointmentFollowupEmail: Skipping email for cancelled booking ${quote.id}`);
+    return;
+  }
+  
+  const baseUrl = getBaseUrl();
+  const resend = getResend();
+  
+  if (!resend) {
+    const errorMsg = `Resend not configured; cannot send post-appointment follow-up email for booking ID: ${quote.id}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  const fromEmail = getFromEmail('orders@looksbyanum.com');
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [quote.contact.email],
+      subject: `We'd Love to See Your Photos! 📸 Looks by Anum (ID: ${quote.id})`,
+      react: PostAppointmentFollowupEmailTemplate({ quote, baseUrl }),
+    });
+
+    if (error) {
+      console.error('Post-appointment follow-up email sending error:', error);
+      throw new Error(`Failed to send post-appointment follow-up email: ${error.message}`);
+    }
+
+    console.log('Post-appointment follow-up email sent successfully for booking ID:', quote.id, 'to:', quote.contact.email);
+    return data;
+    
+  } catch (error: any) {
+    console.error('Error in sendPostAppointmentFollowupEmail:', error.message);
     throw error;
   }
 }

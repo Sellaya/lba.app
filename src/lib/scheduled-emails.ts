@@ -3,7 +3,7 @@
 import { supabaseAdmin } from './supabase/server';
 import type { FinalQuote } from './types';
 
-export type ScheduledEmailType = 'followup-3h' | 'followup-6h' | 'followup-24h' | 'followup-3d' | 'followup-6d' | 'followup-30d' | 'event-reminder-24h' | 'appointment-day-reminder';
+export type ScheduledEmailType = 'followup-3h' | 'followup-6h' | 'followup-24h' | 'followup-3d' | 'followup-6d' | 'followup-30d' | 'event-reminder-24h' | 'appointment-day-reminder' | 'post-appointment-followup';
 
 export interface ScheduledEmail {
   id?: string;
@@ -278,9 +278,17 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
   if (typeof firstDay.date === 'string') {
     const { parse } = await import('date-fns');
     const parsedDate = parse(firstDay.date, 'PPP', new Date());
-    eventDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    if (isNaN(parsedDate.getTime())) {
+      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
+      return; // Don't schedule if date is invalid
+    }
+    eventDate = parsedDate;
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
+    if (isNaN(eventDate.getTime())) {
+      console.error(`Invalid date object for booking ${quote.id}`);
+      return;
+    }
   } else {
     console.log(`Skipping event reminder email scheduling - booking ${quote.id} has invalid date format`);
     return;
@@ -380,27 +388,103 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
   if (typeof firstDay.date === 'string') {
     const { parse } = await import('date-fns');
     const parsedDate = parse(firstDay.date, 'PPP', new Date());
-    eventDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    if (isNaN(parsedDate.getTime())) {
+      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
+      return; // Don't schedule if date is invalid
+    }
+    eventDate = parsedDate;
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
+    if (isNaN(eventDate.getTime())) {
+      console.error(`Invalid date object for booking ${quote.id}`);
+      return;
+    }
   } else {
     console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} has invalid date format`);
     return;
   }
 
-  // Parse the appointment time (format: "HH:MM")
-  const timeString = firstDay.getReadyTime || '10:00';
-  const [hours, minutes] = timeString.split(':').map(Number);
+  // Parse the appointment time (handles both "HH:MM" and "10:00 AM/PM" formats)
+  const timeStr = (firstDay.getReadyTime || '10:00').trim();
+  let hours = 10;
+  let minutes = 0;
+
+  // Handle different time formats
+  if (timeStr.includes('AM') || timeStr.includes('PM')) {
+    // Format: "10:00 AM" or "10:00 PM"
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (timeMatch) {
+      hours = parseInt(timeMatch[1], 10);
+      minutes = parseInt(timeMatch[2], 10);
+      if (timeMatch[3].toUpperCase() === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (timeMatch[3].toUpperCase() === 'AM' && hours === 12) {
+        hours = 0;
+      }
+    }
+  } else {
+    // Format: "10:00" or "10:00:00" (24-hour)
+    const timeParts = timeStr.split(':').map(Number);
+    hours = timeParts[0] || 10;
+    minutes = timeParts[1] || 0;
+  }
+
+  // Validate hours and minutes
+  if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    console.error(`Invalid time format for booking ${quote.id}: ${timeStr}`);
+    hours = 10;
+    minutes = 0;
+  }
   
   // Set the appointment date and time
   const appointmentDateTime = new Date(eventDate);
-  appointmentDateTime.setHours(hours || 10, minutes || 0, 0, 0);
+  appointmentDateTime.setHours(hours, minutes, 0, 0);
 
   // Schedule email 2.5 hours before the appointment time
   const reminderTime = new Date(appointmentDateTime.getTime() - 2.5 * 60 * 60 * 1000);
   
-  // Don't schedule if the reminder time is in the past
-  if (reminderTime < new Date()) {
+  // Check if event date is today (same day as payment approval)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDateOnly = new Date(eventDate);
+  eventDateOnly.setHours(0, 0, 0, 0);
+  const isToday = eventDateOnly.getTime() === today.getTime();
+  
+  // If the event is today and reminder time is in the past (or very soon within 5 minutes),
+  // send the email immediately instead of scheduling
+  if (isToday && reminderTime <= new Date(Date.now() + 5 * 60 * 1000)) {
+    console.log(`[SCHEDULING] Event date is today for booking ${quote.id} - sending appointment day reminder email immediately`);
+    try {
+      const { sendAppointmentDayReminderEmail } = await import('@/lib/email');
+      await sendAppointmentDayReminderEmail(quote);
+      
+      // Mark as sent in the database
+      const sentEmail: Omit<ScheduledEmail, 'id' | 'created_at'> = {
+        booking_id: quote.id,
+        email_type: 'appointment-day-reminder',
+        scheduled_for: new Date().toISOString(),
+        sent: true,
+        sent_at: new Date().toISOString(),
+      };
+      
+      const { error: insertError } = await supabaseAdmin
+        .from('scheduled_emails')
+        .insert(sentEmail);
+      
+      if (insertError && insertError.code !== '23505') {
+        console.error(`[SCHEDULING ERROR] Error marking appointment day reminder as sent for booking ${quote.id}:`, insertError);
+      } else {
+        console.log(`[SCHEDULING SUCCESS] Appointment day reminder email sent immediately for booking ${quote.id}`);
+      }
+      return;
+    } catch (sendError: any) {
+      console.error(`[SCHEDULING ERROR] Error sending appointment day reminder email immediately for booking ${quote.id}:`, sendError.message);
+      // Continue to schedule it normally as fallback
+    }
+  }
+  
+  // Don't schedule if the reminder time is in the past (and it's not today)
+  if (reminderTime < new Date() && !isToday) {
     console.log(`Skipping appointment day reminder email scheduling - reminder time is in the past for booking ${quote.id}`);
     return;
   }
@@ -449,6 +533,189 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
     }
   } catch (e: any) {
     console.error(`[SCHEDULING ERROR] Unexpected error scheduling appointment day reminder email for booking ${quote.id}:`, e.message);
+  }
+}
+
+/**
+ * Schedule post-appointment follow-up email 6 hours after the appointment time
+ * Only schedules if booking is confirmed and advance payment has been made
+ */
+export async function schedulePostAppointmentFollowupEmail(quote: FinalQuote): Promise<void> {
+  // Don't schedule for cancelled bookings
+  if (quote.status === 'cancelled') {
+    console.log(`Skipping post-appointment follow-up email scheduling - booking ${quote.id} is cancelled`);
+    return;
+  }
+
+  // Only schedule for confirmed bookings with payment
+  if (quote.status !== 'confirmed') {
+    console.log(`Skipping post-appointment follow-up email scheduling - booking ${quote.id} is not confirmed`);
+    return;
+  }
+
+  // Only schedule if advance payment has been made
+  const hasAdvancePayment = quote.paymentDetails && 
+    (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+  
+  if (!hasAdvancePayment) {
+    console.log(`Skipping post-appointment follow-up email scheduling - booking ${quote.id} has no advance payment`);
+    return;
+  }
+
+  // Get the first event date and time
+  const firstDay = quote.booking.days[0];
+  if (!firstDay || !firstDay.date) {
+    console.log(`Skipping post-appointment follow-up email scheduling - booking ${quote.id} has no event date`);
+    return;
+  }
+
+  // Parse the event date
+  let eventDate: Date;
+  if (typeof firstDay.date === 'string') {
+    const { parse } = await import('date-fns');
+    const parsedDate = parse(firstDay.date, 'PPP', new Date());
+    if (isNaN(parsedDate.getTime())) {
+      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
+      return; // Don't schedule if date is invalid
+    }
+    eventDate = parsedDate;
+  } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
+    eventDate = new Date(firstDay.date as Date);
+    if (isNaN(eventDate.getTime())) {
+      console.error(`Invalid date object for booking ${quote.id}`);
+      return;
+    }
+  } else {
+    console.log(`Skipping post-appointment follow-up email scheduling - booking ${quote.id} has invalid date format`);
+    return;
+  }
+
+  // Parse the appointment time (handles both "HH:MM" and "10:00 AM/PM" formats)
+  const timeStr = (firstDay.getReadyTime || '10:00').trim();
+  let hours = 10;
+  let minutes = 0;
+
+  // Handle different time formats
+  if (timeStr.includes('AM') || timeStr.includes('PM')) {
+    // Format: "10:00 AM" or "10:00 PM"
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (timeMatch) {
+      hours = parseInt(timeMatch[1], 10);
+      minutes = parseInt(timeMatch[2], 10);
+      if (timeMatch[3].toUpperCase() === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (timeMatch[3].toUpperCase() === 'AM' && hours === 12) {
+        hours = 0;
+      }
+    }
+  } else {
+    // Format: "10:00" or "10:00:00" (24-hour)
+    const timeParts = timeStr.split(':').map(Number);
+    hours = timeParts[0] || 10;
+    minutes = timeParts[1] || 0;
+  }
+
+  // Validate hours and minutes
+  if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    console.error(`Invalid time format for booking ${quote.id}: ${timeStr}`);
+    hours = 10;
+    minutes = 0;
+  }
+  
+  // Set the appointment date and time
+  const appointmentDateTime = new Date(eventDate);
+  appointmentDateTime.setHours(hours, minutes, 0, 0);
+
+  // Schedule email 6 hours after the appointment time
+  const followupTime = new Date(appointmentDateTime.getTime() + 6 * 60 * 60 * 1000);
+  
+  // Check if appointment has already passed
+  const today = new Date();
+  const appointmentHasPassed = appointmentDateTime < today;
+  
+  // If appointment has passed and follow-up time is in the past (or very soon within 5 minutes),
+  // send the email immediately instead of scheduling
+  if (appointmentHasPassed && followupTime <= new Date(Date.now() + 5 * 60 * 1000)) {
+    console.log(`[SCHEDULING] Appointment has passed for booking ${quote.id} - sending post-appointment follow-up email immediately`);
+    try {
+      const { sendPostAppointmentFollowupEmail } = await import('@/lib/email');
+      await sendPostAppointmentFollowupEmail(quote);
+      
+      // Mark as sent in the database
+      const sentEmail: Omit<ScheduledEmail, 'id' | 'created_at'> = {
+        booking_id: quote.id,
+        email_type: 'post-appointment-followup',
+        scheduled_for: new Date().toISOString(),
+        sent: true,
+        sent_at: new Date().toISOString(),
+      };
+      
+      const { error: insertError } = await supabaseAdmin
+        .from('scheduled_emails')
+        .insert(sentEmail);
+      
+      if (insertError && insertError.code !== '23505') {
+        console.error(`[SCHEDULING ERROR] Error marking post-appointment follow-up as sent for booking ${quote.id}:`, insertError);
+      } else {
+        console.log(`[SCHEDULING SUCCESS] Post-appointment follow-up email sent immediately for booking ${quote.id}`);
+      }
+      return;
+    } catch (sendError: any) {
+      console.error(`[SCHEDULING ERROR] Error sending post-appointment follow-up email immediately for booking ${quote.id}:`, sendError.message);
+      // Continue to schedule it normally as fallback
+    }
+  }
+  
+  // Don't schedule if the follow-up time is in the past (and appointment hasn't passed yet)
+  if (followupTime < new Date() && !appointmentHasPassed) {
+    console.log(`Skipping post-appointment follow-up email scheduling - follow-up time is in the past for booking ${quote.id}`);
+    return;
+  }
+
+  const scheduledEmail: Omit<ScheduledEmail, 'id' | 'created_at'> = {
+    booking_id: quote.id,
+    email_type: 'post-appointment-followup',
+    scheduled_for: followupTime.toISOString(),
+    sent: false,
+  };
+
+  try {
+    // Check if this email type already exists for this booking
+    const { data: existingEmails, error: fetchError } = await supabaseAdmin
+      .from('scheduled_emails')
+      .select('email_type')
+      .eq('booking_id', quote.id)
+      .eq('email_type', 'post-appointment-followup');
+
+    if (fetchError) {
+      if (fetchError.code === '42P01' || fetchError.message?.includes('does not exist')) {
+        console.error(`[SCHEDULING ERROR] scheduled_emails table does not exist for booking ${quote.id}`);
+        return;
+      }
+      console.error(`[SCHEDULING ERROR] Error checking existing post-appointment follow-up email for booking ${quote.id}:`, fetchError);
+      return;
+    }
+
+    if (existingEmails && existingEmails.length > 0) {
+      console.log(`[SCHEDULING] Post-appointment follow-up email already scheduled for booking ${quote.id}`);
+      return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('scheduled_emails')
+      .insert(scheduledEmail);
+
+    if (error) {
+      if (error.code === '23505') {
+        console.warn(`[SCHEDULING] Duplicate post-appointment follow-up email detected for booking ${quote.id}, skipping...`);
+      } else {
+        console.error(`[SCHEDULING ERROR] Error scheduling post-appointment follow-up email for booking ${quote.id}:`, error);
+      }
+    } else {
+      console.log(`[SCHEDULING SUCCESS] Scheduled post-appointment follow-up email for booking ${quote.id} at ${followupTime.toISOString()}`);
+    }
+  } catch (e: any) {
+    console.error(`[SCHEDULING ERROR] Unexpected error scheduling post-appointment follow-up email for booking ${quote.id}:`, e.message);
   }
 }
 

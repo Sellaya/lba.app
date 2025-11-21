@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { getBooking } from '@/firebase/server-actions';
 import { sendQuoteEmail, sendAdminScreenshotNotification, sendRejectionEmail, sendFinalPaymentConfirmationEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { scheduleFollowUpEmails, scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail } from '@/lib/scheduled-emails';
+import { scheduleFollowUpEmails, scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail, schedulePostAppointmentFollowupEmail } from '@/lib/scheduled-emails';
 import type { FinalQuote } from '@/lib/types';
 import { format } from 'date-fns';
 
@@ -264,6 +264,9 @@ export async function approvePaymentAction(bookingId: string): Promise<ActionRes
         
         // Schedule appointment day reminder email 2.5 hours before appointment time
         await scheduleAppointmentDayReminderEmail(updatedQuote);
+        
+        // Schedule post-appointment follow-up email 6 hours after appointment time
+        await schedulePostAppointmentFollowupEmail(updatedQuote);
 
         return { success: true, message: 'Payment approved and confirmation email sent.' };
 

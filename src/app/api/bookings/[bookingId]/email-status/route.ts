@@ -35,6 +35,7 @@ export async function GET(
 					'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 					'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
 					'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
+					'post-appointment-followup': { sent: false, sentAt: null, scheduledFor: null },
 				}
 			});
 		}
@@ -79,6 +80,7 @@ export async function GET(
 			'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 			'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
 			'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
+			'post-appointment-followup': { sent: false, sentAt: null, scheduledFor: null },
 		};
 
 		// Check if initial email was sent (we can infer this from booking creation)
@@ -123,8 +125,10 @@ export async function GET(
 
 					// Schedule event reminders if booking is confirmed with payment
 					if (fullBooking.final_quote.status === 'confirmed') {
+						const { schedulePostAppointmentFollowupEmail } = await import('@/lib/scheduled-emails');
 						await scheduleEventReminder24HEmail(fullBooking.final_quote);
 						await scheduleAppointmentDayReminderEmail(fullBooking.final_quote);
+						await schedulePostAppointmentFollowupEmail(fullBooking.final_quote);
 					}
 
 					// Re-fetch scheduled emails after scheduling
@@ -166,6 +170,8 @@ export async function GET(
 				'followup-6d': { sent: false, sentAt: null, scheduledFor: null },
 				'followup-30d': { sent: false, sentAt: null, scheduledFor: null },
 				'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
+				'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
+				'post-appointment-followup': { sent: false, sentAt: null, scheduledFor: null },
 			}
 		});
 	}
