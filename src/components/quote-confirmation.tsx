@@ -206,7 +206,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
   const containsMobileService = useMemo(() => quote.booking?.days?.some(d => d?.serviceType === 'mobile') || false, [quote.booking?.days]);
   
   const showLeadArtistOption = useMemo(() => true, []);
-  const showTeamOption = useMemo(() => containsMobileService, [containsMobileService]);
+  const showTeamOption = useMemo(() => containsMobileService || containsStudioService, [containsMobileService, containsStudioService]);
   
   const [selectedTier, setSelectedTier] = useState<PriceTier | undefined>(() => {
     if (quote.selectedQuote) return quote.selectedQuote;
