@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Save, RefreshCw, DollarSign, AlertCircle, CheckCircle2, History, FileText, Users, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { formatToronto } from '@/lib/toronto-time';
 import {
   Collapsible,
   CollapsibleContent,
@@ -703,7 +703,7 @@ export default function PricingManagementPage() {
                                                 <div key={h.id} className="flex items-center justify-between text-xs bg-background p-1.5 rounded border">
                                                   <div className="flex items-center gap-2">
                                                     <span className="text-muted-foreground">
-                                                      {format(new Date(h.created_at), 'MMM d, yyyy h:mm a')}
+                                                      {formatToronto(new Date(h.created_at), 'MMM d, yyyy h:mm a')}
                                                     </span>
                                                   </div>
                                                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">

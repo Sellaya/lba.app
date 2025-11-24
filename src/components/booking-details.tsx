@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Users, MapPin, CalendarClock, Link as LinkIcon, MessageSquare, Loader2, Mail, Trash2, CheckCircle2, XCircle, Send, Calendar, Download, FileText } from 'lucide-react';
-import { differenceInDays, parse, format, formatDistanceToNow, isPast, isFuture } from 'date-fns';
+import { differenceInDaysToronto, parseToronto, formatToronto, formatDistanceToNowToronto, isPastToronto, isFutureToronto, getTorontoToday, getTorontoNow } from '@/lib/toronto-time';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -41,10 +41,9 @@ import {
 } from "@/components/ui/dialog"
 
 function getTimeToEvent(eventDateStr: string): { text: string; isPast: boolean } {
-    const eventDate = parse(eventDateStr, 'PPP', new Date());
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const days = differenceInDays(eventDate, today);
+    const eventDate = parseToronto(eventDateStr, 'PPP');
+    const today = getTorontoToday();
+    const days = differenceInDaysToronto(eventDate, today);
 
     if (days < 0) {
         return { text: `${Math.abs(days)} days ago`, isPast: true };
@@ -146,12 +145,12 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
   const hasMobileService = quote.booking.days && quote.booking.days.length > 0 
     ? quote.booking.days.some(d => d.serviceType === 'mobile') 
     : false;
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(getTorontoNow());
 
   // Update current time every 10 seconds for real-time countdown
   useEffect(() => {
     const timeInterval = setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(getTorontoNow());
     }, 10000); // Update every 10 seconds for real-time countdown
     return () => clearInterval(timeInterval);
   }, []);
@@ -209,7 +208,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       ...(isConfirmed && hasAdvancePayment && emailStatus['appointment-day-reminder'] ? [{ type: 'appointment-day-reminder', scheduledFor: emailStatus['appointment-day-reminder'].scheduledFor, sent: emailStatus['appointment-day-reminder'].sent }] : []),
       // Post-appointment followup only shows if booking is confirmed and payment is made
       ...(isConfirmed && hasAdvancePayment && emailStatus['post-appointment-followup'] ? [{ type: 'post-appointment-followup', scheduledFor: emailStatus['post-appointment-followup'].scheduledFor, sent: emailStatus['post-appointment-followup'].sent }] : []),
-    ].filter(e => e.scheduledFor && !e.sent && isFuture(new Date(e.scheduledFor)));
+    ].filter(e => e.scheduledFor && !e.sent && isFutureToronto(new Date(e.scheduledFor)));
     
     if (emails.length === 0) return null;
     
@@ -282,7 +281,6 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
           'event-reminder-24h': { sent: false, sentAt: null, scheduledFor: null },
           'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
           'post-appointment-followup': { sent: false, sentAt: null, scheduledFor: null },
-          'appointment-day-reminder': { sent: false, sentAt: null, scheduledFor: null },
         });
       } finally {
         setIsLoadingEmailStatus(false);
@@ -788,7 +786,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     )}
                   </Button>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Signed on {format(new Date(quote.contractSignedDate), 'PPP')}
+                    Signed on {formatToronto(new Date(quote.contractSignedDate), 'PPP')}
                   </p>
                 </div>
               )}
@@ -1199,8 +1197,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       {bookingDoc?.updatedAt && (
                         <p className="text-xs text-muted-foreground mt-3">
                           Uploaded: {bookingDoc.updatedAt && typeof bookingDoc.updatedAt === 'object' && 'toDate' in bookingDoc.updatedAt 
-                            ? format(bookingDoc.updatedAt.toDate(), 'PPp') 
-                            : format(new Date(bookingDoc.updatedAt as any), 'PPp')}
+                            ? formatToronto(bookingDoc.updatedAt.toDate(), 'PPp') 
+                            : formatToronto(new Date(bookingDoc.updatedAt as any), 'PPp')}
                         </p>
                       )}
                     </div>
@@ -1718,6 +1716,25 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                             </Badge>
                           </div>
                         )}
+                        {/* Promotional Code for Advance Payment */}
+                        {quote.paymentDetails?.promotionalCode && (
+                          <div className="space-y-1 pt-2 border-t">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Promotional Code:</span>
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                {quote.paymentDetails.promotionalCode}
+                              </Badge>
+                            </div>
+                            {quote.paymentDetails.discountAmount && quote.paymentDetails.discountAmount > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Discount Applied:</span>
+                                <span className="font-semibold text-green-600">
+                                  -${formatPrice(quote.paymentDetails.discountAmount)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {quote.paymentDetails && (
                           <div className="flex justify-between items-center pt-2">
                             <span className="text-sm font-medium">Status:</span>
@@ -1761,6 +1778,25 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               >
                                 {quote.paymentDetails.finalPayment.method === 'stripe' ? 'Stripe (Card Payment)' : 'Interac e-Transfer'}
                               </Badge>
+                            </div>
+                          )}
+                          {/* Promotional Code for Final Payment */}
+                          {quote.paymentDetails.finalPayment.promotionalCode && (
+                            <div className="space-y-1 pt-2 border-t">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Promotional Code:</span>
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                  {quote.paymentDetails.finalPayment.promotionalCode}
+                                </Badge>
+                              </div>
+                              {quote.paymentDetails.finalPayment.discountAmount && quote.paymentDetails.finalPayment.discountAmount > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-muted-foreground">Discount Applied:</span>
+                                  <span className="font-semibold text-green-600">
+                                    -${formatPrice(quote.paymentDetails.finalPayment.discountAmount)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
                           <div className="flex justify-between items-center pt-2">
@@ -1865,7 +1901,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
             if (nextEmail) {
               return (
                 <p className="text-sm text-muted-foreground mt-2">
-                  Next email will be sent in: <strong className="text-primary">{formatDistanceToNow(new Date(nextEmail.scheduledFor!), { addSuffix: false })}</strong>
+                  Next email will be sent in: <strong className="text-primary">{formatDistanceToNowToronto(new Date(nextEmail.scheduledFor!))}</strong>
                 </p>
               );
             }
@@ -1895,7 +1931,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                     <p className="text-sm text-muted-foreground">
                       {emailStatus.initial?.sent 
                         ? emailStatus.initial?.sentAt 
-                          ? `Sent on ${format(new Date(emailStatus.initial.sentAt), 'PPp')}`
+                          ? `Sent on ${formatToronto(new Date(emailStatus.initial.sentAt), 'PPp')}`
                           : 'Sent'
                         : 'Not sent'}
                     </p>
@@ -1920,7 +1956,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : willNotSend ? (
                           <XCircle className="h-5 w-5 text-orange-500" />
-                        ) : emailStatus['followup-3h']?.scheduledFor && isFuture(new Date(emailStatus['followup-3h'].scheduledFor)) ? (
+                        ) : emailStatus['followup-3h']?.scheduledFor && isFutureToronto(new Date(emailStatus['followup-3h'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -1939,7 +1975,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['followup-3h']?.sent 
                             ? emailStatus['followup-3h']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['followup-3h'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['followup-3h'].sentAt), 'PPp')}`
                               : 'Sent'
                             : willNotSend
                               ? hasAdvancePayment 
@@ -1948,10 +1984,10 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               : emailStatus['followup-3h']?.scheduledFor
                                 ? (() => {
                                     const scheduledDate = new Date(emailStatus['followup-3h'].scheduledFor);
-                                    const isInFuture = isFuture(scheduledDate);
+                                    const isInFuture = isFutureToronto(scheduledDate);
                                     return isInFuture
-                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                      ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                      : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                   })()
                                 : 'Not scheduled'}
                         </p>
@@ -1988,7 +2024,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : willNotSend ? (
                           <XCircle className="h-5 w-5 text-orange-500" />
-                        ) : emailStatus['followup-6h']?.scheduledFor && isFuture(new Date(emailStatus['followup-6h'].scheduledFor)) ? (
+                        ) : emailStatus['followup-6h']?.scheduledFor && isFutureToronto(new Date(emailStatus['followup-6h'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2007,7 +2043,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['followup-6h']?.sent 
                             ? emailStatus['followup-6h']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['followup-6h'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['followup-6h'].sentAt), 'PPp')}`
                               : 'Sent'
                             : willNotSend
                               ? hasAdvancePayment 
@@ -2016,10 +2052,10 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               : emailStatus['followup-6h']?.scheduledFor
                                 ? (() => {
                                     const scheduledDate = new Date(emailStatus['followup-6h'].scheduledFor);
-                                    const isInFuture = isFuture(scheduledDate);
+                                    const isInFuture = isFutureToronto(scheduledDate);
                                     return isInFuture
-                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                      ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                      : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                   })()
                                 : 'Not scheduled'}
                         </p>
@@ -2056,9 +2092,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : willNotSend ? (
                           <XCircle className="h-5 w-5 text-orange-500" />
-                        ) : emailStatus['followup-24h']?.scheduledFor && isFuture(new Date(emailStatus['followup-24h'].scheduledFor)) ? (
+                        ) : emailStatus['followup-24h']?.scheduledFor && isFutureToronto(new Date(emailStatus['followup-24h'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                        ) : emailStatus['followup-24h']?.scheduledFor && !isFuture(new Date(emailStatus['followup-24h'].scheduledFor)) && !emailStatus['followup-24h']?.sent ? (
+                        ) : emailStatus['followup-24h']?.scheduledFor && !isFutureToronto(new Date(emailStatus['followup-24h'].scheduledFor)) && !emailStatus['followup-24h']?.sent ? (
                           <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2077,7 +2113,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['followup-24h']?.sent 
                             ? emailStatus['followup-24h']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['followup-24h'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['followup-24h'].sentAt), 'PPp')}`
                               : 'Sent'
                             : willNotSend
                               ? hasAdvancePayment 
@@ -2086,10 +2122,10 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               : emailStatus['followup-24h']?.scheduledFor
                                 ? (() => {
                                     const scheduledDate = new Date(emailStatus['followup-24h'].scheduledFor);
-                                    const isInFuture = isFuture(scheduledDate);
+                                    const isInFuture = isFutureToronto(scheduledDate);
                                     return isInFuture
-                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                      ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                      : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                   })()
                                 : 'Not scheduled'}
                         </p>
@@ -2126,9 +2162,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : willNotSend ? (
                           <XCircle className="h-5 w-5 text-orange-500" />
-                        ) : emailStatus['followup-3d']?.scheduledFor && isFuture(new Date(emailStatus['followup-3d'].scheduledFor)) ? (
+                        ) : emailStatus['followup-3d']?.scheduledFor && isFutureToronto(new Date(emailStatus['followup-3d'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                        ) : emailStatus['followup-3d']?.scheduledFor && !isFuture(new Date(emailStatus['followup-3d'].scheduledFor)) && !emailStatus['followup-3d']?.sent ? (
+                        ) : emailStatus['followup-3d']?.scheduledFor && !isFutureToronto(new Date(emailStatus['followup-3d'].scheduledFor)) && !emailStatus['followup-3d']?.sent ? (
                           <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2147,7 +2183,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['followup-3d']?.sent 
                             ? emailStatus['followup-3d']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['followup-3d'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['followup-3d'].sentAt), 'PPp')}`
                               : 'Sent'
                             : willNotSend
                               ? hasAdvancePayment 
@@ -2156,10 +2192,10 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               : emailStatus['followup-3d']?.scheduledFor
                                 ? (() => {
                                     const scheduledDate = new Date(emailStatus['followup-3d'].scheduledFor);
-                                    const isInFuture = isFuture(scheduledDate);
+                                    const isInFuture = isFutureToronto(scheduledDate);
                                     return isInFuture
-                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                      ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                      : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                   })()
                                 : 'Not scheduled'}
                         </p>
@@ -2196,9 +2232,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : willNotSend ? (
                           <XCircle className="h-5 w-5 text-orange-500" />
-                        ) : emailStatus['followup-6d']?.scheduledFor && isFuture(new Date(emailStatus['followup-6d'].scheduledFor)) ? (
+                        ) : emailStatus['followup-6d']?.scheduledFor && isFutureToronto(new Date(emailStatus['followup-6d'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                        ) : emailStatus['followup-6d']?.scheduledFor && !isFuture(new Date(emailStatus['followup-6d'].scheduledFor)) && !emailStatus['followup-6d']?.sent ? (
+                        ) : emailStatus['followup-6d']?.scheduledFor && !isFutureToronto(new Date(emailStatus['followup-6d'].scheduledFor)) && !emailStatus['followup-6d']?.sent ? (
                           <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2217,7 +2253,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['followup-6d']?.sent 
                             ? emailStatus['followup-6d']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['followup-6d'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['followup-6d'].sentAt), 'PPp')}`
                               : 'Sent'
                             : willNotSend
                               ? hasAdvancePayment 
@@ -2226,10 +2262,10 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               : emailStatus['followup-6d']?.scheduledFor
                                 ? (() => {
                                     const scheduledDate = new Date(emailStatus['followup-6d'].scheduledFor);
-                                    const isInFuture = isFuture(scheduledDate);
+                                    const isInFuture = isFutureToronto(scheduledDate);
                                     return isInFuture
-                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                      ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                      : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                   })()
                                 : 'Not scheduled'}
                         </p>
@@ -2266,9 +2302,9 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : willNotSend ? (
                           <XCircle className="h-5 w-5 text-orange-500" />
-                        ) : emailStatus['followup-30d']?.scheduledFor && isFuture(new Date(emailStatus['followup-30d'].scheduledFor)) ? (
+                        ) : emailStatus['followup-30d']?.scheduledFor && isFutureToronto(new Date(emailStatus['followup-30d'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                        ) : emailStatus['followup-30d']?.scheduledFor && !isFuture(new Date(emailStatus['followup-30d'].scheduledFor)) && !emailStatus['followup-30d']?.sent ? (
+                        ) : emailStatus['followup-30d']?.scheduledFor && !isFutureToronto(new Date(emailStatus['followup-30d'].scheduledFor)) && !emailStatus['followup-30d']?.sent ? (
                           <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2287,7 +2323,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['followup-30d']?.sent 
                             ? emailStatus['followup-30d']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['followup-30d'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['followup-30d'].sentAt), 'PPp')}`
                               : 'Sent'
                             : willNotSend
                               ? hasAdvancePayment 
@@ -2296,10 +2332,10 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                               : emailStatus['followup-30d']?.scheduledFor
                                 ? (() => {
                                     const scheduledDate = new Date(emailStatus['followup-30d'].scheduledFor);
-                                    const isInFuture = isFuture(scheduledDate);
+                                    const isInFuture = isFutureToronto(scheduledDate);
                                     return isInFuture
-                                      ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                      : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                      ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                      : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                   })()
                                 : 'Not scheduled'}
                         </p>
@@ -2337,7 +2373,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       <div className="flex-shrink-0">
                         {emailStatus['event-reminder-24h']?.sent ? (
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        ) : emailStatus['event-reminder-24h']?.scheduledFor && isFuture(new Date(emailStatus['event-reminder-24h'].scheduledFor)) ? (
+                        ) : emailStatus['event-reminder-24h']?.scheduledFor && isFutureToronto(new Date(emailStatus['event-reminder-24h'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2353,15 +2389,15 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['event-reminder-24h']?.sent 
                             ? emailStatus['event-reminder-24h']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['event-reminder-24h'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['event-reminder-24h'].sentAt), 'PPp')}`
                               : 'Sent'
                             : emailStatus['event-reminder-24h']?.scheduledFor
                               ? (() => {
                                   const scheduledDate = new Date(emailStatus['event-reminder-24h'].scheduledFor);
-                                  const isInFuture = isFuture(scheduledDate);
+                                  const isInFuture = isFutureToronto(scheduledDate);
                                   return isInFuture
-                                    ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                    : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                    ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                    : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                 })()
                               : 'Not scheduled'}
                         </p>
@@ -2396,7 +2432,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       <div className="flex-shrink-0">
                         {emailStatus['appointment-day-reminder']?.sent ? (
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        ) : emailStatus['appointment-day-reminder']?.scheduledFor && isFuture(new Date(emailStatus['appointment-day-reminder'].scheduledFor)) ? (
+                        ) : emailStatus['appointment-day-reminder']?.scheduledFor && isFutureToronto(new Date(emailStatus['appointment-day-reminder'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2412,15 +2448,15 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['appointment-day-reminder']?.sent 
                             ? emailStatus['appointment-day-reminder']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['appointment-day-reminder'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['appointment-day-reminder'].sentAt), 'PPp')}`
                               : 'Sent'
                             : emailStatus['appointment-day-reminder']?.scheduledFor
                               ? (() => {
                                   const scheduledDate = new Date(emailStatus['appointment-day-reminder'].scheduledFor);
-                                  const isInFuture = isFuture(scheduledDate);
+                                  const isInFuture = isFutureToronto(scheduledDate);
                                   return isInFuture
-                                    ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                    : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                    ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                    : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                 })()
                               : 'Not scheduled'}
                         </p>
@@ -2455,7 +2491,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                       <div className="flex-shrink-0">
                         {emailStatus['post-appointment-followup']?.sent ? (
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        ) : emailStatus['post-appointment-followup']?.scheduledFor && isFuture(new Date(emailStatus['post-appointment-followup'].scheduledFor)) ? (
+                        ) : emailStatus['post-appointment-followup']?.scheduledFor && isFutureToronto(new Date(emailStatus['post-appointment-followup'].scheduledFor)) ? (
                           <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                         ) : (
                           <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -2471,15 +2507,15 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                         <p className="text-sm text-muted-foreground">
                           {emailStatus['post-appointment-followup']?.sent 
                             ? emailStatus['post-appointment-followup']?.sentAt 
-                              ? `Sent on ${format(new Date(emailStatus['post-appointment-followup'].sentAt), 'PPp')}`
+                              ? `Sent on ${formatToronto(new Date(emailStatus['post-appointment-followup'].sentAt), 'PPp')}`
                               : 'Sent'
                             : emailStatus['post-appointment-followup']?.scheduledFor
                               ? (() => {
                                   const scheduledDate = new Date(emailStatus['post-appointment-followup'].scheduledFor);
-                                  const isInFuture = isFuture(scheduledDate);
+                                  const isInFuture = isFutureToronto(scheduledDate);
                                   return isInFuture
-                                    ? `Scheduled for ${format(scheduledDate, 'PPp')} (in ${formatDistanceToNow(scheduledDate, { addSuffix: false })})`
-                                    : `Scheduled for ${format(scheduledDate, 'PPp')} (overdue)`;
+                                    ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                    : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
                                 })()
                               : 'Not scheduled'}
                         </p>

@@ -93,6 +93,12 @@ export type PaymentDetails = {
     status: PaymentStatus;
     depositAmount: number;
     screenshotUrl?: string;
+    transactionId?: string; // For Stripe payments (advance payment)
+    // Promotional code tracking
+    promotionalCode?: string; // The code entered (e.g., "SAVE10")
+    promotionalCodeId?: string; // Stripe promotion code ID
+    couponId?: string; // Stripe coupon ID
+    discountAmount?: number; // Amount discounted in dollars
     // Final payment (remaining 50%)
     finalPayment?: {
         method?: PaymentMethod;
@@ -100,6 +106,11 @@ export type PaymentDetails = {
         amount: number;
         screenshotUrl?: string;
         transactionId?: string; // For Stripe payments
+        // Promotional code for final payment too
+        promotionalCode?: string;
+        promotionalCodeId?: string;
+        couponId?: string;
+        discountAmount?: number;
     };
 };
 

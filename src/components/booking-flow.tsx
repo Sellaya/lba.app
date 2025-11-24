@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { formatToronto, getTorontoToday } from '@/lib/toronto-time';
 import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Minus, AlertTriangle, Users, ArrowLeft, ArrowRight, Send, MapPin } from 'lucide-react';
 import { CalendarVector, SparkleVector } from '@/components/beauty-vectors';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +42,7 @@ const initialState: ActionState = {
 
 const getInitialDays = (): Day[] => {
     return [{ 
-        id: Date.now(), date: new Date(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair',
+        id: Date.now(), date: getTorontoNow(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair',
         hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false,
         serviceType: 'mobile', mobileLocation: 'toronto',
         partyServices: getDefaultPartyServices(),
@@ -398,7 +398,7 @@ export default function BookingFlow() {
                           <Button 
                             type="button" 
                             variant="outline" 
-                            onClick={() => setDays([...days, { id: Date.now(), date: new Date(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair', hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false, serviceType: 'mobile', mobileLocation: 'toronto', partyServices: getDefaultPartyServices(), partyPeopleCount: 1 }])} 
+                            onClick={() => setDays([...days, { id: Date.now(), date: getTorontoNow(), getReadyTime: '10:00', serviceId: null, serviceOption: 'makeup-hair', hairExtensions: 0, jewellerySetting: false, sareeDraping: false, hijabSetting: false, serviceType: 'mobile', mobileLocation: 'toronto', partyServices: getDefaultPartyServices(), partyPeopleCount: 1 }])} 
                             className="w-full transition-smooth hover:scale-[1.02]"
                           >
                           <Plus className="mr-2 h-4 w-4" /> Add Another Day
@@ -556,12 +556,11 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                         <PopoverTrigger asChild>
                         <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-9 sm:h-10",!day.date && "text-muted-foreground")}>
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {day.date ? format(day.date, "PPP") : <span>Pick a date</span>}
+                            {day.date ? formatToronto(day.date, "PPP") : <span>Pick a date</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start" side="bottom"><Calendar mode="single" selected={day.date} onSelect={(date) => { updateDay(day.id, { date: date as Date }); setIsPopoverOpen(false); }} disabled={(date) => {
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
+                            const today = getTorontoToday();
                             return date < today;
                         }} initialFocus /></PopoverContent>
                     </Popover>
@@ -572,7 +571,7 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay, errors }:
                     <Select name={`getReadyTime_${index}`} value={day.getReadyTime} onValueChange={(value) => updateDay(day.id, { getReadyTime: value })} required>
                         <SelectTrigger className="h-9 sm:h-10"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{format(new Date(`1970-01-01T${slot}`), 'p')}</SelectItem>)}
+                            {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{formatToronto(new Date(`1970-01-01T${slot}`), 'p')}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     {/* Hidden input for Select value - Radix UI Select doesn't submit automatically */}
@@ -831,14 +830,13 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
                             <PopoverTrigger asChild>
                             <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-9 sm:h-10", !bridalTrial.date && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {bridalTrial.date ? format(bridalTrial.date, "PPP") : <span>Pick a date</span>}
+                                {bridalTrial.date ? formatToronto(bridalTrial.date, "PPP") : <span>Pick a date</span>}
                             </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start" side="bottom">
                             <Calendar mode="single" selected={bridalTrial.date} onSelect={(date) => { updateBridalTrial({ date: date as Date }); setIsTrialPopoverOpen(false); }} disabled={(date) => {
                                 const bridalDay = days.find(d=>d.serviceId === 'bridal')?.date;
-                                const today = new Date();
-                                today.setHours(0,0,0,0);
+                                const today = getTorontoToday();
                                 if (!bridalDay) return date < today;
                                 return date >= bridalDay || date < today;
                             }} initialFocus/>
@@ -851,7 +849,7 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
                         <Select name="trialTime" value={bridalTrial.time} onValueChange={(value) => updateBridalTrial({ time: value })} required={bridalTrial.addTrial}>
                         <SelectTrigger className="h-9 sm:h-10"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{format(new Date(`1970-01-01T${slot}`), 'p')}</SelectItem>)}
+                            {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{formatToronto(new Date(`1970-01-01T${slot}`), 'p')}</SelectItem>)}
                         </SelectContent>
                         </Select>
                         {/* Hidden input for Select value - Radix UI Select doesn't submit automatically */}

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { FinalQuote, PriceTier } from '@/lib/types';
 import { formatPrice } from '@/lib/price-format';
-import { format } from 'date-fns';
+import { formatToronto } from '@/lib/toronto-time';
 
 interface ContractEmailProps {
   quote: FinalQuote;
@@ -10,7 +10,7 @@ interface ContractEmailProps {
 }
 
 export default function ContractEmailTemplate({ quote, selectedTier, signedDate }: ContractEmailProps) {
-  const contractDate = format(new Date(signedDate), 'MMMM dd, yyyy');
+  const contractDate = formatToronto(new Date(signedDate), 'MMMM dd, yyyy');
   const selectedQuote = quote.quotes[selectedTier];
   const depositAmount = selectedQuote.total * 0.5;
 

@@ -47,6 +47,12 @@ export default function StripeSuccessPage() {
             throw new Error('Booking ID mismatch');
           }
 
+          // Extract promotional code information (convert discount from cents to dollars)
+          const promoCode = sessionData.promotionalCode || null;
+          const promoCodeId = sessionData.promotionalCodeId || null;
+          const couponId = sessionData.couponId || null;
+          const discountAmount = sessionData.discountAmount ? sessionData.discountAmount / 100 : 0; // Convert from cents to dollars
+
           // Get tier from session metadata (for advance payment)
           const tierFromMetadata = sessionData.metadata?.tier as 'lead' | 'team' | undefined;
 
@@ -95,6 +101,11 @@ export default function StripeSuccessPage() {
                     status: 'deposit-paid',
                     amount: finalAmount,
                     transactionId: sessionId || undefined,
+                    // Add promotional code data if used
+                    promotionalCode: promoCode || undefined,
+                    promotionalCodeId: promoCodeId || undefined,
+                    couponId: couponId || undefined,
+                    discountAmount: discountAmount > 0 ? discountAmount : undefined,
                   },
                 },
               };
@@ -120,6 +131,23 @@ export default function StripeSuccessPage() {
                 paymentType: 'final',
                 paymentMethod: 'stripe',
               });
+
+              // Track promotional code usage if applied
+              if (promoCode) {
+                try {
+                  const { trackEvent } = await import('@/lib/facebook-pixel');
+                  trackEvent('PromoCodeUsed', {
+                    booking_id: bookingId,
+                    promo_code: promoCode,
+                    discount_amount: discountAmount,
+                    currency: 'CAD',
+                    payment_type: 'final',
+                  });
+                } catch (trackingError) {
+                  // Tracking should never block payment processing
+                  console.warn('Failed to track promo code usage:', trackingError);
+                }
+              }
               
               toast({
                 title: "Final Payment Successful!",
@@ -144,6 +172,11 @@ export default function StripeSuccessPage() {
                   status: 'deposit-paid',
                   depositAmount: depositAmount,
                   transactionId: sessionId || undefined, // Store transaction ID for advance payment
+                  // Add promotional code data if used
+                  promotionalCode: promoCode || undefined,
+                  promotionalCodeId: promoCodeId || undefined,
+                  couponId: couponId || undefined,
+                  discountAmount: discountAmount > 0 ? discountAmount : undefined,
                 },
               };
 
@@ -175,6 +208,23 @@ export default function StripeSuccessPage() {
                 paymentType: 'advance',
                 paymentMethod: 'stripe',
               });
+
+              // Track promotional code usage if applied
+              if (promoCode) {
+                try {
+                  const { trackEvent } = await import('@/lib/facebook-pixel');
+                  trackEvent('PromoCodeUsed', {
+                    booking_id: bookingId,
+                    promo_code: promoCode,
+                    discount_amount: discountAmount,
+                    currency: 'CAD',
+                    payment_type: 'advance',
+                  });
+                } catch (trackingError) {
+                  // Tracking should never block payment processing
+                  console.warn('Failed to track promo code usage:', trackingError);
+                }
+              }
               
               // Schedule event reminder email 24 hours before the event
               await scheduleEventReminder24HEmail(updatedQuote);

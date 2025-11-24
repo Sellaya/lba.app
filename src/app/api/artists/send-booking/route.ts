@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { sendArtistBookingEmail } from '@/lib/email';
 import type { FinalQuote } from '@/lib/types';
-import { parse } from 'date-fns';
+import { parseToronto, setTorontoTime, fromTorontoTime } from '@/lib/toronto-time';
 
 // Helper function to get base URL
 function getBaseUrl(request: Request): string {
@@ -189,7 +189,7 @@ function generateCalendarLinks(quote: FinalQuote, baseUrl: string): {
   // Parse date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const parsedDate = parse(firstDay.date, 'PPP', new Date());
+    const parsedDate = parseToronto(firstDay.date, 'PPP');
     eventDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
@@ -259,11 +259,12 @@ function generateCalendarEvent(quote: FinalQuote, artistName: string): string {
   const firstDay = quote.booking.days[0];
   
   // Parse date - it's stored in 'PPP' format (e.g., "January 1, 2024")
+  // All dates/times should be in Toronto timezone
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    // Parse date string in 'PPP' format
-    const parsedDate = parse(firstDay.date, 'PPP', new Date());
-    eventDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    // Parse date string in 'PPP' format as Toronto time
+    const parsedDate = parseToronto(firstDay.date, 'PPP');
+    eventDate = isNaN(parsedDate.getTime()) ? parseToronto(new Date().toLocaleDateString('en-US', { timeZone: 'America/Toronto' }), 'PPP') : parsedDate;
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
   } else {
@@ -295,13 +296,19 @@ function generateCalendarEvent(quote: FinalQuote, artistName: string): string {
     minutes = timeParts[1] || 0;
   }
 
-  eventDate.setHours(hours, minutes, 0, 0);
+  // Set time in Toronto timezone
+  eventDate = setTorontoTime(eventDate, hours, minutes, 0, 0);
 
   // Event duration: 3 hours (adjust as needed)
   const endDate = new Date(eventDate);
   endDate.setHours(endDate.getHours() + 3);
+  
+  // Convert to UTC for calendar format
+  const eventDateUTC = fromTorontoTime(eventDate);
+  const endDateUTC = fromTorontoTime(endDate);
 
   const formatDate = (date: Date): string => {
+    // Calendar format expects UTC time
     return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   };
 
@@ -317,8 +324,8 @@ function generateCalendarEvent(quote: FinalQuote, artistName: string): string {
     'BEGIN:VEVENT',
     `UID:booking-${quote.id}@looksbyanum.com`,
     `DTSTAMP:${formatDate(new Date())}`,
-    `DTSTART:${formatDate(eventDate)}`,
-    `DTEND:${formatDate(endDate)}`,
+    `DTSTART:${formatDate(eventDateUTC)}`,
+    `DTEND:${formatDate(endDateUTC)}`,
     `SUMMARY:${summary}`,
     `DESCRIPTION:${description.replace(/\n/g, '\\n').replace(/,/g, '\\,')}`,
     `LOCATION:${firstDay.location}`,

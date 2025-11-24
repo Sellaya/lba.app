@@ -5,7 +5,7 @@ import type { BookingDocument } from '@/firebase/firestore/bookings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, Clock, FileText, CheckCircle2, CreditCard, Wallet, Receipt, Users, DollarSign } from 'lucide-react';
-import { format, parse } from 'date-fns';
+import { formatToronto, parseToronto, getTorontoToday } from '@/lib/toronto-time';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
@@ -141,9 +141,9 @@ export default function AccountingPage() {
           id: quote.id,
           customer: quote.contact.name,
           date: booking.createdAt instanceof Date 
-            ? format(booking.createdAt, 'PPP') 
+            ? formatToronto(booking.createdAt, 'PPP') 
             : booking.createdAt?.toDate 
-            ? format(booking.createdAt.toDate(), 'PPP') 
+            ? formatToronto(booking.createdAt.toDate(), 'PPP') 
             : 'N/A',
           type: 'advance',
           amount: advanceAmount,
@@ -178,9 +178,9 @@ export default function AccountingPage() {
             id: quote.id,
             customer: quote.contact.name,
             date: booking.createdAt instanceof Date 
-              ? format(booking.createdAt, 'PPP') 
+              ? formatToronto(booking.createdAt, 'PPP') 
               : booking.createdAt?.toDate 
-              ? format(booking.createdAt.toDate(), 'PPP') 
+              ? formatToronto(booking.createdAt.toDate(), 'PPP') 
               : 'N/A',
             type: 'final',
             amount: finalAmount,
@@ -199,7 +199,7 @@ export default function AccountingPage() {
 
       // Check if booking is completed (event date passed)
       try {
-        const eventDate = parse(quote.booking.days[0]?.date || '', 'PPP', new Date());
+        const eventDate = parseToronto(quote.booking.days[0]?.date || '', 'PPP');
         if (!isNaN(eventDate.getTime())) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -218,8 +218,8 @@ export default function AccountingPage() {
 
     // Sort transactions by date (newest first)
     transactions.sort((a, b) => {
-      const dateA = parse(a.date, 'PPP', new Date());
-      const dateB = parse(b.date, 'PPP', new Date());
+      const dateA = parseToronto(a.date, 'PPP');
+      const dateB = parseToronto(b.date, 'PPP');
       return dateB.getTime() - dateA.getTime();
     });
 

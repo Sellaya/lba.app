@@ -6,7 +6,7 @@ import { sendQuoteEmail, sendAdminScreenshotNotification, sendRejectionEmail, se
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { scheduleFollowUpEmails, scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail, schedulePostAppointmentFollowupEmail } from '@/lib/scheduled-emails';
 import type { FinalQuote } from '@/lib/types';
-import { format } from 'date-fns';
+import { formatToronto } from '@/lib/toronto-time';
 
 
 type ActionResult = {
@@ -508,7 +508,7 @@ export async function testFollowUp24HEmailAction(): Promise<ActionResult> {
       booking: {
         days: [
           {
-            date: format(new Date(), 'PPP'),
+            date: formatToronto(new Date(), 'PPP'),
             getReadyTime: '12:00 PM',
             serviceName: 'Test Service',
             serviceOption: 'Makeup & Hair',
@@ -553,7 +553,7 @@ export async function testFollowUp3DEmailAction(): Promise<ActionResult> {
       booking: {
         days: [
           {
-            date: format(new Date(), 'PPP'),
+            date: formatToronto(new Date(), 'PPP'),
             getReadyTime: '12:00 PM',
             serviceName: 'Test Service',
             serviceOption: 'Makeup & Hair',
@@ -598,7 +598,7 @@ export async function testFollowUp6DEmailAction(): Promise<ActionResult> {
       booking: {
         days: [
           {
-            date: format(new Date(), 'PPP'),
+            date: formatToronto(new Date(), 'PPP'),
             getReadyTime: '12:00 PM',
             serviceName: 'Test Service',
             serviceOption: 'Makeup & Hair',

@@ -2,7 +2,7 @@
 
 import type { FinalQuote } from '@/lib/types';
 import { sendQuoteEmail } from '@/lib/email';
-import { format } from 'date-fns';
+import { formatToronto } from '@/lib/toronto-time';
 
 /**
  * A server action to send a test email.
@@ -16,7 +16,7 @@ export async function sendTestEmailAction(): Promise<{success: boolean; message:
     booking: {
       days: [
         {
-          date: format(new Date(), 'PPP'),
+          date: formatToronto(new Date(), 'PPP'),
           getReadyTime: '12:00 PM',
           serviceName: 'Test Service',
           serviceOption: 'Makeup & Hair',

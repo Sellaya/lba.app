@@ -1,7 +1,7 @@
 'use server';
 import 'dotenv/config';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { formatToronto, getTorontoNow } from '@/lib/toronto-time';
 import { updateAvailability } from '@/ai/flows/intelligent-availability';
 import { SERVICES, MOBILE_LOCATION_OPTIONS, ADDON_PRICES, BRIDAL_PARTY_PRICES, GST_RATE } from '@/lib/services';
 import type { ActionState, FinalQuote, Day, BridalTrial, ServiceOption, BridalPartyServices, ServiceType, PartyBooking, PaymentStatus, Quote } from '@/lib/types';
@@ -200,7 +200,7 @@ const calculateQuoteForTier = async (tier: PriceTier, days: Omit<Day, 'id'>[], b
               if (hour >= 21 || hour < 6) {
                   const lateNightSurcharge = 25;
                   // Format time for display (e.g., "9:00 PM" instead of "21:00")
-                  const formattedTime = format(new Date(`1970-01-01T${day.getReadyTime}`), 'p');
+                  const formattedTime = formatToronto(new Date(`1970-01-01T${day.getReadyTime}`), 'p');
                   lineItems.push({ description: `  - Late Night/Early Morning Surcharge (${formattedTime})`, price: lateNightSurcharge });
                   subtotal += lateNightSurcharge;
               }
@@ -377,7 +377,7 @@ export async function generateQuoteAction(
         
         const firstDate = days[0].date;
         const firstTime = days[0].getReadyTime;
-        const combinedDateTime = firstDate && firstTime ? `${format(firstDate, 'yyyy-MM-dd')}T${firstTime}:00Z` : new Date().toISOString();
+        const combinedDateTime = firstDate && firstTime ? `${formatToronto(firstDate, 'yyyy-MM-dd')}T${firstTime}:00Z` : getTorontoNow().toISOString();
 
         const totalDuration = days.reduce((acc, day) => {
             const service = SERVICES.find(s => s.id === day.serviceId);
@@ -462,7 +462,7 @@ export async function generateQuoteAction(
                     : service.name;
                 
                 bookingDays.push({ 
-                    date: format(day.date, "PPP"), 
+                    date: formatToronto(day.date, "PPP"), 
                     getReadyTime: day.getReadyTime,
                     serviceName: serviceNameDisplay,
                     serviceType: day.serviceType,
@@ -533,7 +533,7 @@ export async function generateQuoteAction(
         };
 
         if (bridalServiceDay && bridalTrial.addTrial && bridalTrial.date && bridalTrial.time) {
-            booking.trial = { date: format(bridalTrial.date, "PPP"), time: bridalTrial.time };
+            booking.trial = { date: formatToronto(bridalTrial.date, "PPP"), time: bridalTrial.time };
         }
 
         if (bridalPartyBookings) {

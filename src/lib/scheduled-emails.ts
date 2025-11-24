@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from './supabase/server';
 import type { FinalQuote } from './types';
+import { getTorontoNow, parseToronto } from './toronto-time';
 
 export type ScheduledEmailType = 'followup-3h' | 'followup-6h' | 'followup-24h' | 'followup-3d' | 'followup-6d' | 'followup-30d' | 'event-reminder-24h' | 'appointment-day-reminder' | 'post-appointment-followup';
 
@@ -46,12 +47,12 @@ export async function scheduleFollowUpEmails(quote: FinalQuote, bookingCreatedAt
     return;
   }
 
-  // Use booking creation time if provided, otherwise use current time
+  // Use booking creation time if provided, otherwise use current time in Toronto
   const baseTime = bookingCreatedAt 
     ? (typeof bookingCreatedAt === 'string' ? new Date(bookingCreatedAt) : bookingCreatedAt)
-    : new Date();
+    : getTorontoNow();
   const bookingId = quote.id;
-  const now = new Date();
+  const now = getTorontoNow();
 
   // Schedule all follow-up emails relative to base time
   // TESTING: Changed from 3 hours to 5 minutes for testing
@@ -166,7 +167,7 @@ export async function scheduleFollowUpEmails(quote: FinalQuote, bookingCreatedAt
  * Get scheduled emails that are due to be sent
  */
 export async function getDueScheduledEmails(): Promise<ScheduledEmail[]> {
-  const now = new Date().toISOString();
+  const now = getTorontoNow().toISOString();
 
   try {
     const { data, error } = await supabaseAdmin
@@ -196,7 +197,7 @@ export async function markScheduledEmailAsSent(scheduledEmailId: string): Promis
       .from('scheduled_emails')
       .update({
         sent: true,
-        sent_at: new Date().toISOString(),
+        sent_at: getTorontoNow().toISOString(),
       })
       .eq('id', scheduledEmailId);
 
@@ -217,7 +218,7 @@ export async function markScheduledEmailsAsSentBatch(scheduledEmailIds: string[]
   }
 
   try {
-    const sentAt = new Date().toISOString();
+    const sentAt = getTorontoNow().toISOString();
     
     // Update all emails in batch
     const { error } = await supabaseAdmin
@@ -276,8 +277,7 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
   // Parse the event date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const { parse } = await import('date-fns');
-    const parsedDate = parse(firstDay.date, 'PPP', new Date());
+    const parsedDate = parseToronto(firstDay.date, 'PPP');
     if (isNaN(parsedDate.getTime())) {
       console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
       return; // Don't schedule if date is invalid
@@ -297,8 +297,8 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
   // Schedule email 24 hours before the event
   const reminderTime = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
   
-  // Don't schedule if the reminder time is in the past
-  if (reminderTime < new Date()) {
+  // Don't schedule if the reminder time is in the past (using Toronto time)
+  if (reminderTime < getTorontoNow()) {
     console.log(`Skipping event reminder email scheduling - reminder time is in the past for booking ${quote.id}`);
     return;
   }
@@ -386,8 +386,7 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
   // Parse the event date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const { parse } = await import('date-fns');
-    const parsedDate = parse(firstDay.date, 'PPP', new Date());
+    const parsedDate = parseToronto(firstDay.date, 'PPP');
     if (isNaN(parsedDate.getTime())) {
       console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
       return; // Don't schedule if date is invalid
@@ -443,16 +442,17 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
   // Schedule email 2.5 hours before the appointment time
   const reminderTime = new Date(appointmentDateTime.getTime() - 2.5 * 60 * 60 * 1000);
   
-  // Check if event date is today (same day as payment approval)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Check if event date is today (same day as payment approval) - using Toronto time
+  const { getTorontoToday } = await import('./toronto-time');
+  const today = getTorontoToday();
   const eventDateOnly = new Date(eventDate);
   eventDateOnly.setHours(0, 0, 0, 0);
   const isToday = eventDateOnly.getTime() === today.getTime();
   
   // If the event is today and reminder time is in the past (or very soon within 5 minutes),
   // send the email immediately instead of scheduling
-  if (isToday && reminderTime <= new Date(Date.now() + 5 * 60 * 1000)) {
+  const { getTorontoNow } = await import('./toronto-time');
+  if (isToday && reminderTime <= new Date(getTorontoNow().getTime() + 5 * 60 * 1000)) {
     console.log(`[SCHEDULING] Event date is today for booking ${quote.id} - sending appointment day reminder email immediately`);
     try {
       const { sendAppointmentDayReminderEmail } = await import('@/lib/email');
@@ -462,9 +462,9 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
       const sentEmail: Omit<ScheduledEmail, 'id' | 'created_at'> = {
         booking_id: quote.id,
         email_type: 'appointment-day-reminder',
-        scheduled_for: new Date().toISOString(),
+        scheduled_for: getTorontoNow().toISOString(),
         sent: true,
-        sent_at: new Date().toISOString(),
+        sent_at: getTorontoNow().toISOString(),
       };
       
       const { error: insertError } = await supabaseAdmin
@@ -483,8 +483,8 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
     }
   }
   
-  // Don't schedule if the reminder time is in the past (and it's not today)
-  if (reminderTime < new Date() && !isToday) {
+  // Don't schedule if the reminder time is in the past (and it's not today) - using Toronto time
+  if (reminderTime < getTorontoNow() && !isToday) {
     console.log(`Skipping appointment day reminder email scheduling - reminder time is in the past for booking ${quote.id}`);
     return;
   }
@@ -572,8 +572,7 @@ export async function schedulePostAppointmentFollowupEmail(quote: FinalQuote): P
   // Parse the event date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const { parse } = await import('date-fns');
-    const parsedDate = parse(firstDay.date, 'PPP', new Date());
+    const parsedDate = parseToronto(firstDay.date, 'PPP');
     if (isNaN(parsedDate.getTime())) {
       console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
       return; // Don't schedule if date is invalid
@@ -629,13 +628,13 @@ export async function schedulePostAppointmentFollowupEmail(quote: FinalQuote): P
   // Schedule email 6 hours after the appointment time
   const followupTime = new Date(appointmentDateTime.getTime() + 6 * 60 * 60 * 1000);
   
-  // Check if appointment has already passed
-  const today = new Date();
+  // Check if appointment has already passed - using Toronto time
+  const today = getTorontoNow();
   const appointmentHasPassed = appointmentDateTime < today;
   
   // If appointment has passed and follow-up time is in the past (or very soon within 5 minutes),
   // send the email immediately instead of scheduling
-  if (appointmentHasPassed && followupTime <= new Date(Date.now() + 5 * 60 * 1000)) {
+  if (appointmentHasPassed && followupTime <= new Date(getTorontoNow().getTime() + 5 * 60 * 1000)) {
     console.log(`[SCHEDULING] Appointment has passed for booking ${quote.id} - sending post-appointment follow-up email immediately`);
     try {
       const { sendPostAppointmentFollowupEmail } = await import('@/lib/email');
@@ -645,9 +644,9 @@ export async function schedulePostAppointmentFollowupEmail(quote: FinalQuote): P
       const sentEmail: Omit<ScheduledEmail, 'id' | 'created_at'> = {
         booking_id: quote.id,
         email_type: 'post-appointment-followup',
-        scheduled_for: new Date().toISOString(),
+        scheduled_for: getTorontoNow().toISOString(),
         sent: true,
-        sent_at: new Date().toISOString(),
+        sent_at: getTorontoNow().toISOString(),
       };
       
       const { error: insertError } = await supabaseAdmin

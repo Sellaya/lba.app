@@ -1,5 +1,5 @@
 import type { FinalQuote, PriceTier } from '@/lib/types';
-import { format } from 'date-fns';
+import { formatToronto } from '@/lib/toronto-time';
 import { formatPrice } from '@/lib/price-format';
 
 export function ContractDisplay({ 
@@ -19,8 +19,8 @@ export function ContractDisplay({
   const selectedQuote = quote.quotes[selectedTier];
   const depositAmount = selectedQuote.total * 0.5;
   const contractDate = signedDate 
-    ? format(new Date(signedDate), 'MMMM dd, yyyy')
-    : format(new Date(), 'MMMM dd, yyyy');
+    ? formatToronto(new Date(signedDate), 'MMMM dd, yyyy')
+    : formatToronto(new Date(), 'MMMM dd, yyyy');
 
   return (
     <div className="p-4 sm:p-6 border rounded-lg bg-background/50 prose prose-sm max-w-none prose-headings:font-headline prose-h4:text-lg prose-h4:mb-2 prose-p:my-2 prose-ul:my-2">

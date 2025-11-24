@@ -28,7 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { formatToronto } from '@/lib/toronto-time';
 import { BrandingFooter } from '@/components/branding-footer';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
@@ -375,8 +375,8 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
           customerEmail: quote.contact.email,
           customerPhone: quote.contact.phone || '',
           whatsappNumber: whatsappFormatted, // Use +1 formatted number for WhatsApp link
-          preferredDate: format(callBookingDate, 'PPP'),
-          preferredTime: format(new Date(`1970-01-01T${callBookingTime}`), 'p'),
+          preferredDate: formatToronto(callBookingDate, 'PPP'),
+          preferredTime: formatToronto(new Date(`1970-01-01T${callBookingTime}`), 'p'),
           message: callBookingMessage.trim() || '',
           bookingId: quote.id,
         }),
@@ -1180,7 +1180,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                                 )}
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {callBookingDate ? format(callBookingDate, "PPP") : "Pick a date"}
+                                {callBookingDate ? formatToronto(callBookingDate, "PPP") : "Pick a date"}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start" side="bottom">
@@ -1209,7 +1209,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                             <SelectContent>
                               {callTimeSlots.map((slot) => (
                                 <SelectItem key={slot} value={slot}>
-                                  {format(new Date(`1970-01-01T${slot}`), 'p')}
+                                  {formatToronto(new Date(`1970-01-01T${slot}`), 'p')}
                                 </SelectItem>
                               ))}
                             </SelectContent>

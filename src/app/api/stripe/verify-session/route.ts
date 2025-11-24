@@ -21,8 +21,10 @@ export async function POST(request: Request) {
       apiVersion: '2024-06-20',
     });
 
-    // Retrieve the checkout session
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Retrieve the checkout session with expanded discount/promo code information
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['total_details.breakdown', 'discounts', 'discounts.promotion_code', 'discounts.coupon'],
+    });
 
     // Verify the session is paid
     if (session.payment_status !== 'paid') {
@@ -32,6 +34,25 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    // Extract promotional code information
+    // Type assertion needed because Stripe types may not fully reflect expanded properties
+    const sessionWithDiscounts = session as any;
+    
+    const discountAmount = session.total_details?.amount_discount || 0;
+    const firstDiscount = sessionWithDiscounts.discounts?.[0];
+    const promoCodeObj = firstDiscount?.promotion_code;
+    const couponObj = firstDiscount?.coupon;
+    
+    const promoCode = typeof promoCodeObj === 'object' && promoCodeObj?.code 
+      ? promoCodeObj.code 
+      : null;
+    const promoCodeId = typeof promoCodeObj === 'object' && promoCodeObj?.id 
+      ? promoCodeObj.id 
+      : null;
+    const couponId = typeof couponObj === 'object' && couponObj?.id 
+      ? couponObj.id 
+      : null;
+
     // Return session details
     return NextResponse.json({
       paid: true,
@@ -39,8 +60,14 @@ export async function POST(request: Request) {
       paymentStatus: session.payment_status,
       customerEmail: session.customer_details?.email,
       amountTotal: session.amount_total,
+      amountSubtotal: session.amount_subtotal,
       currency: session.currency,
       metadata: session.metadata,
+      // Promotional code data
+      promotionalCode: promoCode,
+      promotionalCodeId: promoCodeId,
+      couponId: couponId,
+      discountAmount: discountAmount, // Amount in cents
     });
 
   } catch (err: any) {

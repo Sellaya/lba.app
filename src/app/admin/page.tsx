@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import type { BookingDocument } from '@/firebase/firestore/bookings';
-import type { PaymentStatus } from '@/lib/types';
+import type { PaymentStatus, PaymentDetails } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2, Menu } from 'lucide-react';
 import { AdminSettings } from '@/components/admin-settings';
-import { format, differenceInDays, parse } from 'date-fns';
+import { formatToronto, differenceInDaysToronto, parseToronto, getTorontoToday, getTorontoNow } from '@/lib/toronto-time';
 import { BookingDetails } from '@/components/booking-details';
 import { Input } from '@/components/ui/input';
 import type { FinalQuote } from '@/lib/types';
@@ -57,8 +57,8 @@ function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' |
     }
 }
 
-function getFinalPaymentStatus(finalPayment: { status: PaymentStatus; method?: 'stripe' | 'interac' } | undefined): { text: string; variant: 'secondary' | 'destructive' | 'default' } | null {
-    if (!finalPayment) {
+function getFinalPaymentStatus(finalPayment: PaymentDetails['finalPayment']): { text: string; variant: 'secondary' | 'destructive' | 'default' } | null {
+    if (!finalPayment || !finalPayment.status) {
         return null;
     }
     return getPaymentStatus(finalPayment.status, finalPayment.method);
@@ -67,13 +67,12 @@ function getFinalPaymentStatus(finalPayment: { status: PaymentStatus; method?: '
 
 function getTimeToEvent(eventDateStr: string): string {
     try {
-        const eventDate = parse(eventDateStr, 'PPP', new Date());
+        const eventDate = parseToronto(eventDateStr, 'PPP');
         if (isNaN(eventDate.getTime())) {
             return "Invalid date";
         }
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const days = differenceInDays(eventDate, today);
+        const today = getTorontoToday();
+        const days = differenceInDaysToronto(eventDate, today);
 
         if (days < 0) {
             return `Passed`;
@@ -200,8 +199,7 @@ export default function AdminDashboard() {
       cancelled: [],
     };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTorontoToday();
 
     return {
       all: sortedBookings,
@@ -222,7 +220,7 @@ export default function AdminDashboard() {
         
         // Check if event date has passed
         try {
-          const eventDate = parse(booking.finalQuote.booking.days[0]?.date || '', 'PPP', new Date());
+          const eventDate = parseToronto(booking.finalQuote.booking.days[0]?.date || '', 'PPP');
           if (!isNaN(eventDate.getTime())) {
             eventDate.setHours(0, 0, 0, 0);
             return eventDate >= today; // Event hasn't passed yet
@@ -240,7 +238,7 @@ export default function AdminDashboard() {
         
         // Check if event date has passed
         try {
-          const eventDate = parse(booking.finalQuote.booking.days[0]?.date || '', 'PPP', new Date());
+          const eventDate = parseToronto(booking.finalQuote.booking.days[0]?.date || '', 'PPP');
           if (!isNaN(eventDate.getTime())) {
             eventDate.setHours(0, 0, 0, 0);
             return eventDate < today; // Event has passed
@@ -338,9 +336,9 @@ export default function AdminDashboard() {
           id: quote.id,
           customer: quote.contact.name,
           date: booking.createdAt instanceof Date 
-            ? format(booking.createdAt, 'PPP') 
+            ? formatToronto(booking.createdAt, 'PPP') 
             : booking.createdAt?.toDate 
-            ? format(booking.createdAt.toDate(), 'PPP') 
+            ? formatToronto(booking.createdAt.toDate(), 'PPP') 
             : 'N/A',
           type: 'advance',
           amount: advanceAmount,
@@ -375,9 +373,9 @@ export default function AdminDashboard() {
             id: quote.id,
             customer: quote.contact.name,
             date: booking.createdAt instanceof Date 
-              ? format(booking.createdAt, 'PPP') 
+              ? formatToronto(booking.createdAt, 'PPP') 
               : booking.createdAt?.toDate 
-              ? format(booking.createdAt.toDate(), 'PPP') 
+              ? formatToronto(booking.createdAt.toDate(), 'PPP') 
               : 'N/A',
             type: 'final',
             amount: finalAmount,
@@ -396,7 +394,7 @@ export default function AdminDashboard() {
 
       // Check if booking is completed (event date passed)
       try {
-        const eventDate = parse(quote.booking.days[0]?.date || '', 'PPP', new Date());
+        const eventDate = parseToronto(quote.booking.days[0]?.date || '', 'PPP');
         if (!isNaN(eventDate.getTime())) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -415,8 +413,8 @@ export default function AdminDashboard() {
 
     // Sort transactions by date (newest first)
     transactions.sort((a, b) => {
-      const dateA = parse(a.date, 'PPP', new Date());
-      const dateB = parse(b.date, 'PPP', new Date());
+      const dateA = parseToronto(a.date, 'PPP');
+      const dateB = parseToronto(b.date, 'PPP');
       return dateB.getTime() - dateA.getTime();
     });
 
@@ -436,7 +434,7 @@ export default function AdminDashboard() {
       completedRevenue,
       transactions,
     };
-  }, [sortedBookings, format]);
+  }, [sortedBookings, formatToronto]);
 
 
   const getStatusVariant = (status: BookingDocument['finalQuote']['status']): 'default' | 'destructive' | 'secondary' => {
@@ -887,7 +885,7 @@ export default function AdminDashboard() {
                   getFinalPaymentStatus={getFinalPaymentStatus}
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
-                  format={format}
+                  format={formatToronto}
                   selectedBookings={selectedBookings}
                   handleBookingSelect={handleBookingSelect}
                   handleSelectAll={handleSelectAll}
@@ -905,7 +903,7 @@ export default function AdminDashboard() {
                   getFinalPaymentStatus={getFinalPaymentStatus}
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
-                  format={format}
+                  format={formatToronto}
                   selectedBookings={selectedBookings}
                   handleBookingSelect={handleBookingSelect}
                   handleSelectAll={handleSelectAll}
@@ -923,7 +921,7 @@ export default function AdminDashboard() {
                   getFinalPaymentStatus={getFinalPaymentStatus}
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
-                  format={format}
+                  format={formatToronto}
                   selectedBookings={selectedBookings}
                   handleBookingSelect={handleBookingSelect}
                   handleSelectAll={handleSelectAll}
@@ -941,7 +939,7 @@ export default function AdminDashboard() {
                   getFinalPaymentStatus={getFinalPaymentStatus}
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
-                  format={format}
+                  format={formatToronto}
                   selectedBookings={selectedBookings}
                   handleBookingSelect={handleBookingSelect}
                   handleSelectAll={handleSelectAll}
@@ -959,7 +957,7 @@ export default function AdminDashboard() {
                   getFinalPaymentStatus={getFinalPaymentStatus}
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
-                  format={format}
+                  format={formatToronto}
                   selectedBookings={selectedBookings}
                   handleBookingSelect={handleBookingSelect}
                   handleSelectAll={handleSelectAll}
@@ -977,7 +975,7 @@ export default function AdminDashboard() {
                   getFinalPaymentStatus={getFinalPaymentStatus}
                   getStatusVariant={getStatusVariant}
                   getTimeToEvent={getTimeToEvent}
-                  format={format}
+                  format={formatToronto}
                   selectedBookings={selectedBookings}
                   handleBookingSelect={handleBookingSelect}
                   handleSelectAll={handleSelectAll}
@@ -1014,7 +1012,7 @@ function BookingsTable({
   handleUpdateBooking: (updatedQuote: FinalQuote) => void;
   handleBookingDeleted: (bookingId: string) => void;
   getPaymentStatus: (status: PaymentStatus | undefined, method?: 'stripe' | 'interac') => { text: string; variant: 'secondary' | 'destructive' | 'default' };
-  getFinalPaymentStatus: (finalPayment: { status: PaymentStatus; method?: 'stripe' | 'interac' } | undefined) => { text: string; variant: 'secondary' | 'destructive' | 'default' } | null;
+  getFinalPaymentStatus: (finalPayment: PaymentDetails['finalPayment']) => { text: string; variant: 'secondary' | 'destructive' | 'default' } | null;
   getStatusVariant: (status: BookingDocument['finalQuote']['status']) => 'default' | 'destructive' | 'secondary';
   getTimeToEvent: (eventDateStr: string) => string;
   format: (date: Date | number, formatStr: string) => string;
@@ -1059,6 +1057,10 @@ function BookingsTable({
                const advancePaymentMethod = booking.finalQuote.paymentDetails?.method;
                const finalPaymentStatus = getFinalPaymentStatus(booking.finalQuote.paymentDetails?.finalPayment);
                const finalPaymentMethod = booking.finalQuote.paymentDetails?.finalPayment?.method;
+               // Check if booking has promotional codes
+               const hasPromoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
+               const promoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
+               const discountAmount = (booking.finalQuote.paymentDetails?.discountAmount || 0) + (booking.finalQuote.paymentDetails?.finalPayment?.discountAmount || 0);
                return (
                   <TableRow key={booking.id} className={selectedBookings.has(booking.id) ? 'bg-muted/50' : ''}>
                     <TableCell>
@@ -1070,8 +1072,17 @@ function BookingsTable({
                     </TableCell>
                      <TableCell className="font-medium text-xs sm:text-sm">{index + 1}</TableCell>
                     <TableCell className="min-w-[120px]">
-                      <div className="font-medium text-xs sm:text-sm">{booking.finalQuote.contact.name}</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[100px] sm:max-w-none">{booking.id}</div>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <div className="font-medium text-xs sm:text-sm">{booking.finalQuote.contact.name}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[100px] sm:max-w-none">{booking.id}</div>
+                        </div>
+                        {hasPromoCode && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5" title={`Promo: ${promoCode}${discountAmount > 0 ? ` (-$${discountAmount.toFixed(2)})` : ''}`}>
+                            🎟️ {promoCode}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                      <TableCell>
                           <div className="flex flex-col gap-1">
@@ -1131,9 +1142,9 @@ function BookingsTable({
                     </TableCell>
                      <TableCell className="hidden md:table-cell text-sm">
                        {booking.createdAt instanceof Date 
-                          ? format(booking.createdAt, 'PPp') 
+                          ? formatToronto(booking.createdAt, 'PPp') 
                           : booking.createdAt?.toDate 
-                          ? format(booking.createdAt.toDate(), 'PPp') 
+                          ? formatToronto(booking.createdAt.toDate(), 'PPp') 
                           : 'N/A'}
                     </TableCell>
                      <TableCell className="hidden md:table-cell">
