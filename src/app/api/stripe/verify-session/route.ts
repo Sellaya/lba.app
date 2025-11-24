@@ -36,7 +36,13 @@ export async function POST(request: Request) {
 
     // Extract promotional code information
     // Type assertion needed because Stripe types may not fully reflect expanded properties
-    const sessionWithDiscounts = session as any;
+    // Use a more specific type instead of 'any' for better type safety
+    const sessionWithDiscounts = session as Stripe.Checkout.Session & {
+      discounts?: Array<{
+        promotion_code?: Stripe.PromotionCode | string | null;
+        coupon?: Stripe.Coupon | string | null;
+      }>;
+    };
     
     const discountAmount = session.total_details?.amount_discount || 0;
     const firstDiscount = sessionWithDiscounts.discounts?.[0];

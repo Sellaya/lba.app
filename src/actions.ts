@@ -375,6 +375,17 @@ export async function generateQuoteAction(
         // Sort days chronologically
         days.sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0));
         
+        // Validate days array is not empty
+        if (days.length === 0) {
+            return {
+                status: 'error',
+                message: 'No booking days provided',
+                quote: null,
+                errors: { form: ['At least one booking day is required.'] },
+                fieldValues
+            };
+        }
+        
         const firstDate = days[0].date;
         const firstTime = days[0].getReadyTime;
         const combinedDateTime = firstDate && firstTime ? `${formatToronto(firstDate, 'yyyy-MM-dd')}T${firstTime}:00Z` : getTorontoNow().toISOString();

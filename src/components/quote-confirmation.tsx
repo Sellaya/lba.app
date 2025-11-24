@@ -1856,7 +1856,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
             // Always show if advance payment is made, even if we need to infer the quote
             if (hasAdvancePayment && selectedQuote && quote.quotes && quote.quotes[selectedQuote]) {
               const selectedQuoteData = quote.quotes[selectedQuote];
-              const advanceAmount = quote.paymentDetails.depositAmount || (selectedQuoteData.total * 0.5);
+              const advanceAmount = quote.paymentDetails?.depositAmount || (selectedQuoteData.total * 0.5);
               const remainingAmount = selectedQuoteData.total * 0.5;
               
               // Check if final payment is pending (not paid yet)
@@ -1927,7 +1927,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                           <span className="text-sm text-muted-foreground">Amount:</span>
                           <span className="font-semibold text-green-600">${formatPrice(advanceAmount)}</span>
                         </div>
-                        {quote.paymentDetails.method && (
+                        {quote.paymentDetails?.method && (
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">Payment Method:</span>
                             <Badge 
@@ -1944,8 +1944,8 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                             variant="default"
                             className="bg-green-500 hover:bg-green-600 text-white"
                           >
-                            {quote.paymentDetails.status === 'deposit-paid' ? 'Paid' : 
-                             quote.paymentDetails.status === 'payment-approved' ? 'Payment Approved' :
+                            {quote.paymentDetails?.status === 'deposit-paid' ? 'Paid' : 
+                             quote.paymentDetails?.status === 'payment-approved' ? 'Payment Approved' :
                              'Approved'}
                           </Badge>
                         </div>

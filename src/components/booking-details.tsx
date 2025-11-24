@@ -41,20 +41,28 @@ import {
 } from "@/components/ui/dialog"
 
 function getTimeToEvent(eventDateStr: string): { text: string; isPast: boolean } {
-    const eventDate = parseToronto(eventDateStr, 'PPP');
-    const today = getTorontoToday();
-    const days = differenceInDaysToronto(eventDate, today);
+    try {
+        if (!eventDateStr) {
+            return { text: "Invalid date", isPast: false };
+        }
+        const eventDate = parseToronto(eventDateStr, 'PPP');
+        const today = getTorontoToday();
+        const days = differenceInDaysToronto(eventDate, today);
 
-    if (days < 0) {
-        return { text: `${Math.abs(days)} days ago`, isPast: true };
+        if (days < 0) {
+            return { text: `${Math.abs(days)} days ago`, isPast: true };
+        }
+        if (days === 0) {
+            return { text: "Today", isPast: false };
+        }
+        if (days === 1) {
+            return { text: "Tomorrow", isPast: false };
+        }
+        return { text: `in ${days} days`, isPast: false };
+    } catch (error) {
+        console.error('Error parsing event date:', eventDateStr, error);
+        return { text: "Invalid date", isPast: false };
     }
-    if (days === 0) {
-        return { text: "Today", isPast: false };
-    }
-    if (days === 1) {
-        return { text: "Tomorrow", isPast: false };
-    }
-    return { text: `in ${days} days`, isPast: false };
 }
 
 function generateWhatsAppLink(phone: string | undefined): string | null {

@@ -199,7 +199,11 @@ export default function AccountingPage() {
 
       // Check if booking is completed (event date passed)
       try {
-        const eventDate = parseToronto(quote.booking.days[0]?.date || '', 'PPP');
+        const dateStr = quote.booking.days[0]?.date;
+        if (!dateStr) {
+          return false; // No date, can't determine if completed
+        }
+        const eventDate = parseToronto(dateStr, 'PPP');
         if (!isNaN(eventDate.getTime())) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -218,9 +222,14 @@ export default function AccountingPage() {
 
     // Sort transactions by date (newest first)
     transactions.sort((a, b) => {
-      const dateA = parseToronto(a.date, 'PPP');
-      const dateB = parseToronto(b.date, 'PPP');
-      return dateB.getTime() - dateA.getTime();
+      try {
+        const dateA = parseToronto(a.date, 'PPP');
+        const dateB = parseToronto(b.date, 'PPP');
+        return dateB.getTime() - dateA.getTime();
+      } catch (error) {
+        console.error('Error parsing transaction dates for sorting:', error);
+        return 0; // Keep original order if parsing fails
+      }
     });
 
     return {

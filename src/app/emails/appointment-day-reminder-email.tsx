@@ -123,6 +123,11 @@ const footer = {
 };
 
 const AppointmentDayReminderEmailTemplate: React.FC<Readonly<AppointmentDayReminderEmailProps>> = ({ quote, baseUrl }) => {
+  // Validate booking days exist
+  if (!quote.booking.days || quote.booking.days.length === 0 || !quote.booking.days[0]) {
+    throw new Error('Booking has no service days');
+  }
+  
   const firstDay = quote.booking.days[0];
   const quoteLink = `${baseUrl}/book/${quote.id}`;
   

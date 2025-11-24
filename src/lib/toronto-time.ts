@@ -49,9 +49,16 @@ export function formatToronto(date: Date | string | number, formatStr: string): 
 
 /**
  * Parse a date string and interpret it as Toronto time
+ * @throws Error if date string is invalid
  */
 export function parseToronto(dateString: string, formatStr: string, referenceDate?: Date): Date {
+  if (!dateString || typeof dateString !== 'string') {
+    throw new Error(`Invalid date string: expected string, got ${typeof dateString}`);
+  }
   const parsed = parse(dateString, formatStr, referenceDate || getTorontoNow());
+  if (isNaN(parsed.getTime())) {
+    throw new Error(`Invalid date string: "${dateString}" with format "${formatStr}"`);
+  }
   // Convert to Toronto timezone
   return toZonedTime(parsed, TORONTO_TIMEZONE);
 }
@@ -120,10 +127,15 @@ export function formatDistanceToNowToronto(date: Date | string): string {
 
 /**
  * Create a date from year, month, day in Toronto timezone
+ * This creates a date that represents the given local time in Toronto, then converts to UTC
  */
 export function createTorontoDate(year: number, month: number, day: number, hours: number = 0, minutes: number = 0, seconds: number = 0): Date {
+  // Create date string in ISO format (this will be interpreted as local time)
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  return fromZonedTime(parseISO(dateStr), TORONTO_TIMEZONE);
+  // Parse as if it's a local date, then convert from Toronto timezone to UTC
+  const localDate = new Date(dateStr);
+  // Convert from Toronto timezone to UTC
+  return fromZonedTime(localDate, TORONTO_TIMEZONE);
 }
 
 /**

@@ -220,7 +220,7 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
             </div>
           )}
 
-          {quote.booking.inspirations && (quote.booking.inspirations.images?.length > 0 || quote.booking.inspirations.links?.length > 0) && (
+          {quote.booking.inspirations && ((quote.booking.inspirations.images?.length ?? 0) > 0 || (quote.booking.inspirations.links?.length ?? 0) > 0) && (
             <div style={bookingCard}>
               <p style={bookingTitle}>Client Inspirations</p>
               <hr style={{ border: 'none', borderTop: '1px solid hsl(0, 0%, 88%)', margin: '16px 0' }} />

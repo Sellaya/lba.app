@@ -220,7 +220,11 @@ export default function AdminDashboard() {
         
         // Check if event date has passed
         try {
-          const eventDate = parseToronto(booking.finalQuote.booking.days[0]?.date || '', 'PPP');
+          const dateStr = booking.finalQuote.booking.days[0]?.date;
+          if (!dateStr) {
+            return true; // No date, include in confirmed
+          }
+          const eventDate = parseToronto(dateStr, 'PPP');
           if (!isNaN(eventDate.getTime())) {
             eventDate.setHours(0, 0, 0, 0);
             return eventDate >= today; // Event hasn't passed yet
@@ -238,7 +242,11 @@ export default function AdminDashboard() {
         
         // Check if event date has passed
         try {
-          const eventDate = parseToronto(booking.finalQuote.booking.days[0]?.date || '', 'PPP');
+          const dateStr = booking.finalQuote.booking.days[0]?.date;
+          if (!dateStr) {
+            return true; // No date, include in confirmed
+          }
+          const eventDate = parseToronto(dateStr, 'PPP');
           if (!isNaN(eventDate.getTime())) {
             eventDate.setHours(0, 0, 0, 0);
             return eventDate < today; // Event has passed
@@ -394,7 +402,11 @@ export default function AdminDashboard() {
 
       // Check if booking is completed (event date passed)
       try {
-        const eventDate = parseToronto(quote.booking.days[0]?.date || '', 'PPP');
+        const dateStr = quote.booking.days[0]?.date;
+        if (!dateStr) {
+          return "Invalid date";
+        }
+        const eventDate = parseToronto(dateStr, 'PPP');
         if (!isNaN(eventDate.getTime())) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { sendArtistBookingEmail } from '@/lib/email';
 import type { FinalQuote } from '@/lib/types';
-import { parseToronto, setTorontoTime, fromTorontoTime } from '@/lib/toronto-time';
+import { parseToronto, setTorontoTime, fromTorontoTime, getTorontoNow } from '@/lib/toronto-time';
 
 // Helper function to get base URL
 function getBaseUrl(request: Request): string {
@@ -111,16 +111,19 @@ function formatBookingDetailsForWhatsApp(quote: FinalQuote): string {
   lines.push(``);
   lines.push(`*Service Details:*`);
   
-  quote.booking.days.forEach((day, index) => {
+  // Validate days exist before iterating
+  if (quote.booking.days && quote.booking.days.length > 0) {
+    quote.booking.days.forEach((day, index) => {
     lines.push(`\n*Day ${index + 1}:* ${day.serviceName}`);
     lines.push(`📅 Date: ${day.date}`);
     lines.push(`⏰ Time: ${day.getReadyTime}`);
     lines.push(`📍 Location: ${day.location}`);
     lines.push(`✨ Style: ${day.serviceOption}`);
-    if (day.addOns.length > 0) {
-      lines.push(`➕ Add-ons: ${day.addOns.join(', ')}`);
-    }
-  });
+      if (day.addOns && day.addOns.length > 0) {
+        lines.push(`➕ Add-ons: ${day.addOns.join(', ')}`);
+      }
+    });
+  }
 
   if (quote.booking.trial) {
     lines.push(``);
@@ -129,7 +132,7 @@ function formatBookingDetailsForWhatsApp(quote: FinalQuote): string {
     lines.push(`⏰ Time: ${quote.booking.trial.time}`);
   }
 
-  if (quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0) {
+  if (quote.booking.bridalParty && quote.booking.bridalParty.services && quote.booking.bridalParty.services.length > 0) {
     lines.push(``);
     lines.push(`*Bridal Party Services:*`);
     quote.booking.bridalParty.services.forEach(service => {
@@ -184,17 +187,41 @@ function generateCalendarLinks(quote: FinalQuote, baseUrl: string): {
   yahoo: string;
   ics: string;
 } {
+  // Validate booking days exist
+  if (!quote.booking.days || quote.booking.days.length === 0) {
+    throw new Error('Booking has no service days');
+  }
+  
   const firstDay = quote.booking.days[0];
+  if (!firstDay) {
+    throw new Error('First booking day is missing');
+  }
+  
+  // Validate required fields
+  if (!firstDay.date) {
+    throw new Error('Booking day is missing date');
+  }
+  if (!firstDay.getReadyTime) {
+    throw new Error('Booking day is missing getReadyTime');
+  }
+  if (!firstDay.location) {
+    throw new Error('Booking day is missing location');
+  }
   
   // Parse date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const parsedDate = parseToronto(firstDay.date, 'PPP');
-    eventDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    try {
+      const parsedDate = parseToronto(firstDay.date, 'PPP');
+      eventDate = parsedDate;
+    } catch (error) {
+      console.error(`Failed to parse date: ${firstDay.date}`, error);
+      eventDate = getTorontoNow();
+    }
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
   } else {
-    eventDate = new Date();
+    eventDate = getTorontoNow();
   }
 
   // Parse time
@@ -217,7 +244,9 @@ function generateCalendarLinks(quote: FinalQuote, baseUrl: string): {
     hours = timeParts[0] || 10;
     minutes = timeParts[1] || 0;
   }
-  eventDate.setHours(hours, minutes, 0, 0);
+  
+  // Set time in Toronto timezone
+  eventDate = setTorontoTime(eventDate, hours, minutes, 0, 0);
   const endDate = new Date(eventDate);
   endDate.setHours(endDate.getHours() + 3);
 
@@ -255,20 +284,44 @@ function generateCalendarLinks(quote: FinalQuote, baseUrl: string): {
 }
 
 function generateCalendarEvent(quote: FinalQuote, artistName: string): string {
+  // Validate booking days exist
+  if (!quote.booking.days || quote.booking.days.length === 0) {
+    throw new Error('Booking has no service days');
+  }
+  
   // Use the first booking day for the calendar event
   const firstDay = quote.booking.days[0];
+  if (!firstDay) {
+    throw new Error('First booking day is missing');
+  }
+  
+  // Validate required fields
+  if (!firstDay.date) {
+    throw new Error('Booking day is missing date');
+  }
+  if (!firstDay.getReadyTime) {
+    throw new Error('Booking day is missing getReadyTime');
+  }
+  if (!firstDay.location) {
+    throw new Error('Booking day is missing location');
+  }
   
   // Parse date - it's stored in 'PPP' format (e.g., "January 1, 2024")
   // All dates/times should be in Toronto timezone
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    // Parse date string in 'PPP' format as Toronto time
-    const parsedDate = parseToronto(firstDay.date, 'PPP');
-    eventDate = isNaN(parsedDate.getTime()) ? parseToronto(new Date().toLocaleDateString('en-US', { timeZone: 'America/Toronto' }), 'PPP') : parsedDate;
+    try {
+      // Parse date string in 'PPP' format as Toronto time
+      const parsedDate = parseToronto(firstDay.date, 'PPP');
+      eventDate = parsedDate;
+    } catch (error) {
+      console.error(`Failed to parse date: ${firstDay.date}`, error);
+      eventDate = getTorontoNow();
+    }
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
   } else {
-    eventDate = new Date();
+    eventDate = getTorontoNow();
   }
 
   // Parse time - getReadyTime can be "10:00", "10:00 AM", "10:00:00", etc.
@@ -356,23 +409,26 @@ function formatBookingDetailsForCalendar(quote: FinalQuote): string {
   lines.push(``);
   lines.push(`Service Details:`);
   
-  quote.booking.days.forEach((day, index) => {
-    lines.push(`Day ${index + 1}: ${day.serviceName}`);
-    lines.push(`  Date: ${day.date}`);
-    lines.push(`  Time: ${day.getReadyTime}`);
-    lines.push(`  Location: ${day.location}`);
-    lines.push(`  Style: ${day.serviceOption}`);
-    if (day.addOns.length > 0) {
-      lines.push(`  Add-ons: ${day.addOns.join(', ')}`);
-    }
-  });
+  // Validate days exist before iterating
+  if (quote.booking.days && quote.booking.days.length > 0) {
+    quote.booking.days.forEach((day, index) => {
+      lines.push(`Day ${index + 1}: ${day.serviceName}`);
+      lines.push(`  Date: ${day.date}`);
+      lines.push(`  Time: ${day.getReadyTime}`);
+      lines.push(`  Location: ${day.location}`);
+      lines.push(`  Style: ${day.serviceOption}`);
+      if (day.addOns && day.addOns.length > 0) {
+        lines.push(`  Add-ons: ${day.addOns.join(', ')}`);
+      }
+    });
+  }
 
   if (quote.booking.trial) {
     lines.push(``);
     lines.push(`Bridal Trial: ${quote.booking.trial.date} at ${quote.booking.trial.time}`);
   }
 
-  if (quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0) {
+  if (quote.booking.bridalParty && quote.booking.bridalParty.services && quote.booking.bridalParty.services.length > 0) {
     lines.push(``);
     lines.push(`Bridal Party Services:`);
     quote.booking.bridalParty.services.forEach(service => {

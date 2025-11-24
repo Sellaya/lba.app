@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { formatToronto, getTorontoToday } from '@/lib/toronto-time';
+import { formatToronto, getTorontoToday, getTorontoNow } from '@/lib/toronto-time';
 import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Minus, AlertTriangle, Users, ArrowLeft, ArrowRight, Send, MapPin } from 'lucide-react';
 import { CalendarVector, SparkleVector } from '@/components/beauty-vectors';
 import { useToast } from '@/hooks/use-toast';

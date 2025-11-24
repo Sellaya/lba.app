@@ -268,6 +268,11 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
   }
 
   // Get the first event date
+  if (!quote.booking.days || quote.booking.days.length === 0) {
+    console.log(`Skipping event reminder email scheduling - booking ${quote.id} has no booking days`);
+    return;
+  }
+  
   const firstDay = quote.booking.days[0];
   if (!firstDay || !firstDay.date) {
     console.log(`Skipping event reminder email scheduling - booking ${quote.id} has no event date`);
@@ -277,12 +282,13 @@ export async function scheduleEventReminder24HEmail(quote: FinalQuote): Promise<
   // Parse the event date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const parsedDate = parseToronto(firstDay.date, 'PPP');
-    if (isNaN(parsedDate.getTime())) {
-      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
+    try {
+      const parsedDate = parseToronto(firstDay.date, 'PPP');
+      eventDate = parsedDate;
+    } catch (error) {
+      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`, error);
       return; // Don't schedule if date is invalid
     }
-    eventDate = parsedDate;
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
     if (isNaN(eventDate.getTime())) {
@@ -377,6 +383,11 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
   }
 
   // Get the first event date and time
+  if (!quote.booking.days || quote.booking.days.length === 0) {
+    console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} has no booking days`);
+    return;
+  }
+  
   const firstDay = quote.booking.days[0];
   if (!firstDay || !firstDay.date) {
     console.log(`Skipping appointment day reminder email scheduling - booking ${quote.id} has no event date`);
@@ -386,12 +397,13 @@ export async function scheduleAppointmentDayReminderEmail(quote: FinalQuote): Pr
   // Parse the event date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const parsedDate = parseToronto(firstDay.date, 'PPP');
-    if (isNaN(parsedDate.getTime())) {
-      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
+    try {
+      const parsedDate = parseToronto(firstDay.date, 'PPP');
+      eventDate = parsedDate;
+    } catch (error) {
+      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`, error);
       return; // Don't schedule if date is invalid
     }
-    eventDate = parsedDate;
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
     if (isNaN(eventDate.getTime())) {
@@ -572,12 +584,13 @@ export async function schedulePostAppointmentFollowupEmail(quote: FinalQuote): P
   // Parse the event date
   let eventDate: Date;
   if (typeof firstDay.date === 'string') {
-    const parsedDate = parseToronto(firstDay.date, 'PPP');
-    if (isNaN(parsedDate.getTime())) {
-      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`);
+    try {
+      const parsedDate = parseToronto(firstDay.date, 'PPP');
+      eventDate = parsedDate;
+    } catch (error) {
+      console.error(`Invalid date format for booking ${quote.id}: ${firstDay.date}`, error);
       return; // Don't schedule if date is invalid
     }
-    eventDate = parsedDate;
   } else if (firstDay.date && typeof firstDay.date === 'object' && 'getTime' in firstDay.date) {
     eventDate = new Date(firstDay.date as Date);
     if (isNaN(eventDate.getTime())) {
