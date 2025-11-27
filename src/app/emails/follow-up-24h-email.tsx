@@ -60,7 +60,7 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(0, 0%, 0%)',
+  backgroundColor: '#000000', // Use hex for better email client compatibility
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '18px',
@@ -68,8 +68,12 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+  border: 'none',
 };
 
 const footer = {
@@ -124,9 +128,15 @@ const FollowUp24HEmailTemplate: React.FC<Readonly<FollowUp24HEmailProps>> = ({ q
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: 'hsl(240, 5.9%, 10%)', fontSize: '18px', fontWeight: 600 }}>
               Ready to secure your booking?
             </p>
-            <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              View Quote & Book Now
-            </a>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
+                    View Quote & Book Now
+                  </a>
+                </td>
+              </tr>
+            </table>
             <p style={{ fontSize: '14px', color: '#777', marginTop: '16px', marginBottom: 0 }}>
               Click the button above to view your personalized quote and complete your booking in just a few minutes.
             </p>

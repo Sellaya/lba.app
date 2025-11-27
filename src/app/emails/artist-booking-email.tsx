@@ -114,16 +114,19 @@ const footer = {
 };
 
 const buttonStyle = {
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
   padding: '12px 24px',
-  backgroundColor: 'hsl(0, 0%, 0%)',
+  backgroundColor: '#000000', // Use hex for better email client compatibility
   color: '#ffffff',
   textDecoration: 'none',
   borderRadius: '8px',
   fontWeight: '600',
   fontSize: '15px',
-  margin: '8px 4px',
+  margin: '8px auto',
+  width: '100%',
+  maxWidth: '280px',
   textAlign: 'center' as const,
+  border: 'none',
 };
 
 const calendarButtonContainer = {
@@ -305,19 +308,43 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
             <p style={{...paragraph, fontSize: '14px', marginBottom: '20px', textAlign: 'center' as const, color: '#666'}}>
               Click one of the buttons below to add this booking to your calendar:
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
-              <a href={calendarLinks.google} target="_blank" rel="noopener noreferrer" style={buttonStyle}>
-                📅 Google Calendar
-              </a>
-              <a href={calendarLinks.outlook} target="_blank" rel="noopener noreferrer" style={buttonStyle}>
-                📅 Outlook Calendar
-              </a>
-              <a href={calendarLinks.yahoo} target="_blank" rel="noopener noreferrer" style={buttonStyle}>
-                📅 Yahoo Calendar
-              </a>
-              <a href={calendarLinks.ics} style={{...buttonStyle, backgroundColor: '#6c757d'}}>
-                📥 Download .ics File
-              </a>
+            <div style={{ textAlign: 'center' as const, width: '100%' }}>
+              <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '8px auto', width: '100%', maxWidth: '280px' }}>
+                <tr>
+                  <td style={{ textAlign: 'center' as const, padding: '8px 0' }}>
+                    <a href={calendarLinks.google} target="_blank" rel="noopener noreferrer" style={buttonStyle}>
+                      📅 Google Calendar
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '8px auto', width: '100%', maxWidth: '280px' }}>
+                <tr>
+                  <td style={{ textAlign: 'center' as const, padding: '8px 0' }}>
+                    <a href={calendarLinks.outlook} target="_blank" rel="noopener noreferrer" style={buttonStyle}>
+                      📅 Outlook Calendar
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '8px auto', width: '100%', maxWidth: '280px' }}>
+                <tr>
+                  <td style={{ textAlign: 'center' as const, padding: '8px 0' }}>
+                    <a href={calendarLinks.yahoo} target="_blank" rel="noopener noreferrer" style={buttonStyle}>
+                      📅 Yahoo Calendar
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '8px auto', width: '100%', maxWidth: '280px' }}>
+                <tr>
+                  <td style={{ textAlign: 'center' as const, padding: '8px 0' }}>
+                    <a href={calendarLinks.ics} style={{...buttonStyle, backgroundColor: '#6c757d'}}>
+                      📥 Download .ics File
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
           </div>
         )}

@@ -60,7 +60,7 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(0, 0%, 0%)',
+  backgroundColor: '#000000', // Use hex for better email client compatibility
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -68,8 +68,12 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+  border: 'none',
 };
 
 const footer = {
@@ -123,9 +127,15 @@ const FollowUp3HEmailTemplate: React.FC<Readonly<FollowUp3HEmailProps>> = ({ quo
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: 'hsl(240, 5.9%, 10%)', fontSize: '18px' }}>
               Ready to proceed?
             </p>
-            <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              View Your Quote & Complete Booking
-            </a>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
+                    View Your Quote & Complete Booking
+                  </a>
+                </td>
+              </tr>
+            </table>
             <p style={{ fontSize: '14px', color: '#777', marginTop: '16px', marginBottom: 0 }}>
               This link will take you directly to your personalized quote page.
             </p>

@@ -563,7 +563,8 @@ export async function generateQuoteAction(
                 lead: quoteLead,
                 team: quoteTeam,
             },
-            status: 'quoted'
+            status: 'quoted',
+            quoteGeneratedAt: getTorontoNow().toISOString() // Track when client took/generated the quote
         };
         
         // Instead of saving here and redirecting, return the quote to the client.

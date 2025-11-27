@@ -114,19 +114,19 @@ const FinalPaymentConfirmationEmailTemplate: React.FC<Readonly<FinalPaymentConfi
           </p>
 
           <p style={{...paragraph, fontSize: '18px', fontWeight: 600, color: 'hsl(0, 0%, 0%)', textAlign: 'center' as const, marginTop: '40px'}}>
-            We Will Miss You! 💕
+            We're Excited to See You! ✨
           </p>
 
           <p style={{...paragraph, textAlign: 'center' as const, fontStyle: 'italic', color: '#555'}}>
-            While we're counting down the days until we see you, we also want you to know that we will miss having you as part of our Looks by Anum family after your special day. Your presence and trust have been a true gift to us.
+            We're counting down the days until we see you and help make your special day absolutely perfect. Your trust in us means everything, and we're committed to delivering an experience you'll cherish.
           </p>
 
           <p style={{...paragraph, textAlign: 'center' as const, fontWeight: 600, color: 'hsl(0, 0%, 0%)'}}>
-            We are already looking forward to your next order with us!
+            We'd Love to Work With You Again!
           </p>
 
           <p style={paragraph}>
-            Whether it's another special occasion, a photoshoot, or simply a day when you want to feel extra beautiful, we would be honored to be your makeup artists again. Your journey with us doesn't end here – it's just the beginning of a beautiful relationship.
+            Whether it's another special occasion, a photoshoot, or simply a day when you want to feel extra beautiful, we would be honored to be your makeup artists again. We're here for all your future beauty needs.
           </p>
 
           {quote.contractSignedDate && quote.selectedQuote && (
@@ -145,22 +145,31 @@ const FinalPaymentConfirmationEmailTemplate: React.FC<Readonly<FinalPaymentConfi
             </div>
           )}
 
-          <div style={{...section, paddingTop: 0, textAlign: 'center' as const}}>
-            <a href={quoteLink} style={{
-              ...highlightBox,
-              display: 'inline-block',
-              textDecoration: 'none',
-              backgroundColor: 'hsl(0, 0%, 0%)',
-              color: '#ffffff',
-              border: 'none',
-              padding: '18px 36px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
-            }}>
-              View Your Booking Details
-            </a>
+          <div style={{...section, paddingTop: 0, textAlign: 'center' as const, width: '100%'}}>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={quoteLink} style={{
+                    ...highlightBox,
+                    display: 'block',
+                    textDecoration: 'none',
+                    backgroundColor: '#000000', // Use hex for better email client compatibility
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '18px 36px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+                    width: '100%',
+                    maxWidth: '280px',
+                    margin: '0 auto',
+                  }}>
+                    View Your Booking Details
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
 
           <p style={{...paragraph, textAlign: 'center' as const, marginTop: '40px', fontSize: '15px'}}>

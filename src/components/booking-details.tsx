@@ -603,6 +603,114 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               )}
             </div>
 
+            {/* Quote Generation Date & Time */}
+            {(() => {
+              // Use quoteGeneratedAt if available, otherwise fall back to booking createdAt
+              let quoteDate: Date | null = null;
+              
+              // First, try to use quoteGeneratedAt from the quote
+              if (quote.quoteGeneratedAt) {
+                try {
+                  quoteDate = new Date(quote.quoteGeneratedAt);
+                  if (isNaN(quoteDate.getTime())) {
+                    quoteDate = null;
+                  }
+                } catch (e) {
+                  quoteDate = null;
+                }
+              }
+              
+              // Fallback to bookingDoc.createdAt if quoteGeneratedAt is not available
+              if (!quoteDate && bookingDoc?.createdAt) {
+                try {
+                  if (bookingDoc.createdAt instanceof Date) {
+                    quoteDate = bookingDoc.createdAt;
+                  } else if (bookingDoc.createdAt && typeof bookingDoc.createdAt === 'object' && 'toDate' in bookingDoc.createdAt) {
+                    quoteDate = (bookingDoc.createdAt as any).toDate();
+                  } else if (typeof bookingDoc.createdAt === 'string') {
+                    quoteDate = new Date(bookingDoc.createdAt);
+                  }
+                  
+                  if (quoteDate && isNaN(quoteDate.getTime())) {
+                    quoteDate = null;
+                  }
+                } catch (e) {
+                  console.error('Error parsing booking createdAt:', e);
+                  quoteDate = null;
+                }
+              }
+              
+              // If still no date, don't show the section
+              if (!quoteDate) {
+                return null;
+              }
+              
+              return (
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quote Generated</p>
+                  </div>
+                  <p className="text-sm text-foreground font-medium">
+                    {formatToronto(quoteDate, 'PPP p')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Date and time when the client took/generated this quote
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Consultation Request */}
+            {quote.consultationRequest && (
+              <div className="pt-4 border-t">
+                <div className="flex items-center gap-2 mb-3">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Consultation Request</p>
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 ml-auto">
+                    Submitted
+                  </Badge>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <span className="text-muted-foreground min-w-[100px]">WhatsApp:</span>
+                    <a 
+                      href={`https://wa.me/${quote.consultationRequest.whatsappNumber.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-black hover:underline font-medium"
+                    >
+                      {quote.consultationRequest.whatsappNumber}
+                    </a>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-muted-foreground min-w-[100px]">Preferred Date:</span>
+                    <span className="text-black">{quote.consultationRequest.preferredDate}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-muted-foreground min-w-[100px]">Preferred Time:</span>
+                    <span className="text-black">{quote.consultationRequest.preferredTime}</span>
+                  </div>
+                  {quote.consultationRequest.message && (
+                    <div className="pt-2 border-t">
+                      <p className="text-muted-foreground mb-1">Message:</p>
+                      <p className="text-black whitespace-pre-wrap bg-muted/30 p-2 rounded-md text-xs">
+                        {quote.consultationRequest.message}
+                      </p>
+                    </div>
+                  )}
+                  {quote.consultationRequest.submittedAt && (
+                    <div className="flex items-start gap-2 pt-1">
+                      <span className="text-muted-foreground min-w-[100px] text-xs">Submitted:</span>
+                      <span className="text-muted-foreground text-xs">
+                        {formatToronto(new Date(quote.consultationRequest.submittedAt), 'PPP p')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Service Address */}
             {quote.booking.address && (() => {
               const fullAddress = `${quote.booking.address.street}, ${quote.booking.address.city}, ${quote.booking.address.province} ${quote.booking.address.postalCode}`;

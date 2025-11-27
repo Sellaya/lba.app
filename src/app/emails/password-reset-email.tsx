@@ -60,7 +60,10 @@ const buttonStyle = {
   fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   padding: '14px 28px',
   fontFamily: "'Alegreya', serif",
 };
@@ -102,9 +105,15 @@ export default function PasswordResetEmailTemplate({ resetLink }: PasswordResetE
         </p>
 
         <div style={buttonContainer}>
-          <a href={resetLink} style={buttonStyle}>
-            Reset Password
-          </a>
+          <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+            <tr>
+              <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                <a href={resetLink} style={buttonStyle}>
+                  Reset Password
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
 
         <p style={warning}>

@@ -82,8 +82,12 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '16px 28px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   boxShadow: '0 4px 14px rgba(74, 105, 255, 0.25)',
+  border: 'none',
 };
 
 const footer = {
@@ -124,9 +128,15 @@ const AdminNotificationEmailTemplate: React.FC<Readonly<AdminNotificationEmailPr
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: '#2d3a7c' }}>
               Please visit the admin dashboard to review the screenshot and approve the payment.
             </p>
-            <a href={`${baseUrl}/admin`} target="_blank" rel="noopener noreferrer" style={button}>
-                Go to Admin Dashboard
-            </a>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={`${baseUrl}/admin`} target="_blank" rel="noopener noreferrer" style={button}>
+                    Go to Admin Dashboard
+                  </a>
+                </td>
+              </tr>
+            </table>
         </div>
       </div>
       
@@ -137,7 +147,7 @@ const AdminNotificationEmailTemplate: React.FC<Readonly<AdminNotificationEmailPr
       </p>
       
       <div style={footer}>
-        <p>This is an automated notification from the GlamBook Pro system.</p>
+        <p>This is an automated notification from the Looks by Anum booking system.</p>
         <p>© 2025 Looks by Anum | Product by <a href="https://www.instagram.com/sellayadigital" target="_blank" rel="noopener noreferrer" style={{color: 'hsl(0, 0%, 0%)', textDecoration: 'underline', fontWeight: '500'}}>Sellaya</a></p>
       </div>
     </div>

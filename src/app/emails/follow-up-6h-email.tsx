@@ -69,7 +69,7 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(0, 0%, 0%)',
+  backgroundColor: '#000000', // Use hex for better email client compatibility
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -77,9 +77,12 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '8px auto',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
-  margin: '8px',
+  border: 'none',
 };
 
 const contactButton = {
@@ -91,13 +94,16 @@ const contactButton = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '8px auto',
   boxShadow: '0 4px 14px rgba(37, 211, 102, 0.25)',
-  margin: '8px',
+  border: 'none',
 };
 
 const emailButton = {
-  backgroundColor: 'hsl(240, 10%, 3.9%)',
+  backgroundColor: '#212529', // Use hex instead of hsl for better email client compatibility
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -105,9 +111,12 @@ const emailButton = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '8px auto',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-  margin: '8px',
+  border: 'none',
 };
 
 const footer = {
@@ -156,9 +165,15 @@ const FollowUp6HEmailTemplate: React.FC<Readonly<FollowUp6HEmailProps>> = ({ quo
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: 'hsl(240, 5.9%, 10%)', fontSize: '18px', fontWeight: 600 }}>
               Ready to secure your booking?
             </p>
-            <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              Complete Your Booking Now
-            </a>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
+                    Complete Your Booking Now
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
 
           <div style={{ padding: '24px', border: '1px solid hsl(0, 0%, 85%)', borderRadius: '12px', backgroundColor: '#ffffff', marginTop: '32px' }}>
@@ -168,13 +183,25 @@ const FollowUp6HEmailTemplate: React.FC<Readonly<FollowUp6HEmailProps>> = ({ quo
             <p style={{...paragraph, textAlign: 'center', marginBottom: '20px', fontSize: '15px'}}>
               If you have any questions or need guidance, feel free to reach out to Anum directly. She's here to help you make the best decision for your special day.
             </p>
-            <div style={{ textAlign: 'center', marginTop: '24px' }}>
-              <a href={whatsappLink} target="_blank" rel="noopener noreferrer" style={contactButton}>
-                💬 WhatsApp Anum
-              </a>
-              <a href={emailLink} style={emailButton}>
-                ✉️ Email Anum
-              </a>
+            <div style={{ textAlign: 'center', marginTop: '24px', width: '100%' }}>
+              <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+                <tr>
+                  <td style={{ textAlign: 'center' as const, padding: '8px 0' }}>
+                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer" style={contactButton}>
+                      💬 WhatsApp Anum
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '8px auto 0', width: '100%', maxWidth: '280px' }}>
+                <tr>
+                  <td style={{ textAlign: 'center' as const, padding: '8px 0' }}>
+                    <a href={emailLink} style={emailButton}>
+                      ✉️ Email Anum
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
           </div>
         </div>

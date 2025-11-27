@@ -70,16 +70,20 @@ const instructionBox = {
 };
 
 const button = {
-  backgroundColor: '#ffffff',
+  backgroundColor: '#000000', // Use hex for better email client compatibility
   borderRadius: '8px',
-  color: 'hsl(0, 0%, 0%)',
+  color: '#ffffff', // Fixed: should be white text on black background
   fontSize: '18px',
   fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+  border: 'none',
 };
 
 const footer = {
@@ -163,9 +167,15 @@ const FollowUp6DEmailTemplate: React.FC<Readonly<FollowUp6DEmailProps>> = ({ quo
             <p style={{ ...paragraph, marginTop: 0, marginBottom: '24px', color: 'hsl(240, 5.9%, 10%)', fontSize: '18px', fontWeight: 600 }}>
               Don't miss out on this exclusive offer!
             </p>
-            <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              Book Now & Save 5%
-            </a>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
+                    View Your Quote & Book Now
+                  </a>
+                </td>
+              </tr>
+            </table>
             <p style={{ fontSize: '13px', color: '#999', marginTop: '16px', marginBottom: 0 }}>
               This offer is valid for the next 48 hours only. Book now to take advantage of this special discount!
             </p>

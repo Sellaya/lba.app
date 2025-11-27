@@ -40,6 +40,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { formatPrice } from '@/lib/price-format';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' | 'interac'): { text: string; variant: 'secondary' | 'destructive' | 'default' } {
     switch (status) {
@@ -65,31 +66,6 @@ function getFinalPaymentStatus(finalPayment: PaymentDetails['finalPayment']): { 
 }
 
 
-function getTimeToEvent(eventDateStr: string): string {
-    try {
-        const eventDate = parseToronto(eventDateStr, 'PPP');
-        if (isNaN(eventDate.getTime())) {
-            return "Invalid date";
-        }
-        const today = getTorontoToday();
-        const days = differenceInDaysToronto(eventDate, today);
-
-        if (days < 0) {
-            return `Passed`;
-        }
-        if (days === 0) {
-            return "Today";
-        }
-        if (days === 1) {
-            return "Tomorrow";
-        }
-        return `${days} days`;
-    } catch (e) {
-        return "Invalid date";
-    }
-}
-
-
 export default function AdminDashboard() {
   const [bookings, setBookings] = useState<BookingDocument[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,9 +79,49 @@ export default function AdminDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(getTorontoNow()); // Track current time for real-time updates
+  const [timeFilter, setTimeFilter] = useState<'all' | '24h' | '3d' | '7d'>('all'); // Time filter for quotes
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+
+  // Update current time every minute for real-time day calculations
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setCurrentTime(getTorontoNow());
+    }, 60000); // Update every minute
+    return () => clearInterval(timeInterval);
+  }, []);
+
+  // Real-time function to calculate days until event
+  // This updates dynamically based on currentTime state
+  const getTimeToEvent = useMemo(() => {
+    return (eventDateStr: string): string => {
+      try {
+        const eventDate = parseToronto(eventDateStr, 'PPP');
+        if (isNaN(eventDate.getTime())) {
+          return "Invalid date";
+        }
+        // Use current time state to calculate today's date dynamically
+        const todayDate = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+        const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+        const days = differenceInDaysToronto(eventDateOnly, todayDate);
+
+        if (days < 0) {
+          return `Passed`;
+        }
+        if (days === 0) {
+          return "Today";
+        }
+        if (days === 1) {
+          return "Tomorrow";
+        }
+        return `${days} days`;
+      } catch (e) {
+        return "Invalid date";
+      }
+    };
+  }, [currentTime]); // Recalculate when currentTime changes
 
   // Check if welcome message should be shown (only once after login)
   useEffect(() => {
@@ -168,6 +184,20 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Update current time every 24 hours for real-time day calculations
+  // This ensures days remaining updates accurately for all current bookings
+  useEffect(() => {
+    // Initial update to apply to all current bookings immediately
+    setCurrentTime(getTorontoNow());
+    
+    // Update every 24 hours (86400000 milliseconds)
+    const timeInterval = setInterval(() => {
+      setCurrentTime(getTorontoNow());
+    }, 86400000); // Update every 24 hours
+    
+    return () => clearInterval(timeInterval);
+  }, []);
+
   // Auto-hide welcome message after 4 seconds
   useEffect(() => {
     if (showWelcome) {
@@ -189,6 +219,7 @@ export default function AdminDashboard() {
   }, [bookings]);
 
   // Categorize bookings by status
+  // Uses currentTime for real-time categorization
   const categorizedBookings = useMemo(() => {
     if (!sortedBookings) return {
       all: [],
@@ -199,7 +230,8 @@ export default function AdminDashboard() {
       cancelled: [],
     };
 
-    const today = getTorontoToday();
+    // Use currentTime to calculate today's date dynamically
+    const today = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
 
     return {
       all: sortedBookings,
@@ -258,18 +290,77 @@ export default function AdminDashboard() {
       }),
       cancelled: sortedBookings.filter(booking => booking.finalQuote.status === 'cancelled'),
     };
-  }, [sortedBookings]);
+  }, [sortedBookings, currentTime]); // Recalculate when currentTime changes for real-time categorization
+
+  // Helper function to get quote generation date from a booking
+  const getQuoteDate = (booking: BookingDocument): Date | null => {
+    // Try quoteGeneratedAt first, then fall back to createdAt
+    if (booking.finalQuote.quoteGeneratedAt) {
+      try {
+        const date = new Date(booking.finalQuote.quoteGeneratedAt);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      } catch (e) {
+        // Continue to fallback
+      }
+    }
+    
+    // Fallback to booking createdAt
+    if (booking.createdAt) {
+      try {
+        if (booking.createdAt instanceof Date) {
+          return booking.createdAt;
+        } else if (booking.createdAt && typeof booking.createdAt === 'object' && 'toDate' in booking.createdAt) {
+          return (booking.createdAt as any).toDate();
+        } else if (typeof booking.createdAt === 'string') {
+          return new Date(booking.createdAt);
+        }
+      } catch (e) {
+        // Return null if parsing fails
+      }
+    }
+    
+    return null;
+  };
 
   const filteredBookings = useMemo(() => {
-    const categoryBookings = categorizedBookings[activeTab as keyof typeof categorizedBookings] || categorizedBookings.all;
+    let categoryBookings = categorizedBookings[activeTab as keyof typeof categorizedBookings] || categorizedBookings.all;
     
+    // Apply time filter
+    if (timeFilter !== 'all') {
+      const now = currentTime; // Use currentTime state for consistency
+      let cutoffDate: Date;
+      
+      switch (timeFilter) {
+        case '24h':
+          cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '3d':
+          cutoffDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          cutoffDate = new Date(0); // Show all
+      }
+      
+      categoryBookings = categoryBookings.filter(booking => {
+        const quoteDate = getQuoteDate(booking);
+        if (!quoteDate) return false; // Exclude bookings without a valid date
+        return quoteDate >= cutoffDate;
+      });
+    }
+    
+    // Apply search filter
     if (!searchTerm) return categoryBookings;
     const lowercasedTerm = searchTerm.toLowerCase();
     return categoryBookings.filter(booking => 
         booking.id.toLowerCase().includes(lowercasedTerm) || 
         booking.finalQuote.contact.name.toLowerCase().includes(lowercasedTerm)
     );
-  }, [searchTerm, categorizedBookings, activeTab]);
+  }, [searchTerm, categorizedBookings, activeTab, timeFilter, currentTime]);
 
   // Calculate accounting metrics
   const accountingMetrics = useMemo(() => {
@@ -827,15 +918,28 @@ export default function AdminDashboard() {
                     <CardTitle>Bookings Management</CardTitle>
                     <CardDescription>Organize and manage all your bookings by status. Sorted by newest first.</CardDescription>
                 </div>
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Search by name or ID..."
-                        className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Select value={timeFilter} onValueChange={(value: 'all' | '24h' | '3d' | '7d') => setTimeFilter(value)}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Filter by time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="24h">Last 24 Hours</SelectItem>
+                            <SelectItem value="3d">Last 3 Days</SelectItem>
+                            <SelectItem value="7d">Last 7 Days</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Search by name or ID..."
+                            className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
             </div>
           </CardHeader>
@@ -1073,6 +1177,7 @@ function BookingsTable({
                const hasPromoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
                const promoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
                const discountAmount = (booking.finalQuote.paymentDetails?.discountAmount || 0) + (booking.finalQuote.paymentDetails?.finalPayment?.discountAmount || 0);
+               const hasConsultationRequest = !!booking.finalQuote.consultationRequest;
                return (
                   <TableRow key={booking.id} className={selectedBookings.has(booking.id) ? 'bg-muted/50' : ''}>
                     <TableCell>
@@ -1086,7 +1191,14 @@ function BookingsTable({
                     <TableCell className="min-w-[120px]">
                       <div className="flex items-center gap-2">
                         <div>
-                          <div className="font-medium text-xs sm:text-sm">{booking.finalQuote.contact.name}</div>
+                          <div className="font-medium text-xs sm:text-sm flex items-center gap-1">
+                            {booking.finalQuote.contact.name}
+                            {hasConsultationRequest && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0.5" title="Consultation request submitted">
+                                📞 Call Request
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground truncate max-w-[100px] sm:max-w-none">{booking.id}</div>
                         </div>
                         {hasPromoCode && (

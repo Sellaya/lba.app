@@ -60,7 +60,7 @@ const highlightBox = {
 };
 
 const button = {
-  backgroundColor: 'hsl(0, 0%, 0%)',
+  backgroundColor: '#000000', // Use hex for better email client compatibility
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -68,8 +68,12 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 36px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+  border: 'none',
 };
 
 const footer = {
@@ -111,9 +115,15 @@ const PostAppointmentFollowupEmailTemplate: React.FC<Readonly<PostAppointmentFol
             <p style={{...paragraph, marginBottom: '24px', fontSize: '15px'}}>
               Upload your favorite photos from today's appointment using the link below. With your permission, we'd be happy to share your pictures on our social media.
             </p>
-            <a href={uploadLink} style={button}>
-              Upload Your Photos
-            </a>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={uploadLink} style={button}>
+                    Upload Your Photos
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
 
           <p style={paragraph}>

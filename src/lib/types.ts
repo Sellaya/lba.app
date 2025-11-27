@@ -151,6 +151,14 @@ export type FinalQuote = {
   paymentDetails?: PaymentDetails;
   status: 'quoted' | 'confirmed' | 'cancelled';
   contractSignedDate?: string; // ISO date string when contract was signed
+  quoteGeneratedAt?: string; // ISO date string when the quote was generated/taken by client
+  consultationRequest?: {
+    whatsappNumber: string;
+    preferredDate: string;
+    preferredTime: string;
+    message: string;
+    submittedAt: string; // ISO date string when request was submitted
+  };
 };
 
 export type ActionState = {

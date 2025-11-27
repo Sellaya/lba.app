@@ -66,7 +66,7 @@ const sectionTitle = {
 };
 
 const button = {
-  backgroundColor: 'hsl(0, 0%, 0%)', // --primary
+  backgroundColor: '#000000', // Use hex for better email client compatibility
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -74,8 +74,12 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+  border: 'none',
 };
 
 const infoCard = {
@@ -138,8 +142,12 @@ const whatsappButton = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   padding: '18px 32px',
-  display: 'inline-block',
+  display: 'block', // Changed from inline-block for better email client support
+  width: '100%',
+  maxWidth: '280px',
+  margin: '0 auto',
   boxShadow: '0 4px 14px rgba(37, 211, 102, 0.25)',
+  border: 'none',
 };
 
 export default function BookCallAdminEmail({
@@ -245,14 +253,26 @@ export default function BookCallAdminEmail({
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', paddingTop: '20px', borderTop: '1px solid hsl(0, 0%, 85%)' }}>
-          <a href={whatsappLink} target="_blank" rel="noopener noreferrer" style={whatsappButton}>
-            Contact Customer on WhatsApp
-          </a>
+        <div style={{ textAlign: 'center', paddingTop: '20px', borderTop: '1px solid hsl(0, 0%, 85%)', width: '100%' }}>
+          <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+            <tr>
+              <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                <a href={whatsappLink} target="_blank" rel="noopener noreferrer" style={whatsappButton}>
+                  Contact Customer on WhatsApp
+                </a>
+              </td>
+            </tr>
+          </table>
           <div style={{ marginTop: '20px' }}>
-            <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
-              View Full Quote & Booking
-            </a>
+            <table role="presentation" cellSpacing="0" cellPadding="0" border={0} style={{ margin: '0 auto', width: '100%', maxWidth: '280px' }}>
+              <tr>
+                <td style={{ textAlign: 'center' as const, padding: '0' }}>
+                  <a href={quoteLink} target="_blank" rel="noopener noreferrer" style={button}>
+                    View Full Quote & Booking
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
         </div>
 
