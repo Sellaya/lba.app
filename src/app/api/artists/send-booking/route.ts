@@ -126,10 +126,14 @@ function formatBookingDetailsForWhatsApp(quote: FinalQuote): string {
   }
 
   if (quote.booking.trial) {
+    const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+    const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                    trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
     lines.push(``);
     lines.push(`*Bridal Trial:*`);
     lines.push(`📅 Date: ${quote.booking.trial.date}`);
     lines.push(`⏰ Time: ${quote.booking.trial.time}`);
+    lines.push(`💄 Service: ${trialServiceOptionLabel}`);
   }
 
   if (quote.booking.bridalParty && quote.booking.bridalParty.services && quote.booking.bridalParty.services.length > 0) {
@@ -424,8 +428,11 @@ function formatBookingDetailsForCalendar(quote: FinalQuote): string {
   }
 
   if (quote.booking.trial) {
+    const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+    const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                    trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
     lines.push(``);
-    lines.push(`Bridal Trial: ${quote.booking.trial.date} at ${quote.booking.trial.time}`);
+    lines.push(`Bridal Trial: ${quote.booking.trial.date} at ${quote.booking.trial.time} (${trialServiceOptionLabel})`);
   }
 
   if (quote.booking.bridalParty && quote.booking.bridalParty.services && quote.booking.bridalParty.services.length > 0) {

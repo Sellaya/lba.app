@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { SERVICES, ADDON_PRICES, MOBILE_LOCATION_OPTIONS, BRIDAL_PARTY_PRICES } from '@/lib/services';
+import { SERVICES, ADDON_PRICES, MOBILE_LOCATION_OPTIONS, BRIDAL_PARTY_PRICES, BRIDAL_TRIAL_PRICES } from '@/lib/services';
 
 /**
  * Initialize pricing_config table with default values from code
@@ -141,6 +141,18 @@ EXECUTE FUNCTION update_pricing_config_updated_at();
           .split(/(?=[A-Z])/)
           .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
           .join(' '),
+        price_lead: prices.lead,
+        price_team: prices.team,
+      });
+    });
+
+    // Bridal Trial Prices
+    Object.entries(BRIDAL_TRIAL_PRICES).forEach(([key, prices]) => {
+      pricingData.push({
+        category: 'bridal_trial',
+        item_id: key,
+        item_name: key === 'makeup-hair' ? 'Makeup & Hair' : 
+                   key === 'makeup-only' ? 'Makeup Only' : 'Hair Only',
         price_lead: prices.lead,
         price_team: prices.team,
       });

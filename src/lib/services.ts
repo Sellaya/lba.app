@@ -139,7 +139,15 @@ export const ADDON_PRICES = {
     jewellerySetting: { lead: 50, team: 50 },
     sareeDraping: { lead: 50, team: 50 },
     hijabSetting: { lead: 30, team: 30 },
+    // Legacy bridalTrial pricing (for backward compatibility with existing bookings)
     bridalTrial: { lead: 250, team: 200 },
+};
+
+// Bridal trial pricing based on service option
+export const BRIDAL_TRIAL_PRICES = {
+    'makeup-hair': { lead: 250, team: 200 },
+    'makeup-only': { lead: 150, team: 120 },
+    'hair-only': { lead: 150, team: 120 },
 };
 
 export const BRIDAL_PARTY_PRICES = {

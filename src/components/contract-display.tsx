@@ -46,9 +46,14 @@ export function ContractDisplay({
             </ul>
           </li>
         ))}
-        {quote.booking.trial && (
-          <li><strong>Bridal Trial</strong> on <strong>{quote.booking.trial.date}</strong> at <strong>{quote.booking.trial.time}</strong>.</li>
-        )}
+        {quote.booking.trial && (() => {
+          const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+          const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                          trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
+          return (
+            <li key="trial"><strong>Bridal Trial</strong> on <strong>{quote.booking.trial.date}</strong> at <strong>{quote.booking.trial.time}</strong> ({trialServiceOptionLabel}).</li>
+          );
+        })()}
         {quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0 && (
           <li>
             <strong>Bridal Party Services</strong>:

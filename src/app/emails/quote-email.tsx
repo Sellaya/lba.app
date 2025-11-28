@@ -297,12 +297,19 @@ const QuoteEmailTemplate: React.FC<Readonly<QuoteEmailTemplateProps>> = ({ quote
               </div>
             ))}
 
-            {quote.booking.trial && (
-               <div style={bookingSummaryCard}>
-                 <p style={bookingSummaryTitle}>Bridal Trial</p>
-                 <p style={bookingSummarySubtitle}>{quote.booking.trial.date} at {quote.booking.trial.time}</p>
-              </div>
-            )}
+            {quote.booking.trial && (() => {
+              // Use trial's service option if available, otherwise default
+              const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+              const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                              trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
+              return (
+                <div style={bookingSummaryCard}>
+                  <p style={bookingSummaryTitle}>Bridal Trial</p>
+                  <p style={bookingSummarySubtitle}>{quote.booking.trial.date} at {quote.booking.trial.time}</p>
+                  <p style={{...bookingSummarySubtitle, fontSize: '13px', marginTop: '4px', color: '#666'}}>Service: {trialServiceOptionLabel}</p>
+                </div>
+              );
+            })()}
 
             {quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0 && (
               <div style={bookingSummaryCard}>

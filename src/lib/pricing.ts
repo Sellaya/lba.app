@@ -1,7 +1,7 @@
 import { supabaseAdmin } from './supabase/server';
-import { SERVICES as DEFAULT_SERVICES, ADDON_PRICES as DEFAULT_ADDON_PRICES, MOBILE_LOCATION_OPTIONS as DEFAULT_MOBILE_LOCATION_OPTIONS, BRIDAL_PARTY_PRICES as DEFAULT_BRIDAL_PARTY_PRICES } from './services';
+import { SERVICES as DEFAULT_SERVICES, ADDON_PRICES as DEFAULT_ADDON_PRICES, MOBILE_LOCATION_OPTIONS as DEFAULT_MOBILE_LOCATION_OPTIONS, BRIDAL_PARTY_PRICES as DEFAULT_BRIDAL_PARTY_PRICES, BRIDAL_TRIAL_PRICES as DEFAULT_BRIDAL_TRIAL_PRICES } from './services';
 import { SERVICE_OPTION_DETAILS as DEFAULT_SERVICE_OPTION_DETAILS } from './types';
-import type { Service, DualPrice } from './types';
+import type { Service, DualPrice, ServiceOption } from './types';
 import type { MOBILE_LOCATION_IDS } from './services';
 
 // Cache for pricing data
@@ -10,6 +10,7 @@ let pricingCache: {
   addons: Map<string, DualPrice>;
   mobileLocations: Map<string, DualPrice>;
   bridalParty: Map<string, DualPrice>;
+  bridalTrial: Map<string, DualPrice>; // Key is service option (makeup-hair, makeup-only, hair-only)
   serviceOptions: Map<string, { priceModifier: number; teamPriceModifier: number }>;
   lastFetch: number | null;
 } = {
@@ -17,6 +18,7 @@ let pricingCache: {
   addons: new Map(),
   mobileLocations: new Map(),
   bridalParty: new Map(),
+  bridalTrial: new Map(),
   serviceOptions: new Map(),
   lastFetch: null,
 };
@@ -59,6 +61,7 @@ async function fetchPricingFromDB(): Promise<void> {
     pricingCache.addons.clear();
     pricingCache.mobileLocations.clear();
     pricingCache.bridalParty.clear();
+    pricingCache.bridalTrial.clear();
     pricingCache.serviceOptions.clear();
 
     // Populate cache
@@ -80,6 +83,9 @@ async function fetchPricingFromDB(): Promise<void> {
           break;
         case 'bridal_party':
           pricingCache.bridalParty.set(item.item_id, price);
+          break;
+        case 'bridal_trial':
+          pricingCache.bridalTrial.set(item.item_id, price);
           break;
         case 'service_option':
           pricingCache.serviceOptions.set(item.item_id, {
@@ -283,6 +289,38 @@ export async function getServiceOptionDetails(): Promise<typeof DEFAULT_SERVICE_
 }
 
 /**
+ * Get bridal trial price based on service option (with fallback to default)
+ */
+export async function getBridalTrialPrice(
+  serviceOption: ServiceOption,
+  tier: 'lead' | 'team'
+): Promise<number> {
+  const cache = await getPricing();
+  const cachedPrice = cache.bridalTrial.get(serviceOption);
+  if (cachedPrice) {
+    return cachedPrice[tier];
+  }
+
+  // Fallback to default
+  return DEFAULT_BRIDAL_TRIAL_PRICES[serviceOption]?.[tier] || 0;
+}
+
+/**
+ * Get all bridal trial prices
+ */
+export async function getBridalTrialPrices(): Promise<typeof DEFAULT_BRIDAL_TRIAL_PRICES> {
+  const cache = await getPricing();
+  const result: any = {};
+
+  Object.keys(DEFAULT_BRIDAL_TRIAL_PRICES).forEach((key) => {
+    const cachedPrice = cache.bridalTrial.get(key);
+    result[key] = cachedPrice || DEFAULT_BRIDAL_TRIAL_PRICES[key as keyof typeof DEFAULT_BRIDAL_TRIAL_PRICES];
+  });
+
+  return result;
+}
+
+/**
  * Invalidate pricing cache (call this after updating prices)
  */
 export function invalidatePricingCache(): void {
@@ -291,6 +329,7 @@ export function invalidatePricingCache(): void {
   pricingCache.addons.clear();
   pricingCache.mobileLocations.clear();
   pricingCache.bridalParty.clear();
+  pricingCache.bridalTrial.clear();
   pricingCache.serviceOptions.clear();
 }
 

@@ -180,13 +180,20 @@ const EventReminder24HEmailTemplate: React.FC<Readonly<EventReminder24HEmailProp
             </div>
           )}
 
-          {quote.booking.trial && (
-            <div style={infoBox}>
-              <p style={infoTitle}>Bridal Trial</p>
-              <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Date:</strong> {quote.booking.trial.date}</p>
-              <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Time:</strong> {quote.booking.trial.time}</p>
-            </div>
-          )}
+          {quote.booking.trial && (() => {
+            // Use trial's service option if available, otherwise default
+            const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+            const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                            trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
+            return (
+              <div style={infoBox}>
+                <p style={infoTitle}>Bridal Trial</p>
+                <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Date:</strong> {quote.booking.trial.date}</p>
+                <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Time:</strong> {quote.booking.trial.time}</p>
+                <p style={infoDetail}><span style={bulletPoint}>&#9679;</span> <strong>Service:</strong> {trialServiceOptionLabel}</p>
+              </div>
+            );
+          })()}
 
           <div style={checklistBox}>
             <p style={{...paragraph, marginBottom: '16px', fontWeight: 600, fontSize: '17px', color: 'hsl(0, 0%, 0%)'}}>

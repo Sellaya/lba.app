@@ -64,6 +64,7 @@ export type BridalTrial = {
     addTrial: boolean;
     date: Date | undefined;
     time: string;
+    serviceOption: ServiceOption;
 }
 
 export type Quote = {
@@ -136,6 +137,7 @@ export type FinalQuote = {
     trial?: {
         date: string;
         time: string;
+        serviceOption?: string; // Service option for the trial (makeup-hair, makeup-only, hair-only)
     };
     inspirations?: {
         images?: string[]; // Array of image URLs

@@ -42,11 +42,17 @@ export default function ContractEmailTemplate({ quote, selectedTier, signedDate 
             </ul>
           </li>
         ))}
-        {quote.booking.trial && (
-          <li style={{ marginBottom: '12px' }}>
-            <strong>Bridal Trial</strong> on <strong>{quote.booking.trial.date}</strong> at <strong>{quote.booking.trial.time}</strong>.
-          </li>
-        )}
+        {quote.booking.trial && (() => {
+          // Use trial's service option if available, otherwise default
+          const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+          const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                          trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
+          return (
+            <li style={{ marginBottom: '12px' }}>
+              <strong>Bridal Trial</strong> on <strong>{quote.booking.trial.date}</strong> at <strong>{quote.booking.trial.time}</strong> ({trialServiceOptionLabel}).
+            </li>
+          );
+        })()}
         {quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0 && (
           <li style={{ marginBottom: '12px' }}>
             <strong>Bridal Party Services</strong>:

@@ -1162,17 +1162,28 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
               </div>
             )}
 
-            {quote.booking.trial && (
-              <div className="p-4 border-2 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <h4 className="font-semibold text-base">Bridal Trial</h4>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>{quote.booking.trial?.date || 'N/A'} at {quote.booking.trial?.time || 'N/A'}</span>
+            {quote.booking.trial && (() => {
+              // Use trial's service option if available, otherwise default
+              const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+              const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                              trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
+              return (
+                <div className="p-4 border-2 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <h4 className="font-semibold text-base">Bridal Trial</h4>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{quote.booking.trial?.date || 'N/A'} at {quote.booking.trial?.time || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium">Service:</span> {trialServiceOptionLabel}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {quote.booking.bridalParty && quote.booking.bridalParty.services && quote.booking.bridalParty.services.length > 0 && (
               <div className="p-4 border-2 rounded-lg bg-gradient-to-br from-muted/30 to-muted/10">

@@ -192,12 +192,19 @@ const ArtistBookingEmailTemplate: React.FC<Readonly<ArtistBookingEmailProps>> = 
             </div>
           ))}
 
-          {quote.booking.trial && (
-            <div style={bookingCard}>
-              <p style={bookingTitle}>Bridal Trial</p>
-              <p style={bookingSubtitle}>{quote.booking.trial.date} at {quote.booking.trial.time}</p>
-            </div>
-          )}
+          {quote.booking.trial && (() => {
+            // Use trial's service option if available, otherwise default
+            const trialServiceOption = quote.booking.trial?.serviceOption || 'makeup-hair';
+            const trialServiceOptionLabel = trialServiceOption === 'makeup-hair' ? 'Makeup & Hair' : 
+                                            trialServiceOption === 'makeup-only' ? 'Makeup Only' : 'Hair Only';
+            return (
+              <div style={bookingCard}>
+                <p style={bookingTitle}>Bridal Trial</p>
+                <p style={bookingSubtitle}>{quote.booking.trial.date} at {quote.booking.trial.time}</p>
+                <p style={{...bookingSubtitle, fontSize: '13px', marginTop: '4px', color: '#666'}}>Service: {trialServiceOptionLabel}</p>
+              </div>
+            );
+          })()}
 
           {quote.booking.bridalParty && quote.booking.bridalParty.services.length > 0 && (
             <div style={bookingCard}>

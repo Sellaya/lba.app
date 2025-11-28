@@ -55,13 +55,15 @@ const getInitialBridalTrial = (fieldValues: Record<string, any> | undefined): Br
         return {
             addTrial: fieldValues.addTrial === 'on',
             date: fieldValues.trialDate ? new Date(fieldValues.trialDate) : undefined,
-            time: fieldValues.trialTime || '11:00'
+            time: fieldValues.trialTime || '11:00',
+            serviceOption: (fieldValues.trialServiceOption as ServiceOption) || 'makeup-hair'
         };
     }
     return {
         addTrial: false,
         date: undefined,
-        time: '11:00'
+        time: '11:00',
+        serviceOption: 'makeup-hair'
     };
 };
 
@@ -179,6 +181,9 @@ export default function BookingFlow() {
   }, [days.length]);
   const [bridalTrial, setBridalTrial] = useState<BridalTrial>(() => getInitialBridalTrial(safeState.fieldValues));
   const [hasProcessedQuote, setHasProcessedQuote] = useState(false);
+  const [showTrialDateDialog, setShowTrialDateDialog] = useState(false);
+  const [pendingBridalOptionChange, setPendingBridalOptionChange] = useState<{ dayId: number; newOption: ServiceOption } | null>(null);
+  const previousBridalOptionRef = useRef<ServiceOption | null>(null);
 
   // Update phone number when fieldValues change (e.g., after form submission with errors)
   useEffect(() => {
@@ -814,7 +819,9 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                 <div>
                     <CardTitle className="font-headline text-xl sm:text-2xl">Bridal Trial</CardTitle>
-                    <CardDescription className="text-sm sm:text-base">Add a trial session before your big day. Price revealed in quote.</CardDescription>
+                    <CardDescription className="text-sm sm:text-base">
+                      Add a trial session before your big day. Select your preferred service option for the trial. Price revealed in quote.
+                    </CardDescription>
                 </div>
                 <Switch name="addTrial" checked={bridalTrial.addTrial} onCheckedChange={(checked) => updateBridalTrial({ addTrial: checked })} />
                 {/* Hidden input for Switch value - Radix UI Switch doesn't submit automatically */}
@@ -823,6 +830,23 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays, e
         </CardHeader>
         {bridalTrial.addTrial && (
             <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
+                <div>
+                    <Label className="text-sm sm:text-base mb-2 block">Trial Service Option *</Label>
+                    <RadioGroup 
+                        name="trialServiceOption" 
+                        value={bridalTrial.serviceOption || 'makeup-hair'} 
+                        onValueChange={(val) => updateBridalTrial({ serviceOption: val as ServiceOption })} 
+                        className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
+                    >
+                        {Object.entries(SERVICE_OPTION_DETAILS).map(([id, {label}]) => (
+                            <Label key={id} className="flex items-center space-x-2 border rounded-md p-2 justify-center cursor-pointer hover:bg-accent hover:text-accent-foreground has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:text-accent-foreground has-[[data-state=checked]]:border-primary transition-colors text-sm">
+                                <RadioGroupItem value={id} id={`trial-${id}`} />
+                                <span>{label}</span>
+                            </Label>
+                        ))}
+                    </RadioGroup>
+                    <input type="hidden" name="trialServiceOption" value={bridalTrial.serviceOption || 'makeup-hair'} />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                         <Label htmlFor="trialDate" className="text-sm sm:text-base">Trial Date *</Label>

@@ -13,6 +13,7 @@ import {
   getBridalPartyPrice,
   getServiceOptionModifier,
   getMobileLocationOptions,
+  getBridalTrialPrice,
 } from '@/lib/pricing';
 
 
@@ -83,6 +84,7 @@ function parseBridalTrialFromFormData(formData: FormData): BridalTrial {
         addTrial,
         date: trialDateStr ? new Date(trialDateStr) : undefined,
         time: formData.get('trialTime') as string,
+        serviceOption: (formData.get('trialServiceOption') as ServiceOption) || 'makeup-hair',
     }
 }
 
@@ -271,8 +273,14 @@ const calculateQuoteForTier = async (tier: PriceTier, days: Omit<Day, 'id'>[], b
     }
 
     if (bridalTrial.addTrial) {
-        const trialPrice = await getAddonPrice('bridalTrial', tier);
-        lineItems.push({ description: 'Bridal Trial', price: trialPrice });
+        // Use the trial's selected service option
+        const trialServiceOption: ServiceOption = bridalTrial.serviceOption || 'makeup-hair';
+        const trialPrice = await getBridalTrialPrice(trialServiceOption, tier);
+        const optionDetail = SERVICE_OPTION_DETAILS[trialServiceOption];
+        lineItems.push({ 
+            description: `Bridal Trial (${optionDetail.label})`, 
+            price: trialPrice 
+        });
         subtotal += trialPrice;
     }
     
@@ -544,7 +552,11 @@ export async function generateQuoteAction(
         };
 
         if (bridalServiceDay && bridalTrial.addTrial && bridalTrial.date && bridalTrial.time) {
-            booking.trial = { date: formatToronto(bridalTrial.date, "PPP"), time: bridalTrial.time };
+            booking.trial = { 
+                date: formatToronto(bridalTrial.date, "PPP"), 
+                time: bridalTrial.time,
+                serviceOption: bridalTrial.serviceOption || 'makeup-hair'
+            };
         }
 
         if (bridalPartyBookings) {
