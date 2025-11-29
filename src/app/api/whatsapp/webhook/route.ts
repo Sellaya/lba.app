@@ -75,75 +75,83 @@ async function sendAutoReplyWithRetry(
 }
 
 export async function POST(request: Request) {
+  // BEST PRACTICE: Read request data (fast, necessary), then send response, then do processing
+  // This ensures Twilio gets a quick response and doesn't retry
+  
   try {
-    // Twilio sends webhooks as application/x-www-form-urlencoded
+    // Step 1: Read request data (fast operation, must be done before response)
     const formData = await request.formData();
     const from = formData.get('From') as string;
     const body = formData.get('Body') as string;
-    const messageSid = formData.get('MessageSid') as string;
-    const to = formData.get('To') as string;
-    const accountSid = formData.get('AccountSid') as string;
-
-    console.log('[WhatsApp Webhook] Incoming message received:', {
-      from: from?.substring(0, 20) + '...',
-      to: to?.substring(0, 20) + '...',
-      body: body?.substring(0, 50) + '...',
-      bodyLength: body?.length,
-      messageSid,
-      accountSid: accountSid?.substring(0, 10) + '...',
-      contentType: request.headers.get('content-type'),
-      allKeys: Array.from(formData.keys()),
-    });
-
-    // Extract phone number from Twilio's "whatsapp:+1234567890" format
     const phoneNumber = from?.replace('whatsapp:', '') || '';
 
-    if (!phoneNumber) {
-      console.error('[WhatsApp Webhook] No phone number found. All form data:', 
-        Object.fromEntries(formData.entries())
-      );
-      const twiml = new twilio.twiml.MessagingResponse();
-      return new NextResponse(twiml.toString(), {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
-    }
-
-    // Skip auto-reply if message body is empty (status updates, etc.)
-    if (!body || body.trim().length === 0) {
-      console.log('[WhatsApp Webhook] Empty message body, skipping auto-reply');
-      const twiml = new twilio.twiml.MessagingResponse();
-      return new NextResponse(twiml.toString(), {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
-    }
-
-    // Auto-reply message
-    const autoReplyMessage = `Thank you for your message. This number is used only for sending automated updates. For any inquiries, please WhatsApp us directly at +1 416-275-1719.
-
-Team LBA`;
-
-    // Send auto-reply asynchronously (don't await) so webhook responds quickly
-    // This prevents connection timeouts in serverless environments
-    sendAutoReplyWithRetry(phoneNumber, autoReplyMessage).catch((error) => {
-      console.error('[WhatsApp Webhook] ❌ Fatal error in auto-reply retry:', error);
-    });
-
-    // Return TwiML response immediately (don't wait for auto-reply)
+    // Step 2: Prepare and send response IMMEDIATELY (before any processing)
     const twiml = new twilio.twiml.MessagingResponse();
-    return new NextResponse(twiml.toString(), {
+    const response = new NextResponse(twiml.toString(), {
       status: 200,
       headers: { 'Content-Type': 'text/xml' },
     });
+
+    // Step 3: Do ALL processing AFTER response is prepared (runs in background)
+    // This includes: logging, validation, DB writes, API calls, etc.
+    setImmediate(async () => {
+      try {
+        const messageSid = formData.get('MessageSid') as string;
+        const to = formData.get('To') as string;
+        const accountSid = formData.get('AccountSid') as string;
+
+        console.log('[WhatsApp Webhook] Processing incoming message:', {
+          from: from?.substring(0, 20) + '...',
+          to: to?.substring(0, 20) + '...',
+          body: body?.substring(0, 50) + '...',
+          bodyLength: body?.length,
+          messageSid,
+          accountSid: accountSid?.substring(0, 10) + '...',
+          contentType: request.headers.get('content-type'),
+          allKeys: Array.from(formData.keys()),
+        });
+
+        if (!phoneNumber) {
+          console.error('[WhatsApp Webhook] No phone number found. All form data:', 
+            Object.fromEntries(formData.entries())
+          );
+          return;
+        }
+
+        // Skip auto-reply if message body is empty (status updates, etc.)
+        if (!body || body.trim().length === 0) {
+          console.log('[WhatsApp Webhook] Empty message body, skipping auto-reply');
+          return;
+        }
+
+        // Auto-reply message
+        const autoReplyMessage = `Thank you for your message. This number is used only for sending automated updates. For any inquiries, please WhatsApp us directly at +1 416-275-1719.
+
+Team LBA`;
+
+        // Send auto-reply (all heavy processing happens after response is sent)
+        sendAutoReplyWithRetry(phoneNumber, autoReplyMessage).catch((error) => {
+          console.error('[WhatsApp Webhook] ❌ Fatal error in auto-reply retry:', error);
+        });
+      } catch (error: any) {
+        console.error('[WhatsApp Webhook] ❌ Error in background processing:', {
+          error: error?.message,
+          stack: error?.stack,
+          name: error?.name,
+        });
+      }
+    });
+
+    // Return response immediately - all processing happens in background
+    return response;
   } catch (error: any) {
-    console.error('[WhatsApp Webhook] ❌ Error processing webhook:', {
+    // If we can't even read the request, still return a response
+    console.error('[WhatsApp Webhook] ❌ Error reading request:', {
       error: error?.message,
       stack: error?.stack,
       name: error?.name,
     });
     
-    // Return empty TwiML response to prevent Twilio retries
     const twiml = new twilio.twiml.MessagingResponse();
     return new NextResponse(twiml.toString(), {
       status: 200,
