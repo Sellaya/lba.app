@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useMemo, useState, useRef } from 'react';
-import { CheckCircle2, User, Users, Loader2, MapPin, ShieldCheck, FileText, Banknote, CreditCard, ArrowRight, ArrowLeft, AlertTriangle, Phone, CalendarIcon, X, Plus, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { CheckCircle2, User, Users, Loader2, MapPin, ShieldCheck, FileText, Banknote, CreditCard, ArrowRight, ArrowLeft, AlertTriangle, Phone, CalendarIcon, X, Plus, Image as ImageIcon, Link as LinkIcon, Share2, MessageCircle, Clock } from "lucide-react";
 import { MakeupBrushVector, MirrorVector, HairVector, SparkleVector, CheckmarkVector } from '@/components/beauty-vectors';
 import type { FinalQuote, PriceTier, Quote, PaymentMethod, PaymentDetails, Address } from "@/lib/types";
 import type { BookingDocument } from '@/firebase/firestore/bookings';
@@ -33,6 +33,7 @@ import { BrandingFooter } from '@/components/branding-footer';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
 import { trackEvent } from '@/lib/facebook-pixel';
+import { Progress } from '@/components/ui/progress';
 
 type ConfirmationStep = 'select-tier' | 'address' | 'sign-contract' | 'payment' | 'confirmed';
 
@@ -144,6 +145,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
     return existingLinks.length > 0 ? existingLinks : [''];
   });
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [showWinterOfferPopup, setShowWinterOfferPopup] = useState(false);
   
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | undefined>(quote.paymentDetails?.method);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -153,6 +155,35 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
   const [finalScreenshotFile, setFinalScreenshotFile] = useState<File | null>(null);
   const [showFinalPayment, setShowFinalPayment] = useState(false);
   
+  // Urgency notification state
+  const [currentUrgencyMessage, setCurrentUrgencyMessage] = useState(0);
+  
+  // Define urgency messages outside component to avoid recreation
+  const urgencyMessages = React.useMemo(() => [
+    "Most clients who book now save on last-minute rates",
+    "Let's lock in your beauty moment",
+    "Your date is getting popular",
+    "You're one step away from stunning",
+    "Book your glam session now and let us handle the rest",
+    "Clients book early for a reason",
+    "This quote is customized for you",
+    "Your date is still available — for now"
+  ], []);
+
+  // Define bookingConfirmed before using it in useEffect
+  const bookingConfirmed = useMemo(() => quote.status === 'confirmed', [quote.status]);
+
+  // Rotate urgency messages every 5 seconds with smooth transitions
+  React.useEffect(() => {
+    if (currentStep !== 'select-tier' || bookingConfirmed) return;
+    
+    const interval = setInterval(() => {
+      setCurrentUrgencyMessage((prev) => (prev + 1) % urgencyMessages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentStep, bookingConfirmed, urgencyMessages]);
+
   // Book a Call state
   const [isBookCallDialogOpen, setIsBookCallDialogOpen] = useState(false);
   const [isSubmittingCallBooking, setIsSubmittingCallBooking] = useState(false);
@@ -162,6 +193,22 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
   const [useContactPhone, setUseContactPhone] = useState<boolean>(false);
   const [callBookingMessage, setCallBookingMessage] = useState<string>('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  
+  // If user lands with #book-call in the URL (e.g. from WhatsApp link),
+  // automatically scroll to the section and open the Book a Call dialog.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash === '#book-call') {
+      // Small delay to ensure layout is ready before scrolling / opening dialog
+      setTimeout(() => {
+        const el = document.getElementById('book-call');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setIsBookCallDialogOpen(true);
+      }, 400);
+    }
+  }, []);
   
   // Format phone number to +1 format (US/Canada)
   const formatToPlusOne = (phoneNumber: string): string => {
@@ -221,7 +268,13 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
 
   const requiresAddress = useMemo(() => quote.booking.hasMobileService && !quote.booking.address, [quote]);
   
-  const bookingConfirmed = useMemo(() => quote.status === 'confirmed', [quote.status]);
+  // Memoize STEPS array to avoid recreation on every render
+  const STEPS = useMemo(() => [
+    { id: 'select-tier', name: 'Select Tier', icon: Users, estimatedTime: 30 }, // 30 seconds
+    ...(requiresAddress ? [{ id: 'address', name: 'Address', icon: MapPin, estimatedTime: 60 }] : []), // 1 minute
+    { id: 'sign-contract', name: 'Sign Contract', icon: FileText, estimatedTime: 45 }, // 45 seconds
+    { id: 'payment', name: 'Payment', icon: Banknote, estimatedTime: 90 } // 1.5 minutes
+  ], [requiresAddress]);
   
   // Update quote when initialQuote changes (e.g., when user searches and views booking)
   React.useEffect(() => {
@@ -248,6 +301,29 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
       setShowFinalPayment(true);
     }
   }, [bookingConfirmed, currentStep, quote.paymentDetails?.status, quote.paymentDetails?.finalPayment?.status]);
+
+  // Winter Offer popup - Show after 10 seconds on quote page only (select-tier step)
+  React.useEffect(() => {
+    // Only show in December and on quote page (select-tier step)
+    const now = new Date();
+    const isDecember = now.getMonth() === 11; // December is month 11 (0-indexed)
+    
+    if (!isDecember || bookingConfirmed || currentStep !== 'select-tier') {
+      return;
+    }
+
+    // Show popup after 10 seconds on page load/refresh
+    const timer = setTimeout(() => {
+      setShowWinterOfferPopup(true);
+      trackEvent('WinterOfferTriggered', {
+        booking_id: quote.id,
+      });
+    }, 10000); // 10 seconds
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [bookingConfirmed, currentStep, quote.id]);
 
   const validateAddress = () => {
     const errors: Record<string, string> = {};
@@ -777,14 +853,22 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
     }
   };
 
-  const STEPS = [
-    { id: 'select-tier', name: 'Select Tier', icon: Users },
-    ...(requiresAddress ? [{ id: 'address', name: 'Address', icon: MapPin }] : []),
-    { id: 'sign-contract', name: 'Sign Contract', icon: FileText },
-    { id: 'payment', name: 'Payment', icon: Banknote }
-  ];
-
-  const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
+  // Calculate current step index with safety check for 'confirmed' step
+  const currentStepIndex = currentStep === 'confirmed' 
+    ? STEPS.length // Treat confirmed as completed (100%)
+    : STEPS.findIndex(s => s.id === currentStep);
+  
+  // Calculate progress percentage with safety check
+  const progressPercentage = STEPS.length > 0 
+    ? ((currentStepIndex + 1) / STEPS.length) * 100 
+    : 0;
+  
+  // Calculate estimated time remaining
+  const remainingSteps = currentStepIndex >= STEPS.length ? [] : STEPS.slice(currentStepIndex);
+  const estimatedTimeRemaining = remainingSteps.reduce((total, step) => total + (step.estimatedTime || 0), 0);
+  
+  // Calculate total estimated time
+  const totalEstimatedTime = STEPS.reduce((total, step) => total + (step.estimatedTime || 0), 0);
   
   // Track step direction for animations
   const [stepDirection, setStepDirection] = useState<'left' | 'right'>('right');
@@ -874,8 +958,8 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
 
   return (
     <div className="w-full max-w-5xl mx-auto py-4 sm:py-6 md:py-8 lg:py-12 min-h-screen flex flex-col px-3 sm:px-4">
-      <Card className="shadow-2xl border-gray-300 animate-in fade-in zoom-in-95 duration-500 flex-1">
-        <CardHeader className="text-center items-center p-4 sm:p-6 md:p-8">
+      <Card className="flex-1 shadow-2xl border border-white/40 bg-white/80 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-500">
+        <CardHeader className="text-center items-center p-4 sm:p-6 md:p-8 bg-white/60 backdrop-blur-sm rounded-t-2xl border-b border-white/40">
           {(() => {
             // Final payment paid - fully paid
             if (quote.paymentDetails?.finalPayment?.status === 'payment-approved' || quote.paymentDetails?.finalPayment?.status === 'deposit-paid') {
@@ -935,9 +1019,41 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               return 'Your Quote is Ready!';
             })()}
           </CardTitle>
-          <p className="text-xs text-muted-foreground mt-2">
-            Booking ID: <span className="font-mono">{quote.id}</span>
-          </p>
+          <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
+            <p className="text-xs text-muted-foreground">
+              Booking ID: <span className="font-mono">{quote.id}</span>
+            </p>
+            {currentStep === 'select-tier' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const quoteUrl = `${window.location.origin}/book/${quote.id}`;
+                  
+                  try {
+                    await navigator.clipboard.writeText(quoteUrl);
+                    toast({
+                      title: 'Link copied!',
+                      description: 'Booking page link copied to clipboard.',
+                    });
+                    trackEvent('ShareQuote', {
+                      booking_id: quote.id,
+                      method: 'clipboard',
+                    });
+                  } catch (err) {
+                    toast({
+                      title: 'Share your quote',
+                      description: `Copy this link: ${quoteUrl}`,
+                    });
+                  }
+                }}
+                className="h-7 text-xs"
+              >
+                <Share2 className="h-3 w-3 mr-1.5" />
+                Share Quote
+              </Button>
+            )}
+          </div>
           <CardDescription className="text-base sm:text-lg max-w-prose">
             {(() => {
               // On select-tier step, always show quote selection message
@@ -992,26 +1108,134 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
         <CardContent className="space-y-4 sm:space-y-6 px-3 sm:px-4 md:px-6">
 
           {(!bookingConfirmed || quote.paymentDetails?.status === 'screenshot-rejected') && (
-            <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-6 my-3 sm:my-4">
-              {STEPS.map((step, index) => (
-                <React.Fragment key={step.id}>
-                  <div className="flex flex-col items-center gap-2 text-center">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                      index < currentStepIndex ? "bg-black text-white" :
-                      index === currentStepIndex ? "bg-black border-2 border-white ring-2 ring-black text-white" :
-                      "bg-muted text-muted-foreground"
-                    )}>
-                      <step.icon className="w-5 h-5" />
-                    </div>
-                    <span className={cn(
-                      "text-xs sm:text-sm font-medium",
-                      index <= currentStepIndex ? "text-black" : "text-muted-foreground"
-                    )}>{step.name}</span>
+            <div className="space-y-4 my-4 sm:my-6 rounded-2xl border border-white/40 bg-white/70 backdrop-blur-md shadow-sm p-3 sm:p-4">
+              {/* Enhanced Progress Bar with Percentage */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                      Booking Progress
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {estimatedTimeRemaining <= 60 
+                        ? `~${estimatedTimeRemaining}s remaining`
+                        : `~${Math.round(estimatedTimeRemaining / 60)}min remaining`}
+                    </span>
                   </div>
-                  {index < STEPS.length - 1 && <div className="flex-1 h-px bg-border max-w-8 sm:max-w-16" />}
-                </React.Fragment>
-              ))}
+                  <div className="flex items-end gap-2">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl sm:text-3xl font-bold text-foreground">
+                        {Math.round(progressPercentage)}
+                      </span>
+                      <span className="text-xs sm:text-sm font-semibold text-muted-foreground">
+                        %
+                      </span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="hidden sm:inline-flex bg-gradient-to-r from-primary/10 via-primary/5 to-transparent text-primary border-primary/30 rounded-full px-3 py-1 text-[11px] font-medium"
+                    >
+                      On track to confirm
+                    </Badge>
+                  </div>
+                </div>
+                <Progress value={progressPercentage} className="h-3" />
+                <div className="flex items-center justify-between text-xs">
+                  <p className="text-muted-foreground">
+                    {progressPercentage < 25 
+                      ? "You're just getting started! 🚀"
+                      : progressPercentage < 50
+                      ? "You're making great progress! ✨"
+                      : progressPercentage < 75
+                      ? "You're more than halfway there! 💪"
+                      : "Almost done! Just a few more steps! 🎉"}
+                  </p>
+                  <p className="text-muted-foreground font-medium">
+                    Total: ~{totalEstimatedTime <= 60 
+                      ? `${totalEstimatedTime}s`
+                      : `${Math.round(totalEstimatedTime / 60)}min`}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Step Indicator */}
+              <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-6">
+                {STEPS.map((step, index) => (
+                  <React.Fragment key={step.id}>
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                        index < currentStepIndex ? "bg-black text-white" :
+                        index === currentStepIndex ? "bg-black border-2 border-white ring-2 ring-black text-white" :
+                        "bg-muted text-muted-foreground"
+                      )}>
+                        <step.icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className={cn(
+                          "text-xs sm:text-sm font-medium",
+                          index <= currentStepIndex ? "text-black" : "text-muted-foreground"
+                        )}>{step.name}</span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">
+                          ~{step.estimatedTime}s
+                        </span>
+                      </div>
+                    </div>
+                    {index < STEPS.length - 1 && <div className="flex-1 h-px bg-border max-w-8 sm:max-w-16" />}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Animated Floating Marquee Bar - Only show on select-tier step */}
+          {currentStep === 'select-tier' && !bookingConfirmed && (
+            <div className="mt-3 sm:mt-4 mb-3 sm:mb-4 animate-fade-in">
+              <div className="relative bg-black/80 rounded-md overflow-hidden shadow-lg border border-white/20 backdrop-blur-md">
+                {/* Continuous scrolling marquee */}
+                <div className="relative py-2 sm:py-2.5 overflow-hidden">
+                  <div className="flex animate-scroll-left-fast">
+                    {/* First set of messages */}
+                    {urgencyMessages.map((message, index) => (
+                      <div
+                        key={`first-${index}`}
+                        className="flex-shrink-0 flex items-center px-3 sm:px-4"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-2.5 group cursor-default">
+                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
+                          <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 hover:border-white/40 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-white/20">
+                            <p className="text-[11px] sm:text-xs md:text-sm font-semibold text-white whitespace-nowrap">
+                              {message}
+                            </p>
+                          </div>
+                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Duplicate set for seamless loop */}
+                    {urgencyMessages.map((message, index) => (
+                      <div
+                        key={`second-${index}`}
+                        className="flex-shrink-0 flex items-center px-3 sm:px-4"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-2.5 group cursor-default">
+                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
+                          <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 hover:border-white/40 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-white/20">
+                            <p className="text-[11px] sm:text-xs md:text-sm font-semibold text-white whitespace-nowrap">
+                              {message}
+                            </p>
+                          </div>
+                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Gradient fade edges - smaller for mobile */}
+                <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-16 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-16 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none"></div>
+              </div>
             </div>
           )}
 
@@ -1060,7 +1284,10 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       tier: tier,
                     });
                   }} 
-                  className={cn("grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-4", showLeadArtistOption && showTeamOption ? "sm:grid-cols-2" : "max-w-md mx-auto")}
+                  className={cn(
+                    "grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-4 rounded-2xl border border-white/50 bg-white/75 backdrop-blur-md shadow-sm",
+                    showLeadArtistOption && showTeamOption ? "sm:grid-cols-2" : "max-w-md mx-auto"
+                  )}
               >
                   {showLeadArtistOption && (
                       <QuoteTierCard 
@@ -1084,20 +1311,52 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                   )}
               </RadioGroup>
               
-              {/* Book a Call Section */}
-              <div className="mt-4 sm:mt-6 md:mt-8 p-4 sm:p-6 border-2 border-gray-300 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="text-center space-y-3 sm:space-y-4">
+              {/* Book a Call Section - Enhanced Prominence (mobile-optimized) */}
+              <div
+                id="book-call"
+                className="mt-4 sm:mt-6 md:mt-10 px-3 py-4 sm:px-6 sm:py-6 rounded-xl border border-white/60 bg-gradient-to-br from-white/90 via-white/80 to-primary/5 shadow-md sm:shadow-lg hover:shadow-xl backdrop-blur-md transition-shadow duration-300 relative overflow-hidden max-w-2xl mx-auto"
+              >
+                {/* Decorative accent */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full -ml-12 -mb-12 blur-2xl"></div>
+                
+                <div className="text-center space-y-3 sm:space-y-4 relative z-10">
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                    <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-black" />
-                    <h3 className="font-headline text-lg sm:text-xl">Have Questions About Your Quote?</h3>
+                    <div className="p-2.5 sm:p-3 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                    </div>
+                    <h3 className="font-headline text-lg sm:text-2xl md:text-3xl font-bold text-foreground">
+                      Have Questions About Your Quote?
+                    </h3>
                   </div>
-                  <p className="text-muted-foreground">
-                    Book a call with Anum to discuss your quote and have any questions answered directly.
+                  
+                  {/* Professional features */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                      <span>Direct answers</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                      <span>Quick response</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                      <span>Expert guidance</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
+                    Book a call with Anum to discuss your quote and have any questions answered directly. We're here to help you make the perfect choice.
                   </p>
+                  
                   <Dialog open={isBookCallDialogOpen} onOpenChange={setIsBookCallDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="lg" className="font-semibold">
-                        <Phone className="mr-2 h-5 w-5" />
+                      <Button 
+                        size="lg" 
+                        className="font-semibold text-sm sm:text-lg h-11 sm:h-14 px-6 sm:px-10 bg-black hover:bg-black/90 text-white shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
+                      >
+                        <Phone className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
                         Book a Call with Anum
                       </Button>
                     </DialogTrigger>
@@ -1262,7 +1521,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
           
           <div className={cn(currentStep !== 'address' && 'hidden')}>
             <div className="space-y-4 sm:space-y-6 px-3 sm:px-4 md:px-6">
-              <div className="p-3 sm:p-4 border rounded-lg bg-background/50">
+              <div className="p-3 sm:p-4 rounded-2xl border border-white/40 bg-white/75 backdrop-blur-md shadow-sm">
                 <h3 className="font-headline text-lg sm:text-xl mb-3 sm:mb-4">Mobile Service Address</h3>
                 <div className='space-y-3 sm:space-y-4'>
                           {addressErrors && Object.keys(addressErrors).length > 0 && (
@@ -1295,7 +1554,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               </div>
 
               {/* Inspirations Section */}
-              <div className="p-3 sm:p-4 border rounded-lg bg-background/50 mt-4 sm:mt-6">
+              <div className="p-3 sm:p-4 rounded-2xl border border-white/40 bg-white/75 backdrop-blur-md shadow-sm mt-4 sm:mt-6">
                 <h3 className="font-headline text-lg sm:text-xl mb-3 sm:mb-4">Inspirations (Optional)</h3>
                 <p className="text-sm text-muted-foreground mb-3 sm:mb-4">
                   Share images or links to show us what kind of makeup look you're interested in
@@ -1624,7 +1883,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               </div>
 
               {paymentMethod === 'interac' && (
-                  <div className="p-4 border rounded-lg bg-background/50 space-y-4 animate-in fade-in-0">
+                  <div className="p-4 rounded-2xl border border-white/40 bg-white/75 backdrop-blur-md shadow-sm space-y-4 animate-in fade-in-0">
                       {quote.paymentDetails?.status === 'screenshot-rejected' && (
                         <Alert variant="destructive" className="mb-4">
                           <AlertTriangle className="h-4 w-4" />
@@ -1705,7 +1964,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
               
               return (
                 <div className="p-6">
-                  <div className="p-6 border rounded-lg bg-background/50 max-w-md mx-auto">
+                  <div className="p-6 rounded-2xl border border-white/40 bg-white/80 backdrop-blur-md shadow-sm max-w-md mx-auto">
                     <h3 className="font-headline text-2xl text-center mb-4">Pay Remaining Balance</h3>
                     <div className="text-center mb-6">
                       <p className="text-muted-foreground">Pay the remaining 50% to complete your booking.</p>
@@ -1739,7 +1998,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                 </div>
 
                 {finalPaymentMethod === 'interac' && (
-                  <div className="p-4 border rounded-lg bg-background/50 space-y-4 mb-6">
+                  <div className="p-4 rounded-2xl border border-white/40 bg-white/75 backdrop-blur-md shadow-sm space-y-4 mb-6">
                     {quote.paymentDetails?.finalPayment?.status === 'screenshot-rejected' && (
                       <Alert variant="destructive" className="mb-4">
                         <AlertTriangle className="h-4 w-4" />
@@ -2031,6 +2290,57 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
           </CardFooter>
         )}
       </Card>
+      
+      {/* Winter Offer Popup */}
+      {showWinterOfferPopup && !bookingConfirmed && (
+        <Dialog open={showWinterOfferPopup} onOpenChange={setShowWinterOfferPopup}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-headline">Winter Offer! ❄️</DialogTitle>
+              <DialogDescription className="text-base">
+                Any appointments booked in December will get <strong>10% off</strong> even for future events in 2026!
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                <p className="text-sm text-center">
+                  <span className="text-3xl font-bold text-primary">10% OFF</span>
+                  <br />
+                  Use code: <strong className="font-mono text-lg">WINTER10</strong>
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Button
+                  onClick={() => {
+                    setShowWinterOfferPopup(false);
+                    trackEvent('WinterOfferCTA', {
+                      booking_id: quote.id,
+                      action: 'continue_booking',
+                    });
+                  }}
+                  className="w-full"
+                  size="lg"
+                >
+                  Continue Booking & Save 10%
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowWinterOfferPopup(false);
+                    trackEvent('WinterOfferCTA', {
+                      booking_id: quote.id,
+                      action: 'maybe_later',
+                    });
+                  }}
+                  className="w-full"
+                >
+                  Maybe Later
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

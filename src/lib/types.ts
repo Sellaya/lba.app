@@ -161,6 +161,25 @@ export type FinalQuote = {
     message: string;
     submittedAt: string; // ISO date string when request was submitted
   };
+  whatsappMessages?: {
+    initial?: {
+      sent: boolean;
+      sentAt?: string; // ISO date string when initial WhatsApp message was sent
+      messageSid?: string; // Twilio message SID
+      delivered?: boolean; // Whether message was delivered to user
+      deliveryStatus?: string; // Twilio delivery status (queued, sending, sent, delivered, undelivered, failed)
+      error?: string; // Error message if sending failed
+    };
+    followup7d?: {
+      sent: boolean;
+      sentAt?: string; // ISO date string when 7-day follow-up was sent
+      scheduledFor?: string; // ISO date string when 7-day follow-up is scheduled
+      messageSid?: string; // Twilio message SID
+      delivered?: boolean; // Whether message was delivered to user
+      deliveryStatus?: string; // Twilio delivery status (queued, sending, sent, delivered, undelivered, failed)
+      error?: string; // Error message if sending failed
+    };
+  };
 };
 
 export type ActionState = {

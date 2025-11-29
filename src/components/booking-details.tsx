@@ -1993,6 +1993,167 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
         return null;
       })()}
       
+      {/* WhatsApp Messages Status Section - Only show if message was sent/delivered */}
+      {(() => {
+        const hasInitialMessage = quote.whatsappMessages?.initial?.sent || quote.whatsappMessages?.initial?.delivered;
+        const hasFollowupMessage = quote.whatsappMessages?.followup7d?.sent || quote.whatsappMessages?.followup7d?.delivered;
+        
+        // Only show section if at least one message was sent or delivered
+        if (!hasInitialMessage && !hasFollowupMessage) {
+          return null;
+        }
+
+        return (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                WhatsApp Messages Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {/* Initial WhatsApp Message */}
+                {hasInitialMessage && (
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        {quote.whatsappMessages?.initial?.delivered ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : quote.whatsappMessages?.initial?.sent && !quote.whatsappMessages?.initial?.delivered ? (
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : quote.whatsappMessages?.initial?.error ? (
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium">Initial Quote Message</p>
+                        <p className="text-sm text-muted-foreground">
+                          {quote.whatsappMessages?.initial?.delivered
+                            ? quote.whatsappMessages.initial.sentAt 
+                              ? `Delivered on ${formatToronto(new Date(quote.whatsappMessages.initial.sentAt), 'PPp')}`
+                              : 'Delivered'
+                            : quote.whatsappMessages?.initial?.sent
+                              ? quote.whatsappMessages.initial.deliveryStatus
+                                ? `Sent (${quote.whatsappMessages.initial.deliveryStatus})`
+                                : quote.whatsappMessages.initial.sentAt
+                                  ? `Sent on ${formatToronto(new Date(quote.whatsappMessages.initial.sentAt), 'PPp')}`
+                                  : 'Sent'
+                              : quote.whatsappMessages?.initial?.error
+                                ? `Failed: ${quote.whatsappMessages.initial.error}`
+                                : 'Not sent'}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={
+                      quote.whatsappMessages?.initial?.delivered ? 'default' : 
+                      quote.whatsappMessages?.initial?.sent ? 'secondary' :
+                      quote.whatsappMessages?.initial?.error ? 'destructive' : 
+                      'outline'
+                    }>
+                      {quote.whatsappMessages?.initial?.delivered ? 'Delivered' : 
+                       quote.whatsappMessages?.initial?.sent ? 'Sent' : 
+                       quote.whatsappMessages?.initial?.error ? 'Failed' : 
+                       'Pending'}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* 7-Day Follow-up WhatsApp Message */}
+                {(() => {
+                  const hasAdvancePayment = quote.paymentDetails && 
+                    (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved');
+                  const willNotSend = hasAdvancePayment || quote.status === 'confirmed' || quote.status === 'cancelled';
+                  const followup = quote.whatsappMessages?.followup7d;
+                  const hasFollowup = followup?.sent || followup?.delivered;
+                  
+                  // Only show if follow-up was sent/delivered or scheduled
+                  if (!hasFollowup && !followup?.scheduledFor) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div className={`flex items-center justify-between p-3 border rounded-lg ${willNotSend ? 'bg-muted/50' : ''}`}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex-shrink-0">
+                          {followup?.delivered ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          ) : followup?.sent && !followup?.delivered ? (
+                            <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                          ) : willNotSend ? (
+                            <XCircle className="h-5 w-5 text-orange-500" />
+                          ) : followup?.scheduledFor && isFutureToronto(new Date(followup.scheduledFor)) ? (
+                            <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                          ) : followup?.error ? (
+                            <XCircle className="h-5 w-5 text-red-500" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">7-Day Follow-up Message</p>
+                            {willNotSend && (
+                              <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">Cancelled</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {followup?.delivered
+                              ? followup.sentAt 
+                                ? `Delivered on ${formatToronto(new Date(followup.sentAt), 'PPp')}`
+                                : 'Delivered'
+                              : followup?.sent
+                                ? followup.deliveryStatus
+                                  ? `Sent (${followup.deliveryStatus})`
+                                  : followup.sentAt
+                                    ? `Sent on ${formatToronto(new Date(followup.sentAt), 'PPp')}`
+                                    : 'Sent'
+                                : willNotSend
+                                  ? hasAdvancePayment 
+                                    ? 'Cancelled - Advance payment made'
+                                    : quote.status === 'confirmed'
+                                      ? 'Cancelled - Booking confirmed'
+                                      : 'Cancelled - Booking cancelled'
+                                  : followup?.error
+                                    ? `Failed: ${followup.error}`
+                                    : followup?.scheduledFor
+                                      ? (() => {
+                                          const scheduledDate = new Date(followup.scheduledFor);
+                                          const isInFuture = isFutureToronto(scheduledDate);
+                                          return isInFuture
+                                            ? `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (in ${formatDistanceToNowToronto(scheduledDate)})`
+                                      : `Scheduled for ${formatToronto(scheduledDate, 'PPp')} (overdue)`;
+                                  })()
+                                : 'Not scheduled'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={
+                        followup?.delivered ? 'default' : 
+                        followup?.sent ? 'secondary' :
+                        willNotSend ? 'destructive' :
+                        followup?.error ? 'destructive' :
+                        followup?.scheduledFor ? 'secondary' : 
+                        'outline'
+                      }>
+                        {followup?.delivered ? 'Delivered' : 
+                         followup?.sent ? 'Sent' : 
+                         willNotSend ? 'Cancelled' :
+                         followup?.error ? 'Failed' :
+                         followup?.scheduledFor ? 'Scheduled' : 
+                         'Not Scheduled'}
+                      </Badge>
+                    </div>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Follow-up Emails Status Section */}
       <Card className="mt-6">
         <CardHeader>

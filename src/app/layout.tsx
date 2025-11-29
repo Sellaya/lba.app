@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { BrandingFooter } from '@/components/branding-footer';
+import { MixpanelProvider } from '@/components/mixpanel-provider';
 
 export const metadata: Metadata = {
   title: 'Looks by Anum',
@@ -22,6 +23,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Looks by Anum" />
+        <link rel="apple-touch-icon" href="/LBA.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Belleza&display=swap" rel="stylesheet" />
@@ -48,16 +55,24 @@ export default function RootLayout({
             `,
           }}
         />
+        <MixpanelProvider />
         <Script
-          id="mixpanel-loader"
-          strategy="afterInteractive"
-          src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"
-        />
-        <Script
-          id="mixpanel-init"
+          id="service-worker"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){var mixpanel=window.mixpanel||[];mixpanel.init=mixpanel.init||function(){mixpanel.push(["init",Array.prototype.slice.call(arguments)])};mixpanel.init("455c59883d9809cf564a48f55a349158",{autocapture:true,record_sessions_percent:100});})();`,
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('ServiceWorker registration successful');
+                    })
+                    .catch(function(err) {
+                      console.log('ServiceWorker registration failed: ', err);
+                    });
+                });
+              }
+            `,
           }}
         />
         <FirebaseClientProvider>

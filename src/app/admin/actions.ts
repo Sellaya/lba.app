@@ -5,6 +5,7 @@ import { getBooking } from '@/firebase/server-actions';
 import { sendQuoteEmail, sendAdminScreenshotNotification, sendRejectionEmail, sendFinalPaymentConfirmationEmail, sendFollowUp24HEmail, sendFollowUp3DEmail, sendFollowUp6DEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { scheduleFollowUpEmails, scheduleEventReminder24HEmail, scheduleAppointmentDayReminderEmail, schedulePostAppointmentFollowupEmail } from '@/lib/scheduled-emails';
+import { sendQuoteWhatsApp } from '@/lib/whatsapp';
 import type { FinalQuote } from '@/lib/types';
 import { formatToronto } from '@/lib/toronto-time';
 
@@ -45,9 +46,9 @@ export async function saveQuoteAndEmailAction(quote: FinalQuote): Promise<Action
     }
     console.log('saveQuoteAndEmailAction: Successfully saved to Supabase');
     
-    // Send the quote email (non-blocking - don't fail the save if email fails)
-    // Skip if booking is cancelled
-    if (quote.status !== 'cancelled') {
+      // Send the quote email (non-blocking - don't fail the save if email fails)
+      // Skip if booking is cancelled
+      if (quote.status !== 'cancelled') {
       console.log('saveQuoteAndEmailAction: Attempting to send quote email...');
       try {
         await sendQuoteEmail(quote);
@@ -56,6 +57,51 @@ export async function saveQuoteAndEmailAction(quote: FinalQuote): Promise<Action
         console.error('saveQuoteAndEmailAction: Failed to send quote email:', emailError);
         console.error('saveQuoteAndEmailAction: Email error details:', JSON.stringify(emailError, null, 2));
         // Continue even if email fails - booking is saved
+      }
+      
+      // Send WhatsApp message with quote link (non-blocking - don't fail the save if WhatsApp fails)
+      console.log('saveQuoteAndEmailAction: Attempting to send WhatsApp message...');
+      try {
+        const whatsappResult = await sendQuoteWhatsApp(quote);
+        
+        // Update booking with WhatsApp message status
+        const updatedQuoteWithWhatsApp: FinalQuote = {
+          ...quote,
+          whatsappMessages: {
+            ...quote.whatsappMessages,
+            initial: {
+              sent: whatsappResult.success,
+              sentAt: whatsappResult.success ? new Date().toISOString() : undefined,
+              messageSid: whatsappResult.messageSid,
+              delivered: whatsappResult.delivered || false,
+              deliveryStatus: whatsappResult.deliveryStatus,
+              error: whatsappResult.error,
+            },
+          },
+        };
+        
+        // Save updated quote with WhatsApp status
+        const { error: whatsappUpdateError } = await supabaseAdmin
+          .from('bookings')
+          .update({ 
+            final_quote: updatedQuoteWithWhatsApp as any,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', quote.id);
+        
+        if (whatsappUpdateError) {
+          console.error('saveQuoteAndEmailAction: Failed to update booking with WhatsApp status:', whatsappUpdateError);
+        }
+        
+        if (whatsappResult.success) {
+          console.log('saveQuoteAndEmailAction: WhatsApp message sent successfully, SID:', whatsappResult.messageSid);
+        } else {
+          console.warn('saveQuoteAndEmailAction: WhatsApp message failed:', whatsappResult.error);
+          // Continue even if WhatsApp fails - booking is saved
+        }
+      } catch (whatsappError: any) {
+        console.error('saveQuoteAndEmailAction: Failed to send WhatsApp message:', whatsappError);
+        // Continue even if WhatsApp fails - booking is saved
       }
       
       // Schedule follow-up emails (non-blocking)
