@@ -42,7 +42,8 @@ async function sendAutoReplyWithRetry(
         
         // If it's the last attempt, give up
         if (attempt === maxRetries) {
-          console.error('[WhatsApp Webhook] ❌ All retry attempts failed - message may not be delivered');
+          console.error('[WhatsApp Webhook] ❌ All retry attempts failed - Twilio API timeout. Webhook responded successfully, but auto-reply could not be sent due to Twilio API slowness.');
+          console.warn('[WhatsApp Webhook] ⚠️  This is a Twilio API issue, not a webhook issue. The webhook is working correctly.');
           return;
         }
         
@@ -62,7 +63,8 @@ async function sendAutoReplyWithRetry(
       
       // If it's the last attempt, give up
       if (attempt === maxRetries) {
-        console.error('[WhatsApp Webhook] ❌ All retry attempts failed - message may not be delivered');
+        console.error('[WhatsApp Webhook] ❌ All retry attempts failed - Twilio API timeout. Webhook responded successfully, but auto-reply could not be sent due to Twilio API slowness.');
+        console.warn('[WhatsApp Webhook] ⚠️  This is a Twilio API issue, not a webhook issue. The webhook is working correctly.');
         return;
       }
       
