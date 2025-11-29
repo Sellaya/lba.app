@@ -15,13 +15,13 @@ async function sendAutoReplyWithRetry(
     try {
       console.log(`[WhatsApp Webhook] Sending auto-reply (attempt ${attempt}/${maxRetries}) to:`, phoneNumber.substring(0, 10) + '...');
       
-      // Set a timeout for the entire send operation (15 seconds max)
+      // Set a timeout for the entire send operation (10 seconds max for serverless)
       const sendPromise = sendWhatsAppMessage(phoneNumber, message);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Send operation timeout')), 15000)
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Send operation timeout after 10s')), 10000)
       );
       
-      const result = await Promise.race([sendPromise, timeoutPromise]) as any;
+      const result = await Promise.race([sendPromise, timeoutPromise]);
 
       if (result.success) {
         console.log('[WhatsApp Webhook] ✅ Auto-reply sent successfully:', {
@@ -50,7 +50,7 @@ async function sendAutoReplyWithRetry(
       const isTimeout = error?.message?.includes('timeout') || 
                        error?.code === 'ECONNABORTED' || 
                        error?.code === 'ECONNRESET' ||
-                       error?.message === 'Send operation timeout';
+                       error?.message?.includes('Send operation timeout');
       
       console.error(`[WhatsApp Webhook] ❌ Error sending auto-reply (attempt ${attempt}/${maxRetries}):`, {
         error: error?.message,
