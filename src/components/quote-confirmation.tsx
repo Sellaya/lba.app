@@ -56,10 +56,15 @@ function QuoteTierCard({ title, icon, quote, tier, selectedTier, onSelect }: {
 }) {
   const isSelected = selectedTier === tier;
   return (
-    <Label htmlFor={`tier-${tier}`} className={cn(
-      "block border rounded-lg cursor-pointer transition-smooth",
-      isSelected ? "border-black ring-2 ring-black shadow-lg scale-[1.02]" : "border-border hover:border-gray-400 hover:scale-[1.01]"
-    )}>
+    <Label
+      htmlFor={`tier-${tier}`}
+      className={cn(
+        "block rounded-2xl cursor-pointer overflow-hidden transition-smooth border border-white/60 bg-gradient-to-br from-white/90 via-white/40 to-white/10 backdrop-blur-xl shadow-md",
+        isSelected
+          ? "border-black/70 ring-2 ring-black/70 shadow-lg scale-[1.02]"
+          : "hover:border-white/80 hover:shadow-lg hover:scale-[1.01]"
+      )}
+    >
         <RadioGroupItem value={tier} id={`tier-${tier}`} className="sr-only" />
         <Card className="shadow-none border-none bg-transparent">
             <CardHeader className="flex-row items-center gap-4 space-y-0">
@@ -155,20 +160,30 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
   const [finalScreenshotFile, setFinalScreenshotFile] = useState<File | null>(null);
   const [showFinalPayment, setShowFinalPayment] = useState(false);
   
+  // First name for personalized copy (fallback to a friendly default)
+  const firstName = useMemo(() => {
+    const full = quote?.contact?.name?.trim() || '';
+    const [first] = full.split(' ');
+    return first || 'Beautiful';
+  }, [quote?.contact?.name]);
+
   // Urgency notification state
   const [currentUrgencyMessage, setCurrentUrgencyMessage] = useState(0);
   
   // Define urgency messages outside component to avoid recreation
-  const urgencyMessages = React.useMemo(() => [
-    "Most clients who book now save on last-minute rates",
-    "Let's lock in your beauty moment",
-    "Your date is getting popular",
-    "You're one step away from stunning",
-    "Book your glam session now and let us handle the rest",
-    "Clients book early for a reason",
-    "This quote is customized for you",
-    "Your date is still available — for now"
-  ], []);
+  const urgencyMessages = React.useMemo(
+    () => [
+      `${firstName}, your quote is ready`,
+      `${firstName}, you're one step away from stunning`,
+      `${firstName}, your date is getting popular`,
+      `Most clients who book now save on last-minute rates`,
+      `Let's lock in your beauty moment`,
+      `Book your glam session now and let us handle the rest`,
+      `${firstName}, this quote is customized for you`,
+      `${firstName}, your date is still available — for now`,
+    ],
+    [firstName]
+  );
 
   // Define bookingConfirmed before using it in useEffect
   const bookingConfirmed = useMemo(() => quote.status === 'confirmed', [quote.status]);
@@ -302,13 +317,15 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
     }
   }, [bookingConfirmed, currentStep, quote.paymentDetails?.status, quote.paymentDetails?.finalPayment?.status]);
 
-  // Winter Offer popup - Show after 10 seconds on quote page only (select-tier step)
+  // Winter Offer popup - Show after 10 seconds on quote page only (select-tier step),
+  // active from now (Nov 2025) through the end of December 2025
   React.useEffect(() => {
-    // Only show in December and on quote page (select-tier step)
+    // Only show during the Winter Offer period (Nov–Dec 2025) and on quote page (select-tier step)
     const now = new Date();
-    const isDecember = now.getMonth() === 11; // December is month 11 (0-indexed)
+    const isWinterOfferActive =
+      now.getFullYear() === 2025 && now.getMonth() >= 10 && now.getMonth() <= 11; // November (10) and December (11) 2025
     
-    if (!isDecember || bookingConfirmed || currentStep !== 'select-tier') {
+    if (!isWinterOfferActive || bookingConfirmed || currentStep !== 'select-tier') {
       return;
     }
 
@@ -1131,12 +1148,6 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                         %
                       </span>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className="hidden sm:inline-flex bg-gradient-to-r from-primary/10 via-primary/5 to-transparent text-primary border-primary/30 rounded-full px-3 py-1 text-[11px] font-medium"
-                    >
-                      On track to confirm
-                    </Badge>
                   </div>
                 </div>
                 <Progress value={progressPercentage} className="h-3" />
@@ -1188,53 +1199,17 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
             </div>
           )}
 
-          {/* Animated Floating Marquee Bar - Only show on select-tier step */}
+          {/* Subtle urgency banner - Only show on select-tier step */}
           {currentStep === 'select-tier' && !bookingConfirmed && (
-            <div className="mt-3 sm:mt-4 mb-3 sm:mb-4 animate-fade-in">
-              <div className="relative bg-black/80 rounded-md overflow-hidden shadow-lg border border-white/20 backdrop-blur-md">
-                {/* Continuous scrolling marquee */}
-                <div className="relative py-2 sm:py-2.5 overflow-hidden">
-                  <div className="flex animate-scroll-left-fast">
-                    {/* First set of messages */}
-                    {urgencyMessages.map((message, index) => (
-                      <div
-                        key={`first-${index}`}
-                        className="flex-shrink-0 flex items-center px-3 sm:px-4"
-                      >
-                        <div className="flex items-center gap-2 sm:gap-2.5 group cursor-default">
-                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
-                          <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 hover:border-white/40 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-white/20">
-                            <p className="text-[11px] sm:text-xs md:text-sm font-semibold text-white whitespace-nowrap">
-                              {message}
-                            </p>
-                          </div>
-                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
-                        </div>
-                      </div>
-                    ))}
-                    {/* Duplicate set for seamless loop */}
-                    {urgencyMessages.map((message, index) => (
-                      <div
-                        key={`second-${index}`}
-                        className="flex-shrink-0 flex items-center px-3 sm:px-4"
-                      >
-                        <div className="flex items-center gap-2 sm:gap-2.5 group cursor-default">
-                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
-                          <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 hover:border-white/40 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:shadow-white/20">
-                            <p className="text-[11px] sm:text-xs md:text-sm font-semibold text-white whitespace-nowrap">
-                              {message}
-                            </p>
-                          </div>
-                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse group-hover:scale-125 transition-all duration-200"></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Gradient fade edges - smaller for mobile */}
-                <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-16 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none"></div>
-                <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-16 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none"></div>
+            <div className="mt-3 sm:mt-4 mb-3 sm:mb-4">
+              <div className="mx-auto max-w-3xl rounded-full bg-black/80 text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-center gap-2 sm:gap-3 shadow-md backdrop-blur-md border border-white/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <p
+                  key={currentUrgencyMessage}
+                  className="text-[11px] sm:text-xs md:text-sm font-semibold tracking-[0.18em] uppercase whitespace-nowrap overflow-hidden text-ellipsis"
+                >
+                  {urgencyMessages[currentUrgencyMessage]}
+                </p>
               </div>
             </div>
           )}
@@ -2294,21 +2269,33 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
       {/* Winter Offer Popup */}
       {showWinterOfferPopup && !bookingConfirmed && (
         <Dialog open={showWinterOfferPopup} onOpenChange={setShowWinterOfferPopup}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-headline">Winter Offer! ❄️</DialogTitle>
-              <DialogDescription className="text-base">
-                Any appointments booked in December will get <strong>10% off</strong> even for future events in 2026!
+          <DialogContent className="sm:max-w-md w-[92vw] rounded-3xl border border-white/40 bg-gradient-to-b from-white/95 via-white/85 to-white/75 shadow-2xl p-5 sm:p-7 space-y-5">
+            <DialogHeader className="space-y-3 text-left sm:text-center">
+              <DialogTitle className="text-xl sm:text-2xl font-headline tracking-tight leading-snug">
+                Hi {quote.contact.name.split(' ')[0] || 'there'}, your winter offer has arrived! ❄️
+              </DialogTitle>
+              <DialogDescription className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                Book any appointment in <span className="font-semibold">December</span> and enjoy an exclusive{' '}
+                <span className="font-semibold">10% off</span>—even if your event is scheduled for{' '}
+                <span className="font-semibold">2026</span>.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <p className="text-sm text-center">
-                  <span className="text-3xl font-bold text-primary">10% OFF</span>
-                  <br />
-                  Use code: <strong className="font-mono text-lg">WINTER10</strong>
+
+            <div className="space-y-4">
+              <div className="p-4 sm:p-5 rounded-2xl bg-black text-white border border-white/15 shadow-sm">
+                <p className="text-center text-sm sm:text-base space-y-1">
+                  <span className="block text-[10px] sm:text-xs font-medium tracking-[0.25em] uppercase text-white/70 mb-1">
+                    Limited-Time Winter Offer
+                  </span>
+                  <span className="block text-3xl sm:text-4xl font-bold tracking-tight">
+                    10% OFF
+                  </span>
+                  <span className="block text-[11px] sm:text-sm text-white/80">
+                    Use code <span className="font-mono font-semibold tracking-[0.25em]">WINTER10</span> at checkout or when confirming your booking to claim this offer.
+                  </span>
                 </p>
               </div>
+
               <div className="space-y-2">
                 <Button
                   onClick={() => {
@@ -2318,7 +2305,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       action: 'continue_booking',
                     });
                   }}
-                  className="w-full"
+                  className="w-full h-11 sm:h-12 font-semibold text-sm sm:text-base bg-black text-white hover:bg-black/90 rounded-full shadow-md hover:shadow-lg transition-all"
                   size="lg"
                 >
                   Continue Booking & Save 10%
@@ -2332,7 +2319,7 @@ export function QuoteConfirmation({ quote: initialQuote }: { quote: FinalQuote }
                       action: 'maybe_later',
                     });
                   }}
-                  className="w-full"
+                  className="w-full h-11 sm:h-12 rounded-full text-sm sm:text-base border-muted-foreground/20 hover:bg-muted/60"
                 >
                   Maybe Later
                 </Button>

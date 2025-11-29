@@ -148,7 +148,7 @@
   }
 
   .animate-scroll-left-fast {
-    animation: scroll-left 8s linear infinite;
+    animation: scroll-left 18s linear infinite;
     will-change: transform;
   }
 
