@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import twilio from 'twilio';
 
+export const runtime = 'nodejs'; // Explicitly set runtime for serverless functions
+export const maxDuration = 10; // Max 10 seconds for Vercel
+
 export async function POST(request: Request) {
   try {
     // Twilio sends webhooks as application/x-www-form-urlencoded
-    // Parse the incoming Twilio webhook data
     const formData = await request.formData();
     const from = formData.get('From') as string;
     const body = formData.get('Body') as string;
@@ -21,33 +23,30 @@ export async function POST(request: Request) {
       messageSid,
       accountSid: accountSid?.substring(0, 10) + '...',
       contentType: request.headers.get('content-type'),
+      allKeys: Array.from(formData.keys()), // Debug: see all form data keys
     });
 
     // Extract phone number from Twilio's "whatsapp:+1234567890" format
     const phoneNumber = from?.replace('whatsapp:', '') || '';
 
     if (!phoneNumber) {
-      console.error('[WhatsApp Webhook] No phone number found in webhook. Form data keys:', Array.from(formData.keys()));
-      // Still return TwiML to prevent Twilio retries
+      console.error('[WhatsApp Webhook] No phone number found. All form data:', 
+        Object.fromEntries(formData.entries())
+      );
       const twiml = new twilio.twiml.MessagingResponse();
       return new NextResponse(twiml.toString(), {
         status: 200,
-        headers: {
-          'Content-Type': 'text/xml',
-        },
+        headers: { 'Content-Type': 'text/xml' },
       });
     }
 
-    // Skip auto-reply if message is from the same number (to avoid loops)
-    // This can happen if Twilio sends status updates
+    // Skip auto-reply if message body is empty (status updates, etc.)
     if (!body || body.trim().length === 0) {
       console.log('[WhatsApp Webhook] Empty message body, skipping auto-reply');
       const twiml = new twilio.twiml.MessagingResponse();
       return new NextResponse(twiml.toString(), {
         status: 200,
-        headers: {
-          'Content-Type': 'text/xml',
-        },
+        headers: { 'Content-Type': 'text/xml' },
       });
     }
 
@@ -56,33 +55,31 @@ export async function POST(request: Request) {
 
 Team LBA`;
 
-    // Send auto-reply (non-blocking - don't wait for it to complete)
-    sendWhatsAppMessage(phoneNumber, autoReplyMessage)
-      .then((result) => {
-        if (result.success) {
-          console.log('[WhatsApp Webhook] Auto-reply sent successfully:', {
-            to: phoneNumber.substring(0, 10) + '...',
-            messageSid: result.messageSid,
-          });
-        } else {
-          console.error('[WhatsApp Webhook] Failed to send auto-reply:', result.error);
-        }
-      })
-      .catch((error) => {
-        console.error('[WhatsApp Webhook] Error sending auto-reply:', error);
-      });
+    // IMPORTANT: Send auto-reply synchronously (await it) so we can catch errors
+    console.log('[WhatsApp Webhook] Sending auto-reply to:', phoneNumber.substring(0, 10) + '...');
+    const result = await sendWhatsAppMessage(phoneNumber, autoReplyMessage);
 
-    // Return TwiML response immediately (Twilio expects this)
-    // We send the auto-reply asynchronously to avoid delays
+    if (result.success) {
+      console.log('[WhatsApp Webhook] ✅ Auto-reply sent successfully:', {
+        to: phoneNumber.substring(0, 10) + '...',
+        messageSid: result.messageSid,
+        deliveryStatus: result.deliveryStatus,
+      });
+    } else {
+      console.error('[WhatsApp Webhook] ❌ Failed to send auto-reply:', {
+        error: result.error,
+        to: phoneNumber.substring(0, 10) + '...',
+      });
+    }
+
+    // Return TwiML response
     const twiml = new twilio.twiml.MessagingResponse();
     return new NextResponse(twiml.toString(), {
       status: 200,
-      headers: {
-        'Content-Type': 'text/xml',
-      },
+      headers: { 'Content-Type': 'text/xml' },
     });
   } catch (error: any) {
-    console.error('[WhatsApp Webhook] Error processing webhook:', {
+    console.error('[WhatsApp Webhook] ❌ Error processing webhook:', {
       error: error?.message,
       stack: error?.stack,
       name: error?.name,
@@ -92,15 +89,13 @@ Team LBA`;
     const twiml = new twilio.twiml.MessagingResponse();
     return new NextResponse(twiml.toString(), {
       status: 200,
-      headers: {
-        'Content-Type': 'text/xml',
-      },
+      headers: { 'Content-Type': 'text/xml' },
     });
   }
 }
 
 // Also handle GET requests (Twilio sometimes sends GET for webhook validation)
 export async function GET() {
-  return NextResponse.json({ status: 'ok' });
+  return NextResponse.json({ status: 'ok', endpoint: 'whatsapp-webhook' });
 }
 
