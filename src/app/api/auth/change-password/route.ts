@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminCredentials, hashPassword, isAuthenticated, updateAdminPasswordHash } from '@/lib/auth';
 import { ADMIN_EMAIL } from '@/lib/auth';
+import { withRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
+  // Apply rate limiting (5 attempts per 15 minutes)
+  const rateLimitResponse = await withRateLimit(request, RATE_LIMITS.LOGIN);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     // Check if user is authenticated
     const authenticated = await isAuthenticated();

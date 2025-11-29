@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { withRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ bookingId: string }> | { bookingId: string } }
 ) {
+	// Apply rate limiting
+	const rateLimitResponse = await withRateLimit(request, RATE_LIMITS.FILE_UPLOAD);
+	if (rateLimitResponse) {
+		return rateLimitResponse;
+	}
+
 	try {
 		// Handle both sync and async params (Next.js 15 compatibility)
 		const resolvedParams = params instanceof Promise ? await params : params;

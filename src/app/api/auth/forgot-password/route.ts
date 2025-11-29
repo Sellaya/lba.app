@@ -3,9 +3,16 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { ADMIN_EMAIL } from '@/lib/auth';
 import { sendPasswordResetEmail } from '@/lib/email';
 import { getBaseUrl } from '@/lib/base-url';
+import { withRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
 export async function POST(request: Request) {
+  // Apply rate limiting (same as login - 5 requests per 15 minutes)
+  const rateLimitResponse = await withRateLimit(request, RATE_LIMITS.LOGIN);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const { email } = await request.json();
 
