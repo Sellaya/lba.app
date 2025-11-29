@@ -85,7 +85,12 @@ export async function sendWhatsAppMessage(
   }
 
   try {
-    const client = twilio(accountSid, authToken);
+    // Configure Twilio client with shorter timeout for serverless environments
+    const client = twilio(accountSid, authToken, {
+      httpClient: {
+        timeout: 10000, // 10 seconds instead of default 30 seconds
+      },
+    });
     
     // Format the 'to' number to E.164 format with whatsapp: prefix
     const formattedTo = formatPhoneToE164(to);

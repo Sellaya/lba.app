@@ -14,7 +14,14 @@ async function sendAutoReplyWithRetry(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`[WhatsApp Webhook] Sending auto-reply (attempt ${attempt}/${maxRetries}) to:`, phoneNumber.substring(0, 10) + '...');
-      const result = await sendWhatsAppMessage(phoneNumber, message);
+      
+      // Set a timeout for the entire send operation (15 seconds max)
+      const sendPromise = sendWhatsAppMessage(phoneNumber, message);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Send operation timeout')), 15000)
+      );
+      
+      const result = await Promise.race([sendPromise, timeoutPromise]) as any;
 
       if (result.success) {
         console.log('[WhatsApp Webhook] ✅ Auto-reply sent successfully:', {
@@ -36,13 +43,19 @@ async function sendAutoReplyWithRetry(
           return;
         }
         
-        // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        // Shorter wait before retrying (500ms, 1s, 1.5s)
+        await new Promise(resolve => setTimeout(resolve, 500 * attempt));
       }
     } catch (error: any) {
+      const isTimeout = error?.message?.includes('timeout') || 
+                       error?.code === 'ECONNABORTED' || 
+                       error?.code === 'ECONNRESET' ||
+                       error?.message === 'Send operation timeout';
+      
       console.error(`[WhatsApp Webhook] ❌ Error sending auto-reply (attempt ${attempt}/${maxRetries}):`, {
         error: error?.message,
         code: error?.code,
+        isTimeout,
       });
       
       // If it's the last attempt, give up
@@ -51,8 +64,8 @@ async function sendAutoReplyWithRetry(
         return;
       }
       
-      // Wait before retrying (exponential backoff)
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      // Shorter wait before retrying (500ms, 1s, 1.5s)
+      await new Promise(resolve => setTimeout(resolve, 500 * attempt));
     }
   }
 }
