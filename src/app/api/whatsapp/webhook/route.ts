@@ -6,22 +6,20 @@ export const runtime = 'nodejs';
 export const maxDuration = 10;
 
 // Helper function to send auto-reply with retry logic
+// Note: Twilio SDK has internal 30s timeout, so we accept that some requests may timeout
+// The webhook responds immediately, and retries happen in background
 async function sendAutoReplyWithRetry(
   phoneNumber: string,
   message: string,
-  maxRetries = 3
+  maxRetries = 2 // Reduced to 2 retries since Twilio API can be slow
 ): Promise<void> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`[WhatsApp Webhook] Sending auto-reply (attempt ${attempt}/${maxRetries}) to:`, phoneNumber.substring(0, 10) + '...');
       
-      // Set a timeout for the entire send operation (10 seconds max for serverless)
-      const sendPromise = sendWhatsAppMessage(phoneNumber, message);
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Send operation timeout after 10s')), 10000)
-      );
-      
-      const result = await Promise.race([sendPromise, timeoutPromise]);
+      // Call Twilio directly - it has its own 30s timeout
+      // We don't add an additional timeout wrapper since Promise.race doesn't cancel the request
+      const result = await sendWhatsAppMessage(phoneNumber, message);
 
       if (result.success) {
         console.log('[WhatsApp Webhook] ✅ Auto-reply sent successfully:', {
@@ -32,25 +30,29 @@ async function sendAutoReplyWithRetry(
         });
         return; // Success, exit retry loop
       } else {
+        const isTimeout = result.error?.includes('timeout') || 
+                         result.error?.includes('ECONNABORTED') || 
+                         result.error?.includes('ECONNRESET');
+        
         console.error(`[WhatsApp Webhook] ❌ Auto-reply failed (attempt ${attempt}/${maxRetries}):`, {
           error: result.error,
           to: phoneNumber.substring(0, 10) + '...',
+          isTimeout,
         });
         
         // If it's the last attempt, give up
         if (attempt === maxRetries) {
-          console.error('[WhatsApp Webhook] ❌ All retry attempts failed');
+          console.error('[WhatsApp Webhook] ❌ All retry attempts failed - message may not be delivered');
           return;
         }
         
-        // Shorter wait before retrying (500ms, 1s, 1.5s)
-        await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+        // Very short wait before retrying (200ms, 400ms) - Twilio API might be temporarily slow
+        await new Promise(resolve => setTimeout(resolve, 200 * attempt));
       }
     } catch (error: any) {
       const isTimeout = error?.message?.includes('timeout') || 
                        error?.code === 'ECONNABORTED' || 
-                       error?.code === 'ECONNRESET' ||
-                       error?.message?.includes('Send operation timeout');
+                       error?.code === 'ECONNRESET';
       
       console.error(`[WhatsApp Webhook] ❌ Error sending auto-reply (attempt ${attempt}/${maxRetries}):`, {
         error: error?.message,
@@ -60,12 +62,12 @@ async function sendAutoReplyWithRetry(
       
       // If it's the last attempt, give up
       if (attempt === maxRetries) {
-        console.error('[WhatsApp Webhook] ❌ All retry attempts failed');
+        console.error('[WhatsApp Webhook] ❌ All retry attempts failed - message may not be delivered');
         return;
       }
       
-      // Shorter wait before retrying (500ms, 1s, 1.5s)
-      await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+      // Very short wait before retrying (200ms, 400ms)
+      await new Promise(resolve => setTimeout(resolve, 200 * attempt));
     }
   }
 }
