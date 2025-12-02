@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { ContractDisplay } from '@/components/contract-display';
 import { generateContractPDFFromElement, generateContractPDFFromData } from '@/lib/pdf-generator';
 import { formatPrice } from '@/lib/price-format';
+import { SectionCard } from '@/components/admin/section-card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -572,7 +573,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
 
 
   return (
-    <div className="space-y-6 lg:space-y-8 relative">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8 relative pb-4">
       {isActionPending && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
           <div className="flex flex-col items-center gap-3">
@@ -583,16 +584,19 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       )}
       
       {/* Top Section: Client Info & Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Client Information Card */}
-        <Card className="lg:col-span-2 shadow-lg">
+        <SectionCard 
+          title="Client Information" 
+          className="lg:col-span-2"
+        >
           <CardHeader className="pb-4 border-b">
             <CardTitle className="text-xl font-headline flex items-center gap-2">
               <User className="h-5 w-5 text-black" />
               Client Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 space-y-6">
+          <div className="pt-4 md:pt-6 space-y-4 md:space-y-6">
             {/* Contact Details */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -868,8 +872,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 </div>
               );
             })()}
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
 
         {/* Right Sidebar: Status & Quick Info */}
         <div className="space-y-6">

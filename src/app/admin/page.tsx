@@ -41,6 +41,9 @@ import {
 } from '@/components/ui/sheet';
 import { formatPrice } from '@/lib/price-format';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MobileLayout } from '@/components/admin/mobile-layout';
+import { StatusChips } from '@/components/admin/status-chips';
+import { BookingCard } from '@/components/admin/booking-card';
 
 function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' | 'interac'): { text: string; variant: 'secondary' | 'destructive' | 'default' } {
     switch (status) {
@@ -694,65 +697,6 @@ export default function AdminDashboard() {
     );
   }
   
-  const navItems = [
-    { href: '/admin', label: 'Bookings', icon: FileText },
-    { href: '/admin/artists', label: 'Artists', icon: Users },
-    { href: '/admin/accounting', label: 'Accounting', icon: TrendingUp },
-    { href: '/admin/pricing', label: 'Pricing', icon: DollarSign },
-  ];
-
-  // Reusable Navigation Component
-  const NavigationMenu = ({ onNavigate }: { onNavigate?: () => void }) => {
-    return (
-      <nav className="flex-1 space-y-1 p-4">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          const handleClick = () => {
-            if (onNavigate) onNavigate();
-          };
-          
-          if (item.href === '/admin/pricing') {
-            return (
-              <button
-                key={item.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  router.push(item.href);
-                  handleClick();
-                }}
-                type="button"
-                className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-black text-white'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </button>
-            );
-          }
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={handleClick}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-    );
-  };
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -762,8 +706,80 @@ export default function AdminDashboard() {
     }).format(amount);
   };
 
+  // Header actions
+  const headerActions = (
+    <>
+      {selectedBookings.size > 0 && (
+        <>
+          <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
+            {selectedBookings.size} selected
+          </span>
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={isDeleting}
+                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                    <span className="hidden sm:inline">Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Delete ({selectedBookings.size})</span>
+                    <span className="sm:hidden">{selectedBookings.size}</span>
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete {selectedBookings.size} booking(s). This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                <AlertDialogCancel disabled={isDeleting} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete'
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => fetchBookings(true)}
+        disabled={isRefreshing}
+        title="Refresh bookings"
+        className="h-8 w-8 sm:h-10 sm:w-10"
+      >
+        <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+      </Button>
+      <AdminSettings />
+    </>
+  );
+
   return (
-    <div className="flex min-h-screen w-full bg-muted/40 relative">
+    <>
       {/* Animated Welcome Message */}
       {showWelcome && (
         <div 
@@ -819,328 +835,84 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      {/* Sidebar - Desktop Only */}
-      <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-        <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
-          <div className="relative w-10 h-10 flex-shrink-0">
-            <Image
-              src="/LBA.png"
-              alt="Looks by Anum Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
+      <MobileLayout
+        title="Bookings Management"
+        headerActions={headerActions}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+      >
+        <div className="flex flex-col gap-4 p-4 md:p-6">
+          {/* Filters Section */}
+          <Card className="rounded-xl border border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Bookings Management</CardTitle>
+              <CardDescription className="text-xs md:text-sm">Organize and manage all your bookings by status. Sorted by newest first.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Select value={timeFilter} onValueChange={(value: 'all' | '24h' | '3d' | '7d') => setTimeFilter(value)}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="24h">Last 24 Hours</SelectItem>
+                    <SelectItem value="3d">Last 3 Days</SelectItem>
+                    <SelectItem value="7d">Last 7 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search by name or ID..."
+                    className="w-full rounded-lg bg-background pl-9 md:pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status Chips - Mobile First */}
+          <StatusChips
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={{
+              all: categorizedBookings.all.length,
+              quoted: categorizedBookings.quoted.length,
+              pendingPayment: categorizedBookings.pendingPayment.length,
+              confirmed: categorizedBookings.confirmed.length,
+              completed: categorizedBookings.completed.length,
+              cancelled: categorizedBookings.cancelled.length,
+            }}
+          />
+
+          {/* Bookings List - Cards on Mobile, Table on Desktop */}
+          <BookingsTable 
+            bookings={filteredBookings}
+            selectedBooking={selectedBooking}
+            setSelectedBooking={setSelectedBooking}
+            handleUpdateBooking={handleUpdateBooking}
+            handleBookingDeleted={handleBookingDeleted}
+            getPaymentStatus={getPaymentStatus}
+            getFinalPaymentStatus={getFinalPaymentStatus}
+            getStatusVariant={getStatusVariant}
+            getTimeToEvent={getTimeToEvent}
+            format={formatToronto}
+            selectedBookings={selectedBookings}
+            handleBookingSelect={handleBookingSelect}
+            handleSelectAll={handleSelectAll}
+          />
         </div>
-        <NavigationMenu />
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 md:px-6">
-          {/* Mobile Menu Button */}
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden h-9 w-9"
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <SheetHeader className="border-b px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 flex-shrink-0">
-                    <Image
-                      src="/LBA.png"
-                      alt="Looks by Anum Logo"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                  <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
-                    Looks by Anum
-                  </SheetTitle>
-                </div>
-              </SheetHeader>
-              <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
-
-          <h2 className="text-base sm:text-xl font-semibold text-foreground truncate flex-1 min-w-0">
-            Bookings Management
-          </h2>
-          <div className="ml-auto flex items-center gap-1 sm:gap-2 flex-shrink-0">
-            {selectedBookings.size > 0 && (
-              <>
-                <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
-                  {selectedBookings.size} selected
-                </span>
-                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={isDeleting}
-                      className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
-                    >
-                      {isDeleting ? (
-                        <>
-                          <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                          <span className="hidden sm:inline">Deleting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline">Delete Selected ({selectedBookings.size})</span>
-                          <span className="sm:hidden">{selectedBookings.size}</span>
-                        </>
-                      )}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete {selectedBookings.size} booking(s). This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                      <AlertDialogCancel disabled={isDeleting} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleBulkDelete}
-                        disabled={isDeleting}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
-                      >
-                        {isDeleting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          'Delete'
-                        )}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </>
-            )}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => fetchBookings(true)}
-              disabled={isRefreshing}
-              title="Refresh bookings"
-              className="h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            <AdminSettings />
-          </div>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 sm:px-6 sm:py-4 md:gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <CardTitle>Bookings Management</CardTitle>
-                    <CardDescription>Organize and manage all your bookings by status. Sorted by newest first.</CardDescription>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <Select value={timeFilter} onValueChange={(value: 'all' | '24h' | '3d' | '7d') => setTimeFilter(value)}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Filter by time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Time</SelectItem>
-                            <SelectItem value="24h">Last 24 Hours</SelectItem>
-                            <SelectItem value="3d">Last 3 Days</SelectItem>
-                            <SelectItem value="7d">Last 7 Days</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search by name or ID..."
-                            className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-4 sm:mb-6 h-auto gap-1 sm:gap-0">
-                <TabsTrigger value="all" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
-                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">All</span>
-                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
-                    {categorizedBookings.all.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="quoted" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
-                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Quoted</span>
-                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
-                    {categorizedBookings.quoted.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="pendingPayment" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
-                  <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Pending</span>
-                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
-                    {categorizedBookings.pendingPayment.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="confirmed" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
-                  <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Confirmed</span>
-                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
-                    {categorizedBookings.confirmed.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
-                  <CalendarClock className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Completed</span>
-                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
-                    {categorizedBookings.completed.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="cancelled" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm px-2">
-                  <XCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Cancelled</span>
-                  <Badge variant="secondary" className="ml-0 sm:ml-1 text-xs h-4 sm:h-5">
-                    {categorizedBookings.cancelled.length}
-                  </Badge>
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="all" className="mt-0">
-                <BookingsTable 
-                  bookings={filteredBookings}
-                  selectedBooking={selectedBooking}
-                  setSelectedBooking={setSelectedBooking}
-                  handleUpdateBooking={handleUpdateBooking}
-                  handleBookingDeleted={handleBookingDeleted}
-                  getPaymentStatus={getPaymentStatus}
-                  getFinalPaymentStatus={getFinalPaymentStatus}
-                  getStatusVariant={getStatusVariant}
-                  getTimeToEvent={getTimeToEvent}
-                  format={formatToronto}
-                  selectedBookings={selectedBookings}
-                  handleBookingSelect={handleBookingSelect}
-                  handleSelectAll={handleSelectAll}
-                />
-              </TabsContent>
-
-              <TabsContent value="quoted" className="mt-0">
-                <BookingsTable 
-                  bookings={filteredBookings}
-                  selectedBooking={selectedBooking}
-                  setSelectedBooking={setSelectedBooking}
-                  handleUpdateBooking={handleUpdateBooking}
-                  handleBookingDeleted={handleBookingDeleted}
-                  getPaymentStatus={getPaymentStatus}
-                  getFinalPaymentStatus={getFinalPaymentStatus}
-                  getStatusVariant={getStatusVariant}
-                  getTimeToEvent={getTimeToEvent}
-                  format={formatToronto}
-                  selectedBookings={selectedBookings}
-                  handleBookingSelect={handleBookingSelect}
-                  handleSelectAll={handleSelectAll}
-                />
-              </TabsContent>
-
-              <TabsContent value="pendingPayment" className="mt-0">
-                <BookingsTable 
-                  bookings={filteredBookings}
-                  selectedBooking={selectedBooking}
-                  setSelectedBooking={setSelectedBooking}
-                  handleUpdateBooking={handleUpdateBooking}
-                  handleBookingDeleted={handleBookingDeleted}
-                  getPaymentStatus={getPaymentStatus}
-                  getFinalPaymentStatus={getFinalPaymentStatus}
-                  getStatusVariant={getStatusVariant}
-                  getTimeToEvent={getTimeToEvent}
-                  format={formatToronto}
-                  selectedBookings={selectedBookings}
-                  handleBookingSelect={handleBookingSelect}
-                  handleSelectAll={handleSelectAll}
-                />
-              </TabsContent>
-
-              <TabsContent value="confirmed" className="mt-0">
-                <BookingsTable 
-                  bookings={filteredBookings}
-                  selectedBooking={selectedBooking}
-                  setSelectedBooking={setSelectedBooking}
-                  handleUpdateBooking={handleUpdateBooking}
-                  handleBookingDeleted={handleBookingDeleted}
-                  getPaymentStatus={getPaymentStatus}
-                  getFinalPaymentStatus={getFinalPaymentStatus}
-                  getStatusVariant={getStatusVariant}
-                  getTimeToEvent={getTimeToEvent}
-                  format={formatToronto}
-                  selectedBookings={selectedBookings}
-                  handleBookingSelect={handleBookingSelect}
-                  handleSelectAll={handleSelectAll}
-                />
-              </TabsContent>
-
-              <TabsContent value="completed" className="mt-0">
-                <BookingsTable 
-                  bookings={filteredBookings}
-                  selectedBooking={selectedBooking}
-                  setSelectedBooking={setSelectedBooking}
-                  handleUpdateBooking={handleUpdateBooking}
-                  handleBookingDeleted={handleBookingDeleted}
-                  getPaymentStatus={getPaymentStatus}
-                  getFinalPaymentStatus={getFinalPaymentStatus}
-                  getStatusVariant={getStatusVariant}
-                  getTimeToEvent={getTimeToEvent}
-                  format={formatToronto}
-                  selectedBookings={selectedBookings}
-                  handleBookingSelect={handleBookingSelect}
-                  handleSelectAll={handleSelectAll}
-                />
-              </TabsContent>
-
-              <TabsContent value="cancelled" className="mt-0">
-                <BookingsTable 
-                  bookings={filteredBookings}
-                  selectedBooking={selectedBooking}
-                  setSelectedBooking={setSelectedBooking}
-                  handleUpdateBooking={handleUpdateBooking}
-                  handleBookingDeleted={handleBookingDeleted}
-                  getPaymentStatus={getPaymentStatus}
-                  getFinalPaymentStatus={getFinalPaymentStatus}
-                  getStatusVariant={getStatusVariant}
-                  getTimeToEvent={getTimeToEvent}
-                  format={formatToronto}
-                  selectedBookings={selectedBookings}
-                  handleBookingSelect={handleBookingSelect}
-                  handleSelectAll={handleSelectAll}
-                />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-        </main>
-      </div>
-    </div>
+      </MobileLayout>
+    </>
   );
 }
 
 // Extract bookings table into a separate component for reusability
+// Mobile: Cards, Desktop: Table
 function BookingsTable({
   bookings,
   selectedBooking,
@@ -1171,183 +943,223 @@ function BookingsTable({
   handleSelectAll: (checked: boolean) => void;
 }) {
   const allSelected = bookings.length > 0 && bookings.every(b => selectedBookings.has(b.id));
-  const someSelected = bookings.some(b => selectedBookings.has(b.id));
+  
+  if (bookings.length === 0) {
+    return (
+      <div className="py-12 md:py-20 text-center text-muted-foreground rounded-xl bg-white border border-border p-8">
+        <p className="text-sm md:text-base">No bookings found in this category.</p>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="overflow-x-auto -mx-2 sm:mx-0">
+      {/* Mobile: Card Layout */}
+      <div className="md:hidden space-y-3">
+        {bookings.map((booking, index) => (
+          <Dialog 
+            key={booking.id} 
+            open={selectedBooking?.id === booking.id} 
+            onOpenChange={(isOpen) => setSelectedBooking(isOpen ? booking : null)}
+          >
+            <BookingCard
+              booking={booking}
+              index={index}
+              isSelected={selectedBookings.has(booking.id)}
+              onSelect={(checked) => handleBookingSelect(booking.id, checked)}
+              onViewDetails={() => setSelectedBooking(booking)}
+              getPaymentStatus={getPaymentStatus}
+              getFinalPaymentStatus={getFinalPaymentStatus}
+              getStatusVariant={getStatusVariant}
+              getTimeToEvent={getTimeToEvent}
+            />
+            <DialogContent className="w-[95vw] max-w-[95vw] max-h-[95vh] flex flex-col p-4">
+              <DialogHeader className="flex-shrink-0 pb-3">
+                <DialogTitle className="text-lg">Booking Details (ID: {booking.id})</DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto min-h-0 -mx-4 px-4">
+                {selectedBooking && (
+                  <BookingDetails 
+                    quote={selectedBooking.finalQuote} 
+                    onUpdate={handleUpdateBooking} 
+                    bookingDoc={selectedBooking} 
+                    onBookingDeleted={handleBookingDeleted} 
+                  />
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        ))}
+      </div>
+
+      {/* Desktop: Table Layout */}
+      <div className="hidden md:block overflow-x-auto -mx-4 md:mx-0">
         <div className="inline-block min-w-full align-middle">
-          <div className="overflow-hidden">
+          <div className="overflow-hidden rounded-lg border border-border bg-white">
             <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[40px] sm:w-[50px]">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
-                  aria-label="Select all bookings"
-                />
-              </TableHead>
-              <TableHead className="w-[50px] sm:w-[60px] text-xs sm:text-sm">Sr. No.</TableHead>
-              <TableHead className="min-w-[120px] text-xs sm:text-sm">Customer</TableHead>
-              <TableHead className="min-w-[100px] text-xs sm:text-sm">Advance Payment</TableHead>
-              <TableHead className="min-w-[100px] text-xs sm:text-sm">Final Payment</TableHead>
-              <TableHead className="min-w-[80px] text-xs sm:text-sm">Status</TableHead>
-              <TableHead className="hidden md:table-cell text-xs sm:text-sm">Booking Date</TableHead>
-              <TableHead className="hidden md:table-cell text-xs sm:text-sm">Event</TableHead>
-              <TableHead className="text-right min-w-[80px] text-xs sm:text-sm">Total</TableHead>
-              <TableHead className="w-[50px]">
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bookings.map((booking, index) => {
-               const artistTier = booking.finalQuote.selectedQuote;
-               const advancePaymentStatus = getPaymentStatus(booking.finalQuote.paymentDetails?.status, booking.finalQuote.paymentDetails?.method);
-               const advancePaymentMethod = booking.finalQuote.paymentDetails?.method;
-               const finalPaymentStatus = getFinalPaymentStatus(booking.finalQuote.paymentDetails?.finalPayment);
-               const finalPaymentMethod = booking.finalQuote.paymentDetails?.finalPayment?.method;
-               // Check if booking has promotional codes
-               const hasPromoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
-               const promoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
-               const discountAmount = (booking.finalQuote.paymentDetails?.discountAmount || 0) + (booking.finalQuote.paymentDetails?.finalPayment?.discountAmount || 0);
-               const hasConsultationRequest = !!booking.finalQuote.consultationRequest;
-               return (
-                  <TableRow key={booking.id} className={selectedBookings.has(booking.id) ? 'bg-muted/50' : ''}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedBookings.has(booking.id)}
-                        onCheckedChange={(checked) => handleBookingSelect(booking.id, checked === true)}
-                        aria-label={`Select booking ${booking.id}`}
-                      />
-                    </TableCell>
-                     <TableCell className="font-medium text-xs sm:text-sm">{index + 1}</TableCell>
-                    <TableCell className="min-w-[120px]">
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <div className="font-medium text-xs sm:text-sm flex items-center gap-1">
-                            {booking.finalQuote.contact.name}
-                            {hasConsultationRequest && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0.5" title="Consultation request submitted">
-                                📞 Call Request
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[100px] sm:max-w-none">{booking.id}</div>
-                        </div>
-                        {hasPromoCode && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5" title={`Promo: ${promoCode}${discountAmount > 0 ? ` (-$${discountAmount.toFixed(2)})` : ''}`}>
-                            🎟️ {promoCode}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                     <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <Badge 
-                              variant={advancePaymentStatus.variant} 
-                              className={`capitalize whitespace-nowrap w-fit ${
-                                advancePaymentStatus.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : ''
-                              }`}
-                            >
-                                {advancePaymentStatus.text}
-                            </Badge>
-                            {advancePaymentMethod && (
-                              <Badge 
-                                variant={advancePaymentMethod === 'stripe' ? 'default' : 'outline'} 
-                                className={`text-xs w-fit ${advancePaymentMethod === 'stripe' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
-                              >
-                                {advancePaymentMethod === 'stripe' ? 'Stripe' : 'Interac'}
-                              </Badge>
-                            )}
-                          </div>
-                     </TableCell>
-                     <TableCell>
-                          {finalPaymentStatus ? (
-                            <div className="flex flex-col gap-1">
-                              <Badge 
-                                variant={finalPaymentStatus.variant} 
-                                className={`capitalize whitespace-nowrap w-fit ${
-                                  finalPaymentStatus.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : ''
-                                }`}
-                              >
-                                  {finalPaymentStatus.text}
-                              </Badge>
-                              {finalPaymentMethod && (
-                                <Badge 
-                                  variant={finalPaymentMethod === 'stripe' ? 'default' : 'outline'} 
-                                  className={`text-xs w-fit ${finalPaymentMethod === 'stripe' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
-                                >
-                                  {finalPaymentMethod === 'stripe' ? 'Stripe' : 'Interac'}
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                      aria-label="Select all bookings"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[60px] text-sm">Sr. No.</TableHead>
+                  <TableHead className="min-w-[120px] text-sm">Customer</TableHead>
+                  <TableHead className="min-w-[100px] text-sm">Advance Payment</TableHead>
+                  <TableHead className="min-w-[100px] text-sm">Final Payment</TableHead>
+                  <TableHead className="min-w-[80px] text-sm">Status</TableHead>
+                  <TableHead className="text-sm">Booking Date</TableHead>
+                  <TableHead className="text-sm">Event</TableHead>
+                  <TableHead className="text-right min-w-[80px] text-sm">Total</TableHead>
+                  <TableHead className="w-[50px]">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bookings.map((booking, index) => {
+                  const advancePaymentStatus = getPaymentStatus(booking.finalQuote.paymentDetails?.status, booking.finalQuote.paymentDetails?.method);
+                  const advancePaymentMethod = booking.finalQuote.paymentDetails?.method;
+                  const finalPaymentStatus = getFinalPaymentStatus(booking.finalQuote.paymentDetails?.finalPayment);
+                  const finalPaymentMethod = booking.finalQuote.paymentDetails?.finalPayment?.method;
+                  const hasPromoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
+                  const promoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
+                  const discountAmount = (booking.finalQuote.paymentDetails?.discountAmount || 0) + (booking.finalQuote.paymentDetails?.finalPayment?.discountAmount || 0);
+                  const hasConsultationRequest = !!booking.finalQuote.consultationRequest;
+                  return (
+                    <TableRow key={booking.id} className={selectedBookings.has(booking.id) ? 'bg-muted/50' : ''}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedBookings.has(booking.id)}
+                          onCheckedChange={(checked) => handleBookingSelect(booking.id, checked === true)}
+                          aria-label={`Select booking ${booking.id}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">{index + 1}</TableCell>
+                      <TableCell className="min-w-[120px]">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <div className="font-medium text-sm flex items-center gap-1">
+                              {booking.finalQuote.contact.name}
+                              {hasConsultationRequest && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0.5" title="Consultation request submitted">
+                                  📞 Call Request
                                 </Badge>
                               )}
                             </div>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Not Started
+                            <div className="text-xs text-muted-foreground truncate">{booking.id}</div>
+                          </div>
+                          {hasPromoCode && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5" title={`Promo: ${promoCode}${discountAmount > 0 ? ` (-$${discountAmount.toFixed(2)})` : ''}`}>
+                              🎟️ {promoCode}
                             </Badge>
                           )}
-                     </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={getStatusVariant(booking.finalQuote.status)} 
-                        className={`capitalize whitespace-nowrap ${
-                          booking.finalQuote.status === 'confirmed' ? 'bg-green-500 hover:bg-green-600 text-white' : ''
-                        }`}
-                      >
-                        {booking.finalQuote.status}
-                      </Badge>
-                    </TableCell>
-                     <TableCell className="hidden md:table-cell text-sm">
-                       {booking.createdAt instanceof Date 
-                          ? formatToronto(booking.createdAt, 'PPp') 
-                          : booking.createdAt?.toDate 
-                          ? formatToronto(booking.createdAt.toDate(), 'PPp') 
-                          : 'N/A'}
-                    </TableCell>
-                     <TableCell className="hidden md:table-cell">
-                          <div className="flex items-center gap-2">
-                              <CalendarClock className="w-4 h-4 text-muted-foreground"/>
-                              <span>{getTimeToEvent(booking.finalQuote.booking.days[0].date)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <Badge 
+                            variant={advancePaymentStatus.variant} 
+                            className={`capitalize whitespace-nowrap w-fit ${
+                              advancePaymentStatus.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : ''
+                            }`}
+                          >
+                            {advancePaymentStatus.text}
+                          </Badge>
+                          {advancePaymentMethod && (
+                            <Badge 
+                              variant={advancePaymentMethod === 'stripe' ? 'default' : 'outline'} 
+                              className={`text-xs w-fit ${advancePaymentMethod === 'stripe' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                            >
+                              {advancePaymentMethod === 'stripe' ? 'Stripe' : 'Interac'}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {finalPaymentStatus ? (
+                          <div className="flex flex-col gap-1">
+                            <Badge 
+                              variant={finalPaymentStatus.variant} 
+                              className={`capitalize whitespace-nowrap w-fit ${
+                                finalPaymentStatus.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : ''
+                              }`}
+                            >
+                              {finalPaymentStatus.text}
+                            </Badge>
+                            {finalPaymentMethod && (
+                              <Badge 
+                                variant={finalPaymentMethod === 'stripe' ? 'default' : 'outline'} 
+                                className={`text-xs w-fit ${finalPaymentMethod === 'stripe' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                              >
+                                {finalPaymentMethod === 'stripe' ? 'Stripe' : 'Interac'}
+                              </Badge>
+                            )}
                           </div>
-                    </TableCell>
-                     <TableCell className="text-right text-xs sm:text-sm font-medium">
-                      ${booking.finalQuote.selectedQuote 
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Not Started
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={getStatusVariant(booking.finalQuote.status)} 
+                          className={`capitalize whitespace-nowrap ${
+                            booking.finalQuote.status === 'confirmed' ? 'bg-green-500 hover:bg-green-600 text-white' : ''
+                          }`}
+                        >
+                          {booking.finalQuote.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {booking.createdAt instanceof Date 
+                          ? format(booking.createdAt, 'PPp') 
+                          : booking.createdAt?.toDate 
+                          ? format(booking.createdAt.toDate(), 'PPp') 
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <CalendarClock className="w-4 h-4 text-muted-foreground"/>
+                          <span>{getTimeToEvent(booking.finalQuote.booking.days[0]?.date || '')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-medium">
+                        ${booking.finalQuote.selectedQuote 
                           ? formatPrice(booking.finalQuote.quotes[booking.finalQuote.selectedQuote].total)
                           : 'N/A'
-                      }
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Dialog open={selectedBooking?.id === booking.id} onOpenChange={(isOpen) => setSelectedBooking(isOpen ? booking : null)}>
+                        }
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Dialog open={selectedBooking?.id === booking.id} onOpenChange={(isOpen) => setSelectedBooking(isOpen ? booking : null)}>
                           <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                  <Eye className="h-4 w-4" />
-                                  <span className="sr-only">View Details</span>
-                              </Button>
+                            <Button variant="ghost" size="icon">
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View Details</span>
+                            </Button>
                           </DialogTrigger>
-                           <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-5xl lg:max-w-6xl max-h-[95vh] sm:max-h-[90vh] flex flex-col p-2 sm:p-6">
-                              <DialogHeader className="flex-shrink-0">
-                                  <DialogTitle className="text-xl">Booking Details (ID: {booking.id})</DialogTitle>
-                              </DialogHeader>
-                              <div className="flex-1 overflow-y-auto px-1 py-2 min-h-0">
-                                  {selectedBooking && <BookingDetails quote={selectedBooking.finalQuote} onUpdate={handleUpdateBooking} bookingDoc={selectedBooking} onBookingDeleted={handleBookingDeleted} />}
-                              </div>
+                          <DialogContent className="w-[95vw] max-w-5xl lg:max-w-6xl max-h-[90vh] flex flex-col p-6">
+                            <DialogHeader className="flex-shrink-0">
+                              <DialogTitle className="text-xl">Booking Details (ID: {booking.id})</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex-1 overflow-y-auto px-1 py-2 min-h-0">
+                              {selectedBooking && <BookingDetails quote={selectedBooking.finalQuote} onUpdate={handleUpdateBooking} bookingDoc={selectedBooking} onBookingDeleted={handleBookingDeleted} />}
+                            </div>
                           </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-               )
-            })}
-          </TableBody>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
             </Table>
           </div>
         </div>
       </div>
-      {bookings.length === 0 && (
-        <div className="py-20 text-center text-muted-foreground">
-          No bookings found in this category.
-        </div>
-      )}
     </>
   );
 }

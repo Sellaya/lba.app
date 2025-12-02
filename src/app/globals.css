@@ -279,6 +279,17 @@
     animation: float 3s ease-in-out infinite;
   }
 
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
   .animate-shimmer {
     animation: shimmer 2s linear infinite;
     background: linear-gradient(
