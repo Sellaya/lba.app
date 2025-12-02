@@ -1,0 +1,38 @@
+{
+  "name": "Looks by Anum - Book Your Session",
+  "short_name": "Looks by Anum",
+  "description": "Book your makeup artist for any occasion with Looks by Anum",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/LBA.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/LBA.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["beauty", "lifestyle"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Book Session",
+      "short_name": "Book",
+      "description": "Start a new booking",
+      "url": "/",
+      "icons": [{ "src": "/LBA.png", "sizes": "192x192" }]
+    }
+  ]
+}
+
+
+

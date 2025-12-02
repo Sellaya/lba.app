@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "Makeup brushes and products arranged elegantly on a dark surface",
+      "imageUrl": "https://images.unsplash.com/photo-1542452255191-c85a98f2c5d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtYWtldXAlMjBwcm9kdWN0c3xlbnwwfHx8fDE3NjI0NTU0NDh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "makeup products"
+    }
+  ]
+}
