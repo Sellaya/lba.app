@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2, Menu } from 'lucide-react';
+import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2, Menu, Filter } from 'lucide-react';
 import { AdminSettings } from '@/components/admin-settings';
 import { formatToronto, differenceInDaysToronto, parseToronto, getTorontoToday, getTorontoNow } from '@/lib/toronto-time';
 import { BookingDetails } from '@/components/booking-details';
@@ -44,6 +44,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MobileLayout } from '@/components/admin/mobile-layout';
 import { StatusChips } from '@/components/admin/status-chips';
 import { BookingCard } from '@/components/admin/booking-card';
+import { CalendarView } from '@/components/admin/calendar-view';
+import { AdvancedFilters, applyFilters, countActiveFilters, type FilterState } from '@/components/admin/advanced-filters';
+import { exportBookingsToCSV, exportBookingsToExcel, exportBookingsToPDF } from '@/lib/export-utils';
+import { Calendar as CalendarIcon, Download, FileDown, FileSpreadsheet, List } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 function getPaymentStatus(status: PaymentStatus | undefined, method?: 'stripe' | 'interac'): { text: string; variant: 'secondary' | 'destructive' | 'default' } {
     switch (status) {
@@ -84,6 +94,17 @@ export default function AdminDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(getTorontoNow()); // Track current time for real-time updates
   const [timeFilter, setTimeFilter] = useState<'all' | '24h' | '3d' | '7d'>('all'); // Time filter for quotes
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list'); // View mode toggle
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterState>({
+    dateRange: { from: null, to: null },
+    amountRange: { min: '', max: '' },
+    paymentMethod: 'all',
+    serviceType: 'all',
+    status: 'all',
+    searchTerm: '',
+  });
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -381,14 +402,91 @@ export default function AdminDashboard() {
       });
     }
     
-    // Apply search filter
-    if (!searchTerm) return categoryBookings;
-    const lowercasedTerm = searchTerm.toLowerCase();
-    return categoryBookings.filter(booking => 
+    // Apply basic search filter (if advanced filters not active)
+    if (!showAdvancedFilters && searchTerm) {
+      const lowercasedTerm = searchTerm.toLowerCase();
+      categoryBookings = categoryBookings.filter(booking => 
         booking.id.toLowerCase().includes(lowercasedTerm) || 
         booking.finalQuote.contact.name.toLowerCase().includes(lowercasedTerm)
-    );
-  }, [searchTerm, categorizedBookings, activeTab, timeFilter, currentTime]);
+      );
+    }
+    
+    // Apply advanced filters if active
+    if (showAdvancedFilters) {
+      // Merge basic search into advanced filters
+      const mergedFilters = {
+        ...advancedFilters,
+        searchTerm: searchTerm || advancedFilters.searchTerm,
+      };
+      categoryBookings = applyFilters(categoryBookings, mergedFilters);
+    }
+    
+    return categoryBookings;
+  }, [searchTerm, categorizedBookings, activeTab, timeFilter, currentTime, showAdvancedFilters, advancedFilters]);
+  
+  const activeFilterCount = useMemo(() => {
+    if (!showAdvancedFilters) return 0;
+    return countActiveFilters({
+      ...advancedFilters,
+      searchTerm: searchTerm || advancedFilters.searchTerm,
+    });
+  }, [showAdvancedFilters, advancedFilters, searchTerm]);
+  
+  const handleResetFilters = () => {
+    setAdvancedFilters({
+      dateRange: { from: null, to: null },
+      amountRange: { min: '', max: '' },
+      paymentMethod: 'all',
+      serviceType: 'all',
+      status: 'all',
+      searchTerm: '',
+    });
+    setSearchTerm('');
+    setShowAdvancedFilters(false);
+  };
+  
+  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
+    if (filteredBookings.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Data',
+        description: 'No bookings to export',
+      });
+      return;
+    }
+    
+    try {
+      switch (format) {
+        case 'csv':
+          exportBookingsToCSV(filteredBookings, 'bookings');
+          toast({
+            title: 'Export Successful',
+            description: 'Bookings exported to CSV',
+          });
+          break;
+        case 'excel':
+          await exportBookingsToExcel(filteredBookings, 'bookings');
+          toast({
+            title: 'Export Successful',
+            description: 'Bookings exported to Excel',
+          });
+          break;
+        case 'pdf':
+          await exportBookingsToPDF(filteredBookings, 'bookings');
+          toast({
+            title: 'Export Successful',
+            description: 'Bookings exported to PDF',
+          });
+          break;
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: error.message || 'Failed to export bookings',
+      });
+    }
+  };
 
   // Calculate accounting metrics
   const accountingMetrics = useMemo(() => {
@@ -764,6 +862,35 @@ export default function AdminDashboard() {
           </AlertDialog>
         </>
       )}
+      {/* Export Dropdown */}
+      {filteredBookings.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 sm:h-9 sm:w-9"
+              title="Export bookings"
+            >
+              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => handleExport('csv')} className="text-xs md:text-sm">
+              <FileText className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+              Export CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('excel')} className="text-xs md:text-sm">
+              <FileSpreadsheet className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+              Export Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('pdf')} className="text-xs md:text-sm">
+              <FileDown className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+              Export PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       <Button
         variant="outline"
         size="icon"
@@ -842,71 +969,200 @@ export default function AdminDashboard() {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       >
         <div className="flex flex-col gap-4 p-4 md:p-6">
-          {/* Filters Section */}
-          <Card className="rounded-xl border border-border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base md:text-lg">Bookings Management</CardTitle>
-              <CardDescription className="text-xs md:text-sm">Organize and manage all your bookings by status. Sorted by newest first.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Select value={timeFilter} onValueChange={(value: 'all' | '24h' | '3d' | '7d') => setTimeFilter(value)}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Time</SelectItem>
-                    <SelectItem value="24h">Last 24 Hours</SelectItem>
-                    <SelectItem value="3d">Last 3 Days</SelectItem>
-                    <SelectItem value="7d">Last 7 Days</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search by name or ID..."
-                    className="w-full rounded-lg bg-background pl-9 md:pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+          {/* View Toggle & Filters Section */}
+          <div className="flex flex-col gap-4">
+            {/* View Mode Toggle */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="h-8 md:h-9 text-xs md:text-sm"
+                >
+                  <List className="mr-1.5 h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">List</span>
+                </Button>
+                <Button
+                  variant={viewMode === 'calendar' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('calendar')}
+                  className="h-8 md:h-9 text-xs md:text-sm"
+                >
+                  <CalendarIcon className="mr-1.5 h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Calendar</span>
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+              <Button
+                variant={showAdvancedFilters ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="h-8 md:h-9 text-xs md:text-sm"
+              >
+                <Filter className="mr-1.5 h-3 w-3 md:h-4 md:w-4" />
+                <span className="hidden sm:inline">Filters</span>
+                {activeFilterCount > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+
+            {/* Basic Filters (when advanced filters not shown) */}
+            {!showAdvancedFilters && (
+              <Card className="rounded-xl border border-border shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base md:text-lg">Bookings Management</CardTitle>
+                  <CardDescription className="text-xs md:text-sm">Organize and manage all your bookings by status. Sorted by newest first.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Select value={timeFilter} onValueChange={(value: 'all' | '24h' | '3d' | '7d') => setTimeFilter(value)}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="24h">Last 24 Hours</SelectItem>
+                        <SelectItem value="3d">Last 3 Days</SelectItem>
+                        <SelectItem value="7d">Last 7 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="search"
+                        placeholder="Search by name or ID..."
+                        className="w-full rounded-lg bg-background pl-9 md:pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <AdvancedFilters
+                filters={advancedFilters}
+                onFiltersChange={setAdvancedFilters}
+                onReset={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+              />
+            )}
+          </div>
 
           {/* Status Chips - Mobile First */}
-          <StatusChips
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            counts={{
-              all: categorizedBookings.all.length,
-              quoted: categorizedBookings.quoted.length,
-              pendingPayment: categorizedBookings.pendingPayment.length,
-              confirmed: categorizedBookings.confirmed.length,
-              completed: categorizedBookings.completed.length,
-              cancelled: categorizedBookings.cancelled.length,
-            }}
-          />
+          {viewMode === 'list' && (
+            <StatusChips
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              counts={{
+                all: categorizedBookings.all.length,
+                quoted: categorizedBookings.quoted.length,
+                pendingPayment: categorizedBookings.pendingPayment.length,
+                confirmed: categorizedBookings.confirmed.length,
+                completed: categorizedBookings.completed.length,
+                cancelled: categorizedBookings.cancelled.length,
+              }}
+            />
+          )}
 
-          {/* Bookings List - Cards on Mobile, Table on Desktop */}
-          <BookingsTable 
-            bookings={filteredBookings}
-            selectedBooking={selectedBooking}
-            setSelectedBooking={setSelectedBooking}
-            handleUpdateBooking={handleUpdateBooking}
-            handleBookingDeleted={handleBookingDeleted}
-            getPaymentStatus={getPaymentStatus}
-            getFinalPaymentStatus={getFinalPaymentStatus}
-            getStatusVariant={getStatusVariant}
-            getTimeToEvent={getTimeToEvent}
-            format={formatToronto}
-            selectedBookings={selectedBookings}
-            handleBookingSelect={handleBookingSelect}
-            handleSelectAll={handleSelectAll}
-          />
+          {/* Content Area - List or Calendar */}
+          {viewMode === 'list' ? (
+            <BookingsTable 
+              bookings={filteredBookings}
+              selectedBooking={selectedBooking}
+              setSelectedBooking={setSelectedBooking}
+              handleUpdateBooking={handleUpdateBooking}
+              handleBookingDeleted={handleBookingDeleted}
+              getPaymentStatus={getPaymentStatus}
+              getFinalPaymentStatus={getFinalPaymentStatus}
+              getStatusVariant={getStatusVariant}
+              getTimeToEvent={getTimeToEvent}
+              format={formatToronto}
+              selectedBookings={selectedBookings}
+              handleBookingSelect={handleBookingSelect}
+              handleSelectAll={handleSelectAll}
+            />
+          ) : (
+            <CalendarView
+              bookings={filteredBookings}
+              selectedDate={selectedCalendarDate}
+              onDateSelect={(date) => {
+                setSelectedCalendarDate(date);
+                // Find booking for this date and open it
+                const dateKey = formatToronto(date, 'yyyy-MM-dd');
+                const bookingForDate = filteredBookings.find(booking => {
+                  const dateStr = booking.finalQuote.booking.days[0]?.date;
+                  if (!dateStr) return false;
+                  try {
+                    const eventDate = parseToronto(dateStr, 'PPP');
+                    return formatToronto(eventDate, 'yyyy-MM-dd') === dateKey;
+                  } catch {
+                    return false;
+                  }
+                });
+                if (bookingForDate) {
+                  setSelectedBooking(bookingForDate);
+                }
+              }}
+              onBookingClick={(bookingId) => {
+                try {
+                  if (!bookingId) {
+                    console.error('onBookingClick called with no bookingId');
+                    return;
+                  }
+                  const booking = filteredBookings.find(b => b.id === bookingId);
+                  if (booking) {
+                    setSelectedBooking(booking);
+                  } else {
+                    console.warn(`Booking with ID ${bookingId} not found in filteredBookings`);
+                  }
+                } catch (error) {
+                  console.error('Error in onBookingClick:', error);
+                  toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Failed to open booking details. Please try again.',
+                  });
+                }
+              }}
+            />
+          )}
         </div>
       </MobileLayout>
+
+      {/* Global Booking Details Dialog - Works for both List and Calendar views */}
+      {selectedBooking && (
+        <Dialog 
+          open={!!selectedBooking} 
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setSelectedBooking(null);
+            }
+          }}
+        >
+          <DialogContent className="w-[95vw] max-w-[95vw] md:max-w-5xl lg:max-w-6xl max-h-[95vh] flex flex-col p-4 md:p-6">
+            <DialogHeader className="flex-shrink-0 pb-3">
+              <DialogTitle className="text-base md:text-lg lg:text-xl">
+                Booking Details (ID: {selectedBooking.id})
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto min-h-0 -mx-4 px-4 md:px-1 md:py-2">
+              <BookingDetails 
+                quote={selectedBooking.finalQuote} 
+                onUpdate={handleUpdateBooking} 
+                bookingDoc={selectedBooking} 
+                onBookingDeleted={handleBookingDeleted} 
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

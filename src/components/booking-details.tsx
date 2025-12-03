@@ -20,6 +20,7 @@ import { ContractDisplay } from '@/components/contract-display';
 import { generateContractPDFFromElement, generateContractPDFFromData } from '@/lib/pdf-generator';
 import { formatPrice } from '@/lib/price-format';
 import { SectionCard } from '@/components/admin/section-card';
+import { InvoiceGenerator } from '@/components/admin/invoice-generator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -3024,6 +3025,11 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
           )}
         </CardContent>
       </Card>
+
+       {/* Invoice Generator */}
+       {bookingDoc && quote.selectedQuote && (
+         <InvoiceGenerator booking={bookingDoc} />
+       )}
 
        <div className="pt-6 border-t mt-6 flex flex-wrap gap-4 items-center">
             {/* Send to Artist Section */}

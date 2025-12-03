@@ -18,7 +18,7 @@ export const SERVICES: Service[] = [
       'makeup-only': { lead: 275, team: 220 },
     },
     addonOverrides: {
-      hairExtension: { lead: 30, team: 30 },
+      hairExtension: { lead: 20, team: 20 },
       jewellerySetting: { lead: 50, team: 50 },
       sareeDraping: { lead: 50, team: 50 },
       hijabSetting: { lead: 30, team: 30 },
@@ -38,7 +38,7 @@ export const SERVICES: Service[] = [
       'makeup-only': { lead: 225, team: 180 },
     },
     addonOverrides: {
-      hairExtension: { lead: 30, team: 30 },
+      hairExtension: { lead: 20, team: 20 },
       jewellerySetting: { lead: 50, team: 50 },
       sareeDraping: { lead: 50, team: 50 },
       hijabSetting: { lead: 30, team: 30 },
@@ -135,7 +135,7 @@ export type MOBILE_LOCATION_IDS = keyof typeof MOBILE_LOCATION_OPTIONS;
 
 
 export const ADDON_PRICES = {
-    hairExtension: { lead: 30, team: 30 },
+    hairExtension: { lead: 20, team: 20 },
     jewellerySetting: { lead: 50, team: 50 },
     sareeDraping: { lead: 50, team: 50 },
     hijabSetting: { lead: 30, team: 30 },
