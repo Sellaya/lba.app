@@ -16,6 +16,7 @@ import type { BookingDocument } from '@/firebase/firestore/bookings';
 import { sendConfirmationEmailAction, approvePaymentAction, rejectScreenshotAction, approveFinalPaymentAction, rejectFinalPaymentAction } from '@/app/admin/actions';
 import { trackPaymentComplete } from '@/lib/facebook-pixel';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { ContractDisplay } from '@/components/contract-display';
 import { generateContractPDFFromElement, generateContractPDFFromData } from '@/lib/pdf-generator';
 import { formatPrice } from '@/lib/price-format';
@@ -110,6 +111,8 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
   const [isSendingToArtist, setIsSendingToArtist] = useState<string | null>(null);
   const [showSendToArtistDialog, setShowSendToArtistDialog] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [followupNotes, setFollowupNotes] = useState<string>(quote.followupNotes || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
   const { toast } = useToast();
 
   // Determine selected quote data - use quote.selectedQuote or infer from payment details
@@ -346,6 +349,56 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       }
     } catch (error) {
       console.error('Error refreshing email status:', error);
+    }
+  };
+
+  // Sync followup notes when quote changes
+  useEffect(() => {
+    setFollowupNotes(quote.followupNotes || '');
+  }, [quote.followupNotes]);
+
+  // Handler to save followup notes
+  const handleSaveFollowupNotes = async () => {
+    if (!bookingDoc) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Booking document is not available.',
+      });
+      return;
+    }
+
+    setIsSavingNotes(true);
+    try {
+      const updatedQuote: FinalQuote = {
+        ...quote,
+        followupNotes: followupNotes.trim() || undefined,
+      };
+
+      const response = await fetch(`/api/bookings/${quote.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ finalQuote: updatedQuote }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save followup notes');
+      }
+
+      onUpdate(updatedQuote);
+      toast({
+        title: 'Success',
+        description: 'Followup notes saved successfully.',
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: error.message || 'An unknown error occurred.',
+      });
+    } finally {
+      setIsSavingNotes(false);
     }
   };
 
@@ -741,6 +794,52 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
                 </div>
               </div>
             )}
+
+            {/* Followup Notes */}
+            <div className="pt-4 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Followup Notes</p>
+              </div>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="followup-notes" className="text-sm font-medium text-foreground">
+                    Add notes about client follow-up for future reference
+                  </Label>
+                  <Textarea
+                    id="followup-notes"
+                    value={followupNotes}
+                    onChange={(e) => setFollowupNotes(e.target.value)}
+                    placeholder="Enter followup notes here... (e.g., client preferences, special requests, follow-up actions needed, etc.)"
+                    className="min-h-[120px] md:min-h-[140px] text-sm resize-y w-full"
+                    rows={5}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    These notes are only visible to admins and will be saved with the booking for future reference.
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <Button
+                    onClick={handleSaveFollowupNotes}
+                    disabled={isSavingNotes || followupNotes === (quote.followupNotes || '')}
+                    size="sm"
+                    className="w-full sm:w-auto min-w-[100px] md:min-w-[120px] touch-manipulation active:scale-95 transition-all"
+                  >
+                    {isSavingNotes ? (
+                      <>
+                        <Loader2 className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                        <span className="text-xs sm:text-sm">Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span className="text-xs sm:text-sm">Save Notes</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
 
             {/* Service Address */}
             {quote.booking.address && (() => {

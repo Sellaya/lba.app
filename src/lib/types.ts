@@ -198,6 +198,7 @@ export type FinalQuote = {
       error?: string; // Error message if sending failed
     };
   };
+  followupNotes?: string; // Admin notes for client follow-up and future reference
 };
 
 export type ActionState = {
