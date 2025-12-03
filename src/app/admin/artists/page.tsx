@@ -7,13 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Plus, Edit, Trash2, Mail, Phone, User, FileText, Users, TrendingUp, DollarSign, Menu } from 'lucide-react';
+import { Loader2, AlertTriangle, Plus, Edit, Trash2, Mail, Phone, User, FileText, Users, TrendingUp, DollarSign, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AdminSettings } from '@/components/admin-settings';
-import Image from 'next/image';
+import { ArtistCard } from '@/components/admin/artist-card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,13 +24,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 
 export interface MakeupArtist {
   id?: string;
@@ -58,6 +50,7 @@ export default function ArtistsPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [editingArtist, setEditingArtist] = useState<MakeupArtist | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -154,11 +147,34 @@ export default function ArtistsPage() {
       
       // Success - clear any previous errors
       setError(null);
-      // Normalize address data to ensure it's always an object or undefined
-      const normalizedArtists = (data.artists || []).map((artist: any) => ({
-        ...artist,
-        address: artist.address && typeof artist.address === 'object' ? artist.address : undefined,
-      }));
+      // Normalize address data to ensure it's always a usable object when present
+      const normalizedArtists = (data.artists || []).map((artist: any) => {
+        let address: any = undefined;
+
+        if (artist.address) {
+          if (typeof artist.address === 'string') {
+            try {
+              const parsed = JSON.parse(artist.address);
+              if (parsed && typeof parsed === 'object') {
+                address = parsed;
+              } else {
+                // Keep raw string if it's not valid JSON object
+                address = artist.address;
+              }
+            } catch {
+              // Keep raw string if JSON.parse fails
+              address = artist.address;
+            }
+          } else if (typeof artist.address === 'object') {
+            address = artist.address;
+          }
+        }
+
+        return {
+          ...artist,
+          address,
+        };
+      });
       setArtists(normalizedArtists);
     } catch (err: any) {
       setError(err.message);
@@ -354,496 +370,426 @@ export default function ArtistsPage() {
     setFormData({ ...formData, whatsapp: formatted });
   };
 
-  const navItems = [
-    { href: '/admin', label: 'Bookings', icon: FileText },
-    { href: '/admin/artists', label: 'Artists', icon: Users },
-    { href: '/admin/accounting', label: 'Accounting', icon: TrendingUp },
-    { href: '/admin/pricing', label: 'Pricing', icon: DollarSign },
-  ];
-
-  // Reusable Navigation Component
-  const NavigationMenu = ({ onNavigate }: { onNavigate?: () => void }) => {
+  // Filter artists based on search term
+  const filteredArtists = artists.filter((artist) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
     return (
-      <nav className="flex-1 space-y-1 p-4">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          const handleClick = () => {
-            if (onNavigate) onNavigate();
-          };
-          
-          if (item.href === '/admin/pricing') {
-            return (
-              <button
-                key={item.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  router.push(item.href);
-                  handleClick();
-                }}
-                type="button"
-                className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-black text-white'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </button>
-            );
-          }
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={handleClick}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+      artist.name.toLowerCase().includes(term) ||
+      artist.email.toLowerCase().includes(term) ||
+      artist.whatsapp.toLowerCase().includes(term) ||
+      (artist.address &&
+        typeof artist.address === 'object' &&
+        (
+          artist.address.street?.toLowerCase().includes(term) ||
+          artist.address.city?.toLowerCase().includes(term) ||
+          artist.address.province?.toLowerCase().includes(term) ||
+          artist.address.postalCode?.toLowerCase().includes(term)
+        ))
     );
-  };
+  });
 
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen w-full bg-muted/40">
-        <div className="flex flex-1 flex-col items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-black" />
-          <p className="mt-4 text-muted-foreground">Loading Artists...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-h-screen w-full bg-muted/40">
-      {/* Sidebar - Desktop Only */}
-      <aside className="hidden md:flex w-64 flex-col border-r bg-background">
-        <div className="flex h-16 items-center justify-center gap-3 border-b px-6">
-          <div className="relative w-10 h-10 flex-shrink-0">
-            <Image
-              src="/LBA.png"
-              alt="Looks by Anum Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          <h1 className="font-headline text-lg font-bold text-black tracking-wider">Looks by Anum</h1>
-        </div>
-        <NavigationMenu />
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 md:px-6">
-          {/* Mobile Menu Button */}
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden h-9 w-9"
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <SheetHeader className="border-b px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 flex-shrink-0">
-                    <Image
-                      src="/LBA.png"
-                      alt="Looks by Anum Logo"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                  <SheetTitle className="font-headline text-lg font-bold text-black tracking-wider">
-                    Looks by Anum
-                  </SheetTitle>
-                </div>
-              </SheetHeader>
-              <NavigationMenu onNavigate={() => setIsMobileMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
-
-          <h2 className="text-base sm:text-xl font-semibold text-foreground truncate flex-1 min-w-0">
-            Team Management
+        <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-4 md:px-6 shadow-sm">
+          <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground truncate flex-1 min-w-0">
+            Artists
           </h2>
           <div className="ml-auto flex-shrink-0">
             <AdminSettings />
           </div>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-2 sm:p-4 sm:px-6 sm:py-4 md:gap-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-xs sm:text-sm text-muted-foreground">Manage your team members and their contact information</p>
+        <main className="flex flex-1 flex-col items-center justify-center p-4">
+          <Loader2 className="h-12 w-12 animate-spin text-black" />
+          <p className="mt-4 text-muted-foreground">Loading Artists...</p>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen w-full bg-muted/40">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-4 md:px-6 shadow-sm">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground truncate flex-1 min-w-0">
+          Artists
+        </h2>
+        <div className="ml-auto flex-shrink-0">
+          <AdminSettings />
+        </div>
+      </header>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col gap-3 md:gap-4 p-3 md:p-4 md:px-6">
+        {/* Search and Add Section */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search artists by name, email, phone, or address..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-9 md:h-10 text-sm"
+            />
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Artist
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md max-h-[95vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingArtist ? 'Edit Artist' : 'Add New Artist'}</DialogTitle>
-                  <DialogDescription>
-                    {editingArtist ? 'Update artist information below.' : 'Add a new makeup artist to your team.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit}>
-                  <div className="space-y-4 py-4">
+          
+          {/* Add Button */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="w-full sm:w-auto h-9 md:h-10 touch-manipulation active:scale-95"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Artist
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md max-h-[95vh] overflow-y-auto p-4 md:p-6">
+              <DialogHeader className="pb-3">
+                <DialogTitle className="text-base md:text-lg">
+                  {editingArtist ? 'Edit Artist' : 'Add New Artist'}
+                </DialogTitle>
+                <DialogDescription className="text-xs md:text-sm">
+                  {editingArtist
+                    ? 'Update artist information below.'
+                    : 'Add a new makeup artist to your team.'}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-xs md:text-sm">
+                      Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Artist name"
+                      required
+                      className="h-9 md:h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-xs md:text-sm">
+                      Email *
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="artist@example.com"
+                      required
+                      className="h-9 md:h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsapp" className="text-xs md:text-sm">
+                      WhatsApp Number *
+                    </Label>
+                    <Input
+                      id="whatsapp"
+                      type="tel"
+                      value={formData.whatsapp}
+                      onChange={handleWhatsAppChange}
+                      placeholder="+1 (416) 555-1234"
+                      required
+                      maxLength={17}
+                      className="h-9 md:h-10 text-sm"
+                    />
+                    <p className="text-[10px] md:text-xs text-muted-foreground">
+                      Enter US/Canada number (10 digits). +1 will be added automatically. Format: +1 (416) 555-1234
+                    </p>
+                  </div>
+                  <div className="space-y-4 pt-2 border-t">
+                    <p className="text-xs md:text-sm font-medium">Address (Optional)</p>
                     <div className="space-y-2">
-                      <Label htmlFor="name">Name *</Label>
+                      <Label htmlFor="street" className="text-xs md:text-sm">
+                        Street Address
+                      </Label>
                       <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Artist name"
-                        required
+                        id="street"
+                        value={formData.address?.street || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            address: { ...(formData.address || {}), street: e.target.value },
+                          })
+                        }
+                        placeholder="123 Main Street"
+                        className="h-9 md:h-10 text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="artist@example.com"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="whatsapp">WhatsApp Number *</Label>
-                      <Input
-                        id="whatsapp"
-                        type="tel"
-                        value={formData.whatsapp}
-                        onChange={handleWhatsAppChange}
-                        placeholder="+1 (416) 555-1234"
-                        required
-                        maxLength={17} // +1 (416) 555-1234 = 17 chars
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Enter US/Canada number (10 digits). +1 will be added automatically. Format: +1 (416) 555-1234
-                      </p>
-                    </div>
-                    <div className="space-y-4 pt-2 border-t">
-                      <p className="text-sm font-medium">Address (Optional)</p>
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="street">Street Address</Label>
+                        <Label htmlFor="city" className="text-xs md:text-sm">
+                          City
+                        </Label>
                         <Input
-                          id="street"
-                          value={formData.address?.street || ''}
-                          onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), street: e.target.value } })}
-                          placeholder="123 Main Street"
+                          id="city"
+                          value={formData.address?.city || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              address: { ...(formData.address || {}), city: e.target.value },
+                            })
+                          }
+                          placeholder="Toronto"
+                          className="h-9 md:h-10 text-sm"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            value={formData.address?.city || ''}
-                            onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), city: e.target.value } })}
-                            placeholder="Toronto"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="province">Province</Label>
-                          <Input
-                            id="province"
-                            value={formData.address?.province || ''}
-                            onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), province: e.target.value } })}
-                            placeholder="ON"
-                            maxLength={2}
-                          />
-                        </div>
-                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Label htmlFor="province" className="text-xs md:text-sm">
+                          Province
+                        </Label>
                         <Input
-                          id="postalCode"
-                          value={formData.address?.postalCode || ''}
-                          onChange={(e) => setFormData({ ...formData, address: { ...(formData.address || {}), postalCode: e.target.value.toUpperCase() } })}
-                          placeholder="M5H 2N2"
-                          maxLength={7}
+                          id="province"
+                          value={formData.address?.province || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              address: { ...(formData.address || {}), province: e.target.value },
+                            })
+                          }
+                          placeholder="ON"
+                          maxLength={2}
+                          className="h-9 md:h-10 text-sm"
                         />
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="postalCode" className="text-xs md:text-sm">
+                        Postal Code
+                      </Label>
+                      <Input
+                        id="postalCode"
+                        value={formData.address?.postalCode || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            address: {
+                              ...(formData.address || {}),
+                              postalCode: e.target.value.toUpperCase(),
+                            },
+                          })
+                        }
+                        placeholder="M5H 2N2"
+                        maxLength={7}
+                        className="h-9 md:h-10 text-sm"
+                      />
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={handleCloseDialog}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      {editingArtist ? 'Update' : 'Add'} Artist
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </div>
+                <DialogFooter className="gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseDialog}
+                    className="h-9 md:h-10"
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="h-9 md:h-10">
+                    {editingArtist ? 'Update' : 'Add'} Artist
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {error && (
-          <Card className="border-destructive">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <p className="font-semibold">{error}</p>
-                </div>
-                {(error.includes('table') || error.includes('Table') || error.includes('not found') || error.includes('structure') || error.includes('42703')) ? (
-                  <div className="mt-4 p-4 bg-muted rounded-lg">
-                    <p className="text-sm font-medium mb-2">
-                      {error.includes('structure') || error.includes('42703') 
-                        ? 'The table exists but has wrong structure. Drop and recreate it:' 
-                        : 'To fix this:'}
-                    </p>
-                    {error.includes('structure') || error.includes('42703') ? (
-                      <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-800 dark:text-yellow-200">
-                        ⚠️ WARNING: This will delete all existing data in the table!
-                      </div>
-                    ) : (
-                      <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground mb-3">
-                        <li>Go to your Supabase Dashboard → SQL Editor</li>
-                        <li>Run the SQL script below</li>
-                        <li>Wait 10-30 seconds for Supabase to refresh the schema cache</li>
-                        <li>Click "Refresh / Check Again" button below</li>
-                      </ol>
-                    )}
-                    <div className="mb-3 p-3 bg-background rounded border text-xs font-mono overflow-x-auto">
-                      <p className="font-semibold mb-1">SQL Script to run:</p>
-                      <code className="text-xs whitespace-pre">
-                        {error.includes('structure') || error.includes('42703') 
-                          ? `-- Drop the existing table (WARNING: Deletes all data!)
-DROP TABLE IF EXISTS makeup_artists CASCADE;
-
--- Create the table with correct structure:
-CREATE TABLE makeup_artists (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  whatsapp TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_makeup_artists_email ON makeup_artists(email);
-
-ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`
-                          : `CREATE TABLE IF NOT EXISTS makeup_artists (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  whatsapp TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_makeup_artists_email ON makeup_artists(email);
-
-ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`}
-                      </code>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          fetchArtists();
-                          toast({
-                            title: 'Refreshing...',
-                            description: 'Checking if table exists now.',
-                          });
-                        }}
-                      >
-                        Refresh / Check Again
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          const sqlScript = error.includes('structure') || error.includes('42703')
-                            ? `-- Drop the existing table (WARNING: Deletes all data!)
-DROP TABLE IF EXISTS makeup_artists CASCADE;
-
--- Create the table with correct structure:
-CREATE TABLE makeup_artists (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  whatsapp TEXT NOT NULL,
-  address JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_makeup_artists_email ON makeup_artists(email);
-
-ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`
-                            : `CREATE TABLE IF NOT EXISTS makeup_artists (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  whatsapp TEXT NOT NULL,
-  address JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_makeup_artists_email ON makeup_artists(email);
-
-ALTER TABLE makeup_artists DISABLE ROW LEVEL SECURITY;`;
-                          navigator.clipboard.writeText(sqlScript);
-                          toast({
-                            title: 'SQL Script Copied!',
-                            description: 'Paste it in your Supabase SQL Editor and run it.',
-                          });
-                        }}
-                      >
-                        Copy SQL Script
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
+        {/* Artists List */}
+        <Card className="rounded-xl border border-border shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base md:text-lg">
+                  Artists ({filteredArtists.length})
+                </CardTitle>
+                <CardDescription className="text-xs md:text-sm mt-1">
+                  {searchTerm
+                    ? `Showing ${filteredArtists.length} of ${artists.length} artists`
+                    : 'Your makeup artist team members'}
+                </CardDescription>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Artists ({artists.length})</CardTitle>
-            <CardDescription>Your makeup artist team members</CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
-            {artists.length === 0 ? (
-              <div className="text-center py-8">
-                <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No artists added yet.</p>
-                <p className="text-sm text-muted-foreground mt-2">Click "Add Artist" to get started.</p>
+            {filteredArtists.length === 0 ? (
+              <div className="text-center py-8 md:py-12">
+                <User className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm md:text-base text-muted-foreground">
+                  {searchTerm
+                    ? 'No artists found matching your search.'
+                    : 'No artists added yet.'}
+                </p>
+                {!searchTerm && (
+                  <p className="text-xs md:text-sm text-muted-foreground mt-2">
+                    Click "Add Artist" to get started.
+                  </p>
+                )}
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-2 sm:mx-0">
-                <div className="inline-block min-w-full align-middle">
-                  <div className="overflow-hidden">
-                    <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs sm:text-sm min-w-[120px]">Name</TableHead>
-                    <TableHead className="text-xs sm:text-sm min-w-[180px]">Email</TableHead>
-                    <TableHead className="text-xs sm:text-sm min-w-[140px]">WhatsApp</TableHead>
-                    <TableHead className="text-xs sm:text-sm min-w-[150px]">Address</TableHead>
-                    <TableHead className="text-right text-xs sm:text-sm w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {artists.map((artist) => (
-                    <TableRow key={artist.id}>
-                      <TableCell className="font-medium text-xs sm:text-sm">{artist.name}</TableCell>
-                      <TableCell className="text-xs sm:text-sm">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{artist.email}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs sm:text-sm">
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{formatWhatsApp(artist.whatsapp)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {artist.address && typeof artist.address === 'object' && (artist.address?.street || artist.address?.city) ? (
-                          <div className="text-sm">
-                            {artist.address?.street && (
-                              <p className="font-medium">{artist.address.street}</p>
-                            )}
-                            {(artist.address?.city || artist.address?.province || artist.address?.postalCode) && (
-                              <p className="text-muted-foreground">
-                                {[artist.address?.city, artist.address?.province, artist.address?.postalCode].filter(Boolean).join(', ')}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenDialog(artist)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={isDeleting === artist.id}
-                              >
-                                {isDeleting === artist.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                )}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will permanently delete {artist.name} from your team. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => artist.id && handleDelete(artist.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+              <>
+                {/* Mobile: Card Layout */}
+                <div className="md:hidden space-y-3">
+                  {filteredArtists.map((artist) => (
+                    <ArtistCard
+                      key={artist.id}
+                      artist={artist}
+                      onEdit={handleOpenDialog}
+                      onDelete={handleDelete}
+                      isDeleting={isDeleting === artist.id}
+                      formatWhatsApp={formatWhatsApp}
+                    />
                   ))}
-                </TableBody>
-                    </Table>
+                </div>
+
+                {/* Desktop: Table Layout */}
+                <div className="hidden md:block overflow-x-auto -mx-4 md:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <div className="overflow-hidden rounded-lg border border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-sm min-w-[150px]">Name</TableHead>
+                            <TableHead className="text-sm min-w-[200px]">Email</TableHead>
+                            <TableHead className="text-sm min-w-[160px]">WhatsApp</TableHead>
+                            <TableHead className="text-sm min-w-[200px]">Address</TableHead>
+                            <TableHead className="text-right text-sm w-[120px]">
+                              Actions
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredArtists.map((artist) => (
+                            <TableRow key={artist.id}>
+                              <TableCell className="font-medium text-sm">
+                                {artist.name}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-muted-foreground truncate">
+                                    {artist.email}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-muted-foreground truncate">
+                                    {formatWhatsApp(artist.whatsapp)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const addr = artist.address as any;
+                                  if (
+                                    typeof addr === 'string' &&
+                                    addr.trim().length > 0
+                                  ) {
+                                    return (
+                                      <p className="text-sm text-muted-foreground break-words">
+                                        {addr}
+                                      </p>
+                                    );
+                                  }
+
+                                  if (
+                                    addr &&
+                                    typeof addr === 'object' &&
+                                    (addr.street || addr.city || addr.province || addr.postalCode)
+                                  ) {
+                                    return (
+                                      <div className="text-sm">
+                                        {addr.street && (
+                                          <p className="font-medium">
+                                            {addr.street}
+                                          </p>
+                                        )}
+                                        {(addr.city || addr.province || addr.postalCode) && (
+                                          <p className="text-muted-foreground">
+                                            {[addr.city, addr.province, addr.postalCode]
+                                              .filter(Boolean)
+                                              .join(', ')}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <span className="text-muted-foreground text-sm">
+                                      —
+                                    </span>
+                                  );
+                                })()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpenDialog(artist)}
+                                    className="h-8 w-8"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={isDeleting === artist.id}
+                                        className="h-8 w-8"
+                                      >
+                                        {isDeleting === artist.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                        )}
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This will permanently delete {artist.name} from your
+                                          team. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() =>
+                                            artist.id && handleDelete(artist.id)
+                                          }
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </CardContent>
         </Card>
-        </main>
       </div>
     </div>
   );
 }
-
