@@ -488,6 +488,14 @@ export function CalendarView({ bookings, onDateSelect, selectedDate, onBookingCl
                           <p className="font-semibold text-xs md:text-sm lg:text-base text-foreground truncate">
                             {booking.finalQuote.contact.name}
                           </p>
+                          {booking.finalQuote.isManualBooking && (
+                            <Badge 
+                              variant="outline"
+                              className="text-[8px] md:text-[9px] bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700 shrink-0 font-medium"
+                            >
+                              ✏️ Manual
+                            </Badge>
+                          )}
                           <Badge 
                             variant="outline"
                             className={cn(
@@ -769,6 +777,14 @@ export function CalendarView({ bookings, onDateSelect, selectedDate, onBookingCl
                             <p className="font-semibold text-xs md:text-sm lg:text-base xl:text-lg text-foreground truncate">
                               {booking.finalQuote.contact.name}
                             </p>
+                            {booking.finalQuote.isManualBooking && (
+                              <Badge 
+                                variant="outline"
+                                className="text-[8px] md:text-[9px] bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700 shrink-0 font-medium"
+                              >
+                                ✏️ Manual
+                              </Badge>
+                            )}
                             <Badge 
                               variant="outline"
                               className={cn(

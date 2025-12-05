@@ -199,6 +199,7 @@ export type FinalQuote = {
     };
   };
   followupNotes?: string; // Admin notes for client follow-up and future reference
+  isManualBooking?: boolean; // Flag to indicate this is a manually created booking (disables automated emails/messages)
 };
 
 export type ActionState = {

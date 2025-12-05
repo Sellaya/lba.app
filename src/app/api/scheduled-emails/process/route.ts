@@ -107,6 +107,23 @@ async function processScheduledEmail(
       };
     }
 
+    // Don't send emails for manual bookings (they should not receive automated notifications)
+    if (booking.finalQuote.isManualBooking) {
+      await logEmailEvent({
+        scheduledEmailId: scheduledEmail.id,
+        bookingId: scheduledEmail.booking_id,
+        emailType: scheduledEmail.email_type,
+        status: 'skipped',
+        detail: 'Manual booking; automated emails disabled',
+      });
+      return {
+        success: false,
+        shouldMarkAsSent: true,
+        skipped: true,
+        error: 'Manual booking - automated emails disabled',
+      };
+    }
+
     // Handle event reminder emails and post-appointment follow-up
     if (scheduledEmail.email_type === 'event-reminder-24h' || scheduledEmail.email_type === 'appointment-day-reminder' || scheduledEmail.email_type === 'post-appointment-followup') {
       // Only send for confirmed bookings with payment

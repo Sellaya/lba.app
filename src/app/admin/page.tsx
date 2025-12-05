@@ -21,8 +21,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2, Menu, Filter } from 'lucide-react';
+import { Loader2, AlertTriangle, Eye, Search, CalendarClock, Users, RefreshCw, FileText, CheckCircle2, Clock, XCircle, DollarSign, TrendingUp, CreditCard, Wallet, Receipt, X, Settings, Trash2, Menu, Filter, Plus } from 'lucide-react';
 import { AdminSettings } from '@/components/admin-settings';
+import { ManualBookingForm } from '@/components/admin/manual-booking-form';
 import { formatToronto, differenceInDaysToronto, parseToronto, getTorontoToday, getTorontoNow } from '@/lib/toronto-time';
 import { BookingDetails } from '@/components/booking-details';
 import { Input } from '@/components/ui/input';
@@ -105,6 +106,7 @@ export default function AdminDashboard() {
     searchTerm: '',
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+  const [showManualBookingDialog, setShowManualBookingDialog] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -804,9 +806,40 @@ export default function AdminDashboard() {
     }).format(amount);
   };
 
+  // Handle manual booking success
+  const handleManualBookingSuccess = () => {
+    setShowManualBookingDialog(false);
+    fetchBookings(true);
+    toast({ title: 'Success', description: 'Manual booking created successfully' });
+  };
+
   // Header actions
   const headerActions = (
     <>
+      <Dialog open={showManualBookingDialog} onOpenChange={setShowManualBookingDialog}>
+        <DialogTrigger asChild>
+          <Button
+            variant="default"
+            size="sm"
+            className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
+          >
+            <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Manual Booking</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="w-[95vw] max-w-[95vw] md:max-w-6xl max-h-[95vh] flex flex-col p-0">
+          <DialogHeader className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-3">
+            <DialogTitle className="text-base md:text-lg">Create Manual Booking</DialogTitle>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">
+              Create a booking manually. No automated emails or messages will be sent.
+            </p>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 pb-4 md:pb-6">
+            <ManualBookingForm onSuccess={handleManualBookingSuccess} onCancel={() => setShowManualBookingDialog(false)} />
+          </div>
+        </DialogContent>
+      </Dialog>
       {selectedBookings.size > 0 && (
         <>
           <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
@@ -1285,6 +1318,7 @@ function BookingsTable({
                   const promoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
                   const discountAmount = (booking.finalQuote.paymentDetails?.discountAmount || 0) + (booking.finalQuote.paymentDetails?.finalPayment?.discountAmount || 0);
                   const hasConsultationRequest = !!booking.finalQuote.consultationRequest;
+                  const isManualBooking = !!booking.finalQuote.isManualBooking;
                   return (
                     <TableRow key={booking.id} className={selectedBookings.has(booking.id) ? 'bg-muted/50' : ''}>
                       <TableCell>
@@ -1298,8 +1332,13 @@ function BookingsTable({
                       <TableCell className="min-w-[120px]">
                         <div className="flex items-center gap-2">
                           <div>
-                            <div className="font-medium text-sm flex items-center gap-1">
+                            <div className="font-medium text-sm flex items-center gap-1 flex-wrap">
                               {booking.finalQuote.contact.name}
+                              {isManualBooking && (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700 text-[10px] px-2 py-0.5 font-medium shrink-0" title="Manually created booking">
+                                  ✏️ Manual
+                                </Badge>
+                              )}
                               {hasConsultationRequest && (
                                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0.5" title="Consultation request submitted">
                                   📞 Call Request

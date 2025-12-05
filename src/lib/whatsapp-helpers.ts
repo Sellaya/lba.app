@@ -45,6 +45,12 @@ export async function ensureWhatsAppRemindersScheduled(quote: FinalQuote): Promi
   scheduled1w: boolean;
   errors: string[];
 }> {
+  // Skip manual bookings - they should not receive automated notifications
+  if (quote.isManualBooking) {
+    console.log(`Skipping WhatsApp reminder scheduling for manual booking ${quote.id} - automated messages disabled`);
+    return { scheduled2w: false, scheduled1w: false, errors: [] };
+  }
+
   const errors: string[] = [];
   let scheduled2w = false;
   let scheduled1w = false;

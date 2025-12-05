@@ -1,12 +1,12 @@
 
 'use client';
 
-import type { FinalQuote, PriceTier, PaymentDetails } from '@/lib/types';
+import type { FinalQuote, PriceTier, PaymentDetails, PaymentMethod } from '@/lib/types';
 import { STUDIO_ADDRESS } from '@/lib/services';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Users, MapPin, CalendarClock, Link as LinkIcon, MessageSquare, Loader2, Mail, Trash2, CheckCircle2, XCircle, Send, Calendar, Download, FileText } from 'lucide-react';
+import { User, Users, MapPin, CalendarClock, Link as LinkIcon, MessageSquare, Loader2, Mail, Trash2, CheckCircle2, XCircle, Send, Calendar, Download, FileText, AlertTriangle, Plus } from 'lucide-react';
 import { differenceInDaysToronto, parseToronto, formatToronto, formatDistanceToNowToronto, isPastToronto, isFutureToronto, getTorontoToday, getTorontoNow } from '@/lib/toronto-time';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -1339,12 +1339,245 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
       </Card>
       
       {/* Payment Details Card - Admin Actions */}
-      {quote.paymentDetails && selectedQuoteData && (
+      {/* Show for manual bookings OR when paymentDetails exists */}
+      {quote.isManualBooking || (quote.paymentDetails && selectedQuoteData) ? (
         <Card className="shadow-lg">
           <CardHeader className="pb-4 border-b">
             <CardTitle className="text-xl font-headline">Payment Management</CardTitle>
+            {quote.isManualBooking && (
+              <p className="text-sm text-muted-foreground mt-2">Manual Booking - Update payment statuses directly</p>
+            )}
           </CardHeader>
           <CardContent className="pt-6 space-y-8">
+            {/* Manual Booking Payment Status Management */}
+            {quote.isManualBooking && (
+              <div className="space-y-6 p-4 border-2 border-dashed rounded-lg bg-blue-50/50 dark:bg-blue-950/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertTriangle className="h-5 w-5 text-blue-600" />
+                  <h4 className="font-semibold text-lg">Manual Payment Status Update</h4>
+                </div>
+                
+                {/* Advance Payment Status */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Advance Payment Status</Label>
+                  {!quote.paymentDetails && (
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        if (!bookingDoc || !selectedQuoteData) return;
+                        setIsUpdating(true);
+                        const depositAmount = selectedQuoteData.total * 0.5;
+                        const updatedQuote: FinalQuote = {
+                          ...quote,
+                          paymentDetails: {
+                            method: 'interac',
+                            status: 'deposit-pending',
+                            depositAmount,
+                          },
+                        };
+                        try {
+                          const response = await fetch(`/api/bookings/${quote.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ finalQuote: updatedQuote }),
+                          });
+                          if (!response.ok) throw new Error('Failed to update');
+                          onUpdate(updatedQuote);
+                          toast({ title: "Payment Details Added", description: "You can now update the payment status." });
+                        } catch (error: any) {
+                          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+                        } finally {
+                          setIsUpdating(false);
+                        }
+                      }}
+                      disabled={isActionPending}
+                      className="w-full"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Payment Details
+                    </Button>
+                  )}
+                  {quote.paymentDetails && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="manual-advance-status" className="text-xs text-muted-foreground mb-1">Status</Label>
+                        <Select 
+                          id="manual-advance-status"
+                          value={quote.paymentDetails.status} 
+                          onValueChange={(val: PaymentDetails['status']) => handlePaymentStatusChange(val)} 
+                          disabled={isActionPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="deposit-pending">Pending</SelectItem>
+                            <SelectItem value="deposit-paid">Paid</SelectItem>
+                            <SelectItem value="payment-approved">Approved</SelectItem>
+                            <SelectItem value="screenshot-rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="manual-advance-method" className="text-xs text-muted-foreground mb-1">Method</Label>
+                        <Select 
+                          id="manual-advance-method"
+                          value={quote.paymentDetails.method || 'interac'} 
+                          onValueChange={async (val: PaymentMethod) => {
+                            if (!bookingDoc || !quote.paymentDetails) return;
+                            setIsUpdating(true);
+                            const updatedQuote: FinalQuote = {
+                              ...quote,
+                              paymentDetails: {
+                                ...quote.paymentDetails,
+                                method: val,
+                              },
+                            };
+                            try {
+                              const response = await fetch(`/api/bookings/${quote.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ finalQuote: updatedQuote }),
+                              });
+                              if (!response.ok) throw new Error('Failed to update');
+                              onUpdate(updatedQuote);
+                              toast({ title: "Payment Method Updated", description: `Method set to ${val}.` });
+                            } catch (error: any) {
+                              toast({ variant: "destructive", title: "Update Failed", description: error.message });
+                            } finally {
+                              setIsUpdating(false);
+                            }
+                          }}
+                          disabled={isActionPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="stripe">Stripe</SelectItem>
+                            <SelectItem value="interac">Interac</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Final Payment Status */}
+                {quote.paymentDetails && (quote.paymentDetails.status === 'deposit-paid' || quote.paymentDetails.status === 'payment-approved') && (
+                  <div className="space-y-3 pt-4 border-t">
+                    <Label className="text-sm font-semibold">Final Payment Status</Label>
+                    {quote.paymentDetails.finalPayment ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="manual-final-status" className="text-xs text-muted-foreground mb-1">Status</Label>
+                          <Select 
+                            id="manual-final-status"
+                            value={quote.paymentDetails.finalPayment.status || 'deposit-pending'} 
+                            onValueChange={(val: PaymentDetails['status']) => handleFinalPaymentStatusChange(val)} 
+                            disabled={isActionPending}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="deposit-pending">Pending</SelectItem>
+                              <SelectItem value="deposit-paid">Paid</SelectItem>
+                              <SelectItem value="payment-approved">Approved</SelectItem>
+                              <SelectItem value="screenshot-rejected">Rejected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="manual-final-method" className="text-xs text-muted-foreground mb-1">Method</Label>
+                          <Select 
+                            id="manual-final-method"
+                            value={quote.paymentDetails.finalPayment.method || 'interac'} 
+                            onValueChange={async (val: PaymentMethod) => {
+                              if (!bookingDoc || !quote.paymentDetails?.finalPayment) return;
+                              setIsUpdating(true);
+                              const updatedQuote: FinalQuote = {
+                                ...quote,
+                                paymentDetails: {
+                                  ...quote.paymentDetails,
+                                  finalPayment: {
+                                    ...quote.paymentDetails.finalPayment,
+                                    method: val,
+                                  },
+                                },
+                              };
+                              try {
+                                const response = await fetch(`/api/bookings/${quote.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ finalQuote: updatedQuote }),
+                                });
+                                if (!response.ok) throw new Error('Failed to update');
+                                onUpdate(updatedQuote);
+                                toast({ title: "Final Payment Method Updated", description: `Method set to ${val}.` });
+                              } catch (error: any) {
+                                toast({ variant: "destructive", title: "Update Failed", description: error.message });
+                              } finally {
+                                setIsUpdating(false);
+                              }
+                            }}
+                            disabled={isActionPending}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="stripe">Stripe</SelectItem>
+                              <SelectItem value="interac">Interac</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          if (!bookingDoc || !quote.paymentDetails || !selectedQuoteData) return;
+                          setIsUpdating(true);
+                          const finalAmount = selectedQuoteData.total * 0.5;
+                          const updatedQuote: FinalQuote = {
+                            ...quote,
+                            paymentDetails: {
+                              ...quote.paymentDetails,
+                              finalPayment: {
+                                method: 'interac',
+                                status: 'deposit-pending',
+                                amount: finalAmount,
+                              },
+                            },
+                          };
+                          try {
+                            const response = await fetch(`/api/bookings/${quote.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ finalQuote: updatedQuote }),
+                            });
+                            if (!response.ok) throw new Error('Failed to update');
+                            onUpdate(updatedQuote);
+                            toast({ title: "Final Payment Added", description: "You can now update the final payment status." });
+                          } catch (error: any) {
+                            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+                          } finally {
+                            setIsUpdating(false);
+                          }
+                        }}
+                        disabled={isActionPending}
+                        className="w-full"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Final Payment
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Advance Payment Section */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
@@ -1897,7 +2130,7 @@ export function BookingDetails({ quote, onUpdate, bookingDoc, onBookingDeleted }
             )}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Show selected quote with payment summary when payment is made and order is booked */}
       {(() => {

@@ -47,8 +47,8 @@ export async function saveQuoteAndEmailAction(quote: FinalQuote): Promise<Action
     console.log('saveQuoteAndEmailAction: Successfully saved to Supabase');
     
       // Send the quote email (non-blocking - don't fail the save if email fails)
-      // Skip if booking is cancelled
-      if (quote.status !== 'cancelled') {
+      // Skip if booking is cancelled or is a manual booking (manual bookings should not receive automated notifications)
+      if (quote.status !== 'cancelled' && !quote.isManualBooking) {
       console.log('saveQuoteAndEmailAction: Attempting to send quote email...');
       try {
         await sendQuoteEmail(quote);

@@ -62,6 +62,14 @@ export async function GET(request: Request) {
     for (const booking of bookings) {
       try {
         const quote: FinalQuote = booking.final_quote;
+        
+        // Skip manual bookings - they should not receive automated notifications
+        if (quote.isManualBooking) {
+          console.log(`[WhatsApp Processor] Skipping manual booking ${booking.id} - automated messages disabled`);
+          skipped++;
+          continue;
+        }
+        
         let processed = false;
 
         // Check 2-week reminder

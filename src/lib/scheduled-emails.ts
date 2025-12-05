@@ -26,6 +26,12 @@ export interface ScheduledEmail {
  * @param bookingCreatedAt - Optional: The booking creation timestamp. If provided, emails are scheduled relative to this time. If not provided, uses current time.
  */
 export async function scheduleFollowUpEmails(quote: FinalQuote, bookingCreatedAt?: Date | string): Promise<void> {
+  // Don't schedule follow-up emails for manual bookings (they should not receive automated notifications)
+  if (quote.isManualBooking) {
+    console.log(`Skipping follow-up email scheduling for manual booking ${quote.id} - automated emails disabled`);
+    return;
+  }
+
   // Don't schedule follow-up emails if booking is confirmed
   if (quote.status === 'confirmed') {
     console.log(`Skipping follow-up email scheduling for confirmed booking ${quote.id}`);

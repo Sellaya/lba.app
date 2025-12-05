@@ -119,8 +119,8 @@ export async function PUT(
 		}
 
 		// Schedule WhatsApp reminders if needed (non-blocking - don't fail the update if scheduling fails)
-		// This ensures reminders are scheduled when bookings are updated
-		if (data.final_quote) {
+		// Skip for manual bookings - they should not receive automated notifications
+		if (data.final_quote && !data.final_quote.isManualBooking) {
 			try {
 				const { ensureWhatsAppRemindersScheduled } = await import('@/lib/whatsapp-helpers');
 				await ensureWhatsAppRemindersScheduled(data.final_quote);
@@ -128,6 +128,8 @@ export async function PUT(
 				console.error('Error scheduling WhatsApp reminders after booking update:', error);
 				// Don't fail the request if reminder scheduling fails
 			}
+		} else if (data.final_quote?.isManualBooking) {
+			console.log('Skipping WhatsApp reminders for manual booking:', bookingId);
 		}
 
 		// Transform back to camelCase for response

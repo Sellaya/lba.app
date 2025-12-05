@@ -31,6 +31,17 @@ export async function POST(
 
 		console.log(`[SCHEDULE EMAILS API] Booking found: ${bookingId}, Status: ${booking.finalQuote.status}`);
 
+		// Skip manual bookings - they should not receive automated notifications
+		if (booking.finalQuote.isManualBooking) {
+			console.log(`[SCHEDULE EMAILS API] Skipping email scheduling for manual booking ${bookingId}`);
+			return NextResponse.json({ 
+				success: true, 
+				message: 'Manual booking - emails not scheduled',
+				bookingId,
+				skipped: true
+			});
+		}
+
 		// Schedule follow-up emails (only if status is 'quoted' and no payment)
 		await scheduleFollowUpEmails(booking.finalQuote);
 

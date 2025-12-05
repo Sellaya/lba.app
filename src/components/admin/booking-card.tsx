@@ -40,6 +40,7 @@ export function BookingCard({
   const promoCode = booking.finalQuote.paymentDetails?.promotionalCode || booking.finalQuote.paymentDetails?.finalPayment?.promotionalCode;
   const discountAmount = (booking.finalQuote.paymentDetails?.discountAmount || 0) + (booking.finalQuote.paymentDetails?.finalPayment?.discountAmount || 0);
   const hasConsultationRequest = !!booking.finalQuote.consultationRequest;
+  const isManualBooking = !!booking.finalQuote.isManualBooking;
   const totalAmount = booking.finalQuote.selectedQuote 
     ? booking.finalQuote.quotes[booking.finalQuote.selectedQuote].total
     : 0;
@@ -65,6 +66,11 @@ export function BookingCard({
             <h3 className="font-semibold text-base md:text-lg text-foreground truncate">
               {booking.finalQuote.contact.name}
             </h3>
+            {isManualBooking && (
+              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700 text-[10px] md:text-xs font-medium px-2 py-0.5 shrink-0">
+                ✏️ Manual
+              </Badge>
+            )}
             {hasConsultationRequest && (
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0.5">
                 📞 Call Request
@@ -190,6 +196,7 @@ export function BookingCard({
     </div>
   );
 }
+
 
 
 
