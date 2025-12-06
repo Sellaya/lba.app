@@ -995,6 +995,7 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
   const showAddons = service?.id === 'bridal' || service?.id === 'semi-bridal';
   const shouldUseGenericTitle = service?.id === 'party' || service?.id === 'semi-bridal' || service?.id === 'photoshoot';
   const isOutsideToronto = useMemo(() => day.mobileLocation !== 'toronto', [day.mobileLocation]);
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 rounded-lg border bg-card/50 relative">
@@ -1007,16 +1008,12 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         <div>
           <Label htmlFor={`date-${index}`} className="text-sm sm:text-base">Day {index + 1} - Date *</Label>
-          <Popover modal={true}>
+          <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen} modal={true}>
             <PopoverTrigger asChild>
               <Button 
                 variant={"outline"} 
                 className={cn("w-full justify-start text-left font-normal h-9 sm:h-10 touch-manipulation", !day.date && "text-muted-foreground")} 
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {day.date ? formatToronto(day.date, "PPP") : <span>Pick a date</span>}
@@ -1034,6 +1031,7 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
                 onSelect={(date) => { 
                   if (date) {
                     updateDay(day.id, { date: date as Date }); 
+                    setIsDatePopoverOpen(false);
                   }
                 }} 
                 disabled={(date) => {
@@ -1265,6 +1263,7 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
   setDays: (days: Day[] | ((prev: Day[]) => Day[])) => void;
 }) {
   const hasBridalOnly = days.some(day => day.serviceId === 'bridal');
+  const [isTrialDatePopoverOpen, setIsTrialDatePopoverOpen] = useState(false);
 
   return (
     <div className="space-y-8">
@@ -1301,16 +1300,12 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="trialDate" className="text-sm sm:text-base">Trial Date *</Label>
-                  <Popover modal={true}>
+                  <Popover open={isTrialDatePopoverOpen} onOpenChange={setIsTrialDatePopoverOpen} modal={true}>
                     <PopoverTrigger asChild>
                       <Button 
                         variant={"outline"} 
                         className={cn("w-full justify-start text-left font-normal h-9 sm:h-10 touch-manipulation", !bridalTrial.date && "text-muted-foreground")} 
                         type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {bridalTrial.date ? formatToronto(bridalTrial.date, "PPP") : <span>Pick a date</span>}
@@ -1328,6 +1323,7 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
                         onSelect={(date) => { 
                           if (date) {
                             updateBridalTrial({ date: date as Date }); 
+                            setIsTrialDatePopoverOpen(false);
                           }
                         }} 
                         disabled={(date) => {
