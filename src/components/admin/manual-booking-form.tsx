@@ -994,7 +994,6 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
   const service = SERVICES.find(s => s.id === day.serviceId);
   const showAddons = service?.id === 'bridal' || service?.id === 'semi-bridal';
   const shouldUseGenericTitle = service?.id === 'party' || service?.id === 'semi-bridal' || service?.id === 'photoshoot';
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const isOutsideToronto = useMemo(() => day.mobileLocation !== 'toronto', [day.mobileLocation]);
 
   return (
@@ -1008,7 +1007,7 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         <div>
           <Label htmlFor={`date-${index}`} className="text-sm sm:text-base">Day {index + 1} - Date *</Label>
-          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen} modal={false}>
+          <Popover modal={true}>
             <PopoverTrigger asChild>
               <Button 
                 variant={"outline"} 
@@ -1017,7 +1016,6 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setIsPopoverOpen(!isPopoverOpen);
                 }}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -1025,17 +1023,10 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
               </Button>
             </PopoverTrigger>
             <PopoverContent 
-              className="w-auto p-0 z-[100]" 
+              className="w-auto p-0 z-[200]" 
               align="start" 
               side="bottom" 
               sideOffset={8}
-              onInteractOutside={(e) => {
-                // Prevent closing when clicking inside the calendar
-                const target = e.target as HTMLElement;
-                if (target.closest('[role="grid"]') || target.closest('[role="button"]')) {
-                  e.preventDefault();
-                }
-              }}
             >
               <Calendar 
                 mode="single" 
@@ -1043,7 +1034,6 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
                 onSelect={(date) => { 
                   if (date) {
                     updateDay(day.id, { date: date as Date }); 
-                    setIsPopoverOpen(false); 
                   }
                 }} 
                 disabled={(date) => {
@@ -1059,7 +1049,7 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
           <Label htmlFor={`getReadyTime-${index}`} className="text-sm sm:text-base">Get Ready Time *</Label>
           <Select value={day.getReadyTime} onValueChange={(value) => updateDay(day.id, { getReadyTime: value })} required>
             <SelectTrigger className="h-9 sm:h-10 touch-manipulation"><SelectValue /></SelectTrigger>
-            <SelectContent className="z-[100] max-h-[50vh] overflow-y-auto">
+            <SelectContent className="z-[200] max-h-[50vh] overflow-y-auto">
               {timeSlots.map(slot => (
                 <SelectItem key={slot} value={slot}>
                   {formatToronto(new Date(`1970-01-01T${slot}`), 'p')}
@@ -1080,7 +1070,7 @@ function BookingDayCard({ day, index, updateDay, removeDay, isOnlyDay }: {
             });
           }} required>
             <SelectTrigger className="h-9 sm:h-10 touch-manipulation"><SelectValue placeholder="Select a service" /></SelectTrigger>
-            <SelectContent className="z-[100] max-h-[50vh] overflow-y-auto">
+            <SelectContent className="z-[200] max-h-[50vh] overflow-y-auto">
               {SERVICES.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   <div className="flex items-center gap-2">
@@ -1274,7 +1264,6 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
   days: Day[];
   setDays: (days: Day[] | ((prev: Day[]) => Day[])) => void;
 }) {
-  const [isTrialPopoverOpen, setIsTrialPopoverOpen] = useState(false);
   const hasBridalOnly = days.some(day => day.serviceId === 'bridal');
 
   return (
@@ -1312,7 +1301,7 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="trialDate" className="text-sm sm:text-base">Trial Date *</Label>
-                  <Popover open={isTrialPopoverOpen} onOpenChange={setIsTrialPopoverOpen} modal={false}>
+                  <Popover modal={true}>
                     <PopoverTrigger asChild>
                       <Button 
                         variant={"outline"} 
@@ -1321,7 +1310,6 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          setIsTrialPopoverOpen(!isTrialPopoverOpen);
                         }}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -1329,17 +1317,10 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent 
-                      className="w-auto p-0 z-[100]" 
+                      className="w-auto p-0 z-[200]" 
                       align="start" 
                       side="bottom" 
                       sideOffset={8}
-                      onInteractOutside={(e) => {
-                        // Prevent closing when clicking inside the calendar
-                        const target = e.target as HTMLElement;
-                        if (target.closest('[role="grid"]') || target.closest('[role="button"]')) {
-                          e.preventDefault();
-                        }
-                      }}
                     >
                       <Calendar 
                         mode="single" 
@@ -1347,7 +1328,6 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
                         onSelect={(date) => { 
                           if (date) {
                             updateBridalTrial({ date: date as Date }); 
-                            setIsTrialPopoverOpen(false); 
                           }
                         }} 
                         disabled={(date) => {
@@ -1356,7 +1336,7 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
                           if (!bridalDay) return date < today;
                           return date >= bridalDay || date < today;
                         }} 
-                        initialFocus
+                        initialFocus 
                       />
                     </PopoverContent>
                   </Popover>
@@ -1365,7 +1345,7 @@ function BridalServiceOptions({ bridalTrial, updateBridalTrial, days, setDays }:
                   <Label htmlFor="trialTime" className="text-sm sm:text-base">Trial Time *</Label>
                   <Select value={bridalTrial.time} onValueChange={(value) => updateBridalTrial({ time: value })} required={bridalTrial.addTrial}>
                     <SelectTrigger className="h-9 sm:h-10 touch-manipulation"><SelectValue /></SelectTrigger>
-                    <SelectContent className="z-[100] max-h-[50vh] overflow-y-auto">
+                    <SelectContent className="z-[200] max-h-[50vh] overflow-y-auto">
                       {timeSlots.map(slot => (
                         <SelectItem key={slot} value={slot}>
                           {formatToronto(new Date(`1970-01-01T${slot}`), 'p')}
